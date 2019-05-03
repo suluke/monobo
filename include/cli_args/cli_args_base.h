@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string_view>
 #include <variant>
 #include <vector>
@@ -118,6 +119,7 @@ struct CliOptConcept;
 /// TODO Maybe we want a non-template registry of registries
 template <typename AppTag> struct CliOptRegistry final {
   using optionmap_t = std::map<std::string_view, CliOptConcept *>;
+  using optionset_t = std::set<CliOptConcept *>;
 
   static CliOptRegistry &get() {
     static CliOptRegistry instance;
@@ -126,33 +128,32 @@ template <typename AppTag> struct CliOptRegistry final {
   ~CliOptRegistry();
 
   bool hasOption(const std::string_view &name) const {
-    return options.count(name);
+    return optionsByName.count(name);
   }
   bool hasUnnamed() const { return hasOption(""); }
   CliOptConcept &getOption(const std::string_view &name) const {
     assert(hasOption(name) &&
            "Cannot retrieve unregistered option from registry");
-    return *options.find(name)->second;
+    return *optionsByName.find(name)->second;
   }
   CliOptConcept &getUnnamed() const { return getOption(""); }
-  void addOption(const std::string_view &name, CliOptConcept &opt) {
-    assert(!options.count(name));
-    options[name] = &opt;
-  }
-  void removeOption(const CliOptConcept &opt) {
+  void addOption(CliOptConcept &opt);
+  void removeOption(CliOptConcept &opt) {
     std::vector<std::string_view> removedKeys;
-    for (const auto &KeyValuePair : options)
+    for (const auto &KeyValuePair : optionsByName)
       if (KeyValuePair.second == &opt)
         removedKeys.push_back(KeyValuePair.first);
     for (const std::string_view &key : removedKeys)
-      options.erase(key);
+      optionsByName.erase(key);
+    options.erase(&opt);
   }
 
   auto begin() const { return options.begin(); }
   auto end() const { return options.end(); }
 
 private:
-  optionmap_t options;
+  optionmap_t optionsByName;
+  optionset_t options;
   CliOptRegistry() = default;
 };
 
@@ -187,6 +188,24 @@ struct CliOptConcept {
   /// Whether a value was specified on the command line, or in other words if a
   /// value has been parsed for this option.
   [[nodiscard]] bool hasValueSpecified() const { return hasGivenValue; };
+
+  [[nodiscard]] bool isUnnamed() const {
+    if (getNames().empty())
+      return true;
+    for (const std::string_view &name : getNames())
+      if (name.empty())
+        return true;
+    return false;
+  }
+  [[nodiscard]] std::string_view getShortestName() const {
+    if (getNames().empty())
+      return "";
+    const std::string_view *shortest = nullptr;
+    for (const std::string_view &name : getNames())
+      if (!shortest || shortest->size() > name.size())
+        shortest = &name;
+    return *shortest;
+  }
 
   void unregister() {
     if (registrator)
@@ -224,10 +243,7 @@ private:
     /// CliOptRegistry with a given AppTag. Definition follows further below
     /// after ParseArg has been defined.
     template <typename AppTag> static void registerFun(CliOptConcept &opt) {
-      for (const std::string_view &name : opt.getNames())
-        CliOptRegistry<AppTag>::get().addOption(name, opt);
-      if (opt.getNames().empty())
-        CliOptRegistry<AppTag>::get().addOption("", opt);
+      CliOptRegistry<AppTag>::get().addOption(opt);
     }
     template <typename AppTag>
     static void unregisterFun(CliOptConcept &opt, Registrator &self) {
@@ -272,7 +288,20 @@ private:
 
 template <typename AppTag> CliOptRegistry<AppTag>::~CliOptRegistry() {
   while (!options.empty())
-    options.begin()->second->unregister();
+    (*options.begin())->unregister();
+}
+template <typename AppTag>
+void CliOptRegistry<AppTag>::addOption(CliOptConcept &opt) {
+  for (const std::string_view &name : opt.getNames()) {
+    assert(!optionsByName.count(name) &&
+           "Option already registered with that name");
+    optionsByName[name] = &opt;
+  }
+  if (opt.getNames().empty()) {
+    assert(!hasUnnamed() && "An unnamed option has already been registered");
+    optionsByName[""] = &opt;
+  }
+  options.emplace(&opt);
 }
 
 /// Common functionality for command line options

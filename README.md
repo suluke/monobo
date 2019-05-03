@@ -5,8 +5,8 @@ This library is designed to scale across various project sizes.
 To get started as quickly as possible, simply include the `cli_args.h` header.
 `cli_args` should provide you with all the functionality you need to get started.
 If you find out later that you want to alter some of `cli_args`' default behavior the lib's design makes this as easy as possible.
-The declarative nature of how options are defined allows allows them to be treated completely independently from the parsing process.
-The parser allows for a high degree of customization and can even be switched out entirely.
+The declarative nature of how options are defined allows them to be treated completely independently from the parsing process.
+The parser offers a high degree of customizability and can even be switched out entirely.
 
 ## Goals
 * Declarative command line definition
@@ -16,7 +16,7 @@ The parser allows for a high degree of customization and can even be switched ou
 * Easy customization and extension
 
 ## Non-Goals
-* Windows-style option parsing ('/X /Y' instead of '-X -Y') - maybe 
+* Windows-style option parsing ('/X /Y' instead of '-X -Y') - maybe
   supported in a future version, though.
 * Short vs long option differentiation (especially collapsing of
   multiple short options into one, e.g. '-abc' = '-a -b -c')
@@ -76,4 +76,4 @@ Quoting [the C++17 standard](https://github.com/cplusplus/draft/blob/c++17/sourc
 > function with external linkage always refers to the same object.
 
 Furthermore, we can even improve upon the encapsulation of this singleton object by using a template function to hold our static local variable.
-[This answer on StackOverflow](https://stackoverflow.com/a/994428/1468532) goes more into detail. 
+[This answer on StackOverflow](https://stackoverflow.com/a/994428/1468532) goes more into detail.

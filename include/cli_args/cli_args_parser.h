@@ -121,9 +121,9 @@ template <typename LibCfg> struct api {
       }
       // Check that all options are in a valid state
       bool allValid = true;
-      for (const auto &KeyValuePair : registry)
-        if (!validate(*KeyValuePair.second)) {
-          report(ValidationError{*KeyValuePair.second});
+      for (const CliOptConcept *opt : registry)
+        if (!validate(*opt)) {
+          report(ValidationError{*opt});
           allValid = false;
         }
       if (!allValid) {
