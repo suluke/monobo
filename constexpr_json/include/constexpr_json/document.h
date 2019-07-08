@@ -7,7 +7,7 @@
 namespace cjson {
 
 struct Entity {
-  enum KIND { ARRAY, BOOLEAN, DOUBLE, NUL, OBJECT, STRING } itsKind;
+  enum KIND { NUL = 0, ARRAY, BOOLEAN, DOUBLE, OBJECT, STRING } itsKind;
   std::intptr_t itsPayload;
 };
 struct Array {
@@ -23,8 +23,29 @@ struct String {
   size_t itsNumProperties;
 };
 
+struct DocumentBase;
+struct EntityRef {
+public:
+  EntityRef(const DocumentBase &theDoc, const Entity &theEntity)
+      : itsDoc(&theDoc), itsEntity(&theEntity) {}
+  EntityRef() = default;
+  EntityRef(const EntityRef &) = default;
+  EntityRef(EntityRef &&) = default;
+  EntityRef &operator=(const EntityRef &) = default;
+  EntityRef &operator=(EntityRef &&) = default;
+
+  Entity::KIND getType() const { return itsEntity->itsKind; }
+  bool toBool() const { return itsEntity->itsPayload; }
+  double toDouble() const;
+
+private:
+  const DocumentBase *itsDoc;
+  const Entity *itsEntity;
+};
+
 struct DocumentBase {
-  virtual Entity getRoot() const = 0;
+  virtual EntityRef getRoot() const = 0;
+  virtual double getDouble(intptr_t theIdx) const = 0;
 };
 
 template <size_t NumDoubles, size_t NumChars, size_t NumStrings,
@@ -49,8 +70,13 @@ struct Document : public DocumentBase {
   std::array<String, NumStrings> itsStrings;
   Entity itsRoot;
 
-  Entity getRoot() const override { return itsRoot; }
+  EntityRef getRoot() const override { return {*this, itsRoot}; }
+  double getDouble(intptr_t theIdx) const { return itsDoubles[theIdx]; }
 };
+
+double EntityRef::toDouble() const {
+  return itsDoc->getDouble(itsEntity->itsPayload);
+}
 
 } // namespace cjson
 #endif // CONSTEXPR_JSON_DOCUMENT_H

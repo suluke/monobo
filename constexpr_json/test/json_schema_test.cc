@@ -15,8 +15,26 @@ std::ostream &operator<<(std::ostream &theStream,
                    << "\n";
 }
 
+std::ostream &operator<<(std::ostream &theStream, const EntityRef &theEntity) {
+  switch (theEntity.getType()) {
+  case Entity::BOOLEAN:
+    return theStream << (theEntity.toBool() ? "true" : "false");
+  case Entity::DOUBLE:
+    return theStream << theEntity.toDouble();
+  case Entity::NUL:
+    return theStream << "null";
+  case Entity::ARRAY:
+    return theStream;
+  case Entity::OBJECT:
+    return theStream;
+  case Entity::STRING:
+    return theStream;
+  }
+  return theStream;
+}
+
 std::ostream &operator<<(std::ostream &theStream, const DocumentBase &theDoc) {
-  return theStream << theDoc.getRoot().itsKind;
+  return theStream << theDoc.getRoot();
 }
 
 int main() {
