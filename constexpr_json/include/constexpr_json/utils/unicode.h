@@ -6,10 +6,11 @@
 namespace cjson {
 struct Utf8 {
   using CodePointTy = uint64_t;
-  template <size_t N>
   static constexpr std::pair<CodePointTy, size_t>
-  decodeFirst(StrLiteralRef<N> theString) {
-    static_assert(N > 0, "Cannot decode empty string");
+  decodeFirst(std::string_view theString) {
+    if (theString.empty())
+      // Cannot decode empty string"
+      return std::make_pair(CodePointTy{0}, size_t{0});
     unsigned char aFirstByte =
         *reinterpret_cast<const unsigned char *>(&theString[0]);
     std::array<bool, 5> aInterestingBits{
@@ -32,7 +33,7 @@ struct Utf8 {
     if (!aNumExtraBytes)
       // Error: Illegal first byte
       return std::make_pair(CodePointTy{0}, size_t{0});
-    if (aNumExtraBytes > N - 1)
+    if (aNumExtraBytes > theString.size() - 1)
       // Error: Not enough bytes in string
       return std::make_pair(CodePointTy{0}, size_t{0});
     unsigned aNumBitsFromFirstByte = 6u - aNumExtraBytes;

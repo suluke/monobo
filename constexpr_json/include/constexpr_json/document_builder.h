@@ -7,15 +7,16 @@
 #include <memory>
 
 namespace cjson {
+template <size_t N> using StrLiteralRef = const char (&)[N];
 
 struct DocumentInfo {
-  size_t itsNumDoubles;
-  size_t itsNumChars;
-  size_t itsNumStrings;
-  size_t itsNumArrays;
-  size_t itsNumArrayEntries;
-  size_t itsNumObjects;
-  size_t itsNumObjectProperties;
+  ssize_t itsNumDoubles;
+  ssize_t itsNumChars;
+  ssize_t itsNumStrings;
+  ssize_t itsNumArrays;
+  ssize_t itsNumArrayEntries;
+  ssize_t itsNumObjects;
+  ssize_t itsNumObjectProperties;
 
   operator bool() const {
     return itsNumDoubles >= 0 && itsNumChars >= 0 && itsNumStrings >= 0 &&
