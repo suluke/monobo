@@ -2,6 +2,8 @@
 #define CONSTEXPR_JSON_DOCUMENT_BUILDER_H
 
 #include "document.h"
+#include "utils/parsing.h"
+#include "utils/unicode.h"
 #include <memory>
 
 namespace cjson {
@@ -21,8 +23,6 @@ struct DocumentInfo {
            itsNumObjectProperties >= 0;
   }
 };
-
-template <size_t N> using StrLiteralRef = const char (&)[N];
 
 template <size_t N>
 constexpr DocumentInfo computeDocInfo(StrLiteralRef<N> theJsonString) {

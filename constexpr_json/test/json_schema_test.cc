@@ -1,4 +1,5 @@
 #include "constexpr_json/document_builder.h"
+#include <cassert>
 #include <iostream>
 
 using namespace cjson;
@@ -38,6 +39,10 @@ std::ostream &operator<<(std::ostream &theStream, const DocumentBase &theDoc) {
 }
 
 int main() {
+  assert(Utf8::decodeFirst("$").first == 0x24);
+  assert(Utf8::decodeFirst("¢").first == 0xa2);
+  assert(Utf8::decodeFirst("ह").first == 0x939);
+  assert(Utf8::decodeFirst("€").first == 0x20ac);
 #define USE_JSON_STRING(theJson) constexpr const char aJsonStr[] = theJson;
 #include "json_schema.h"
   // std::cout << aJsonStr;
