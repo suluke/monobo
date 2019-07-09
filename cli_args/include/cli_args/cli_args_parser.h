@@ -48,7 +48,7 @@ template <typename LibCfg> struct api {
               report(ParseError{name, values, opt});
               return;
             }
-            if (0 > *res || *res > values.size())
+            if (0 > *res || static_cast<size_t>(*res) > values.size())
               std::abort(); // Illegal number of values read by option
             if (*res == 0)
               std::abort(); // Failing to parse inline argument MUST result in
@@ -84,7 +84,7 @@ template <typename LibCfg> struct api {
             report(ParseError{name, values, opt});
             return;
           }
-          if (0 > *res || *res > values.size())
+          if (0 > *res || static_cast<size_t>(*res) > values.size())
             std::abort(); // Illegal number of values read by option
           values.erase(values.begin(), values.begin() + *res);
           numArgsRead += *res;
@@ -107,12 +107,12 @@ template <typename LibCfg> struct api {
           report(ParseError{"", positional, eatAll});
           return;
         }
-        if (0 > *res || *res > positional.size())
+        if (0 > *res || static_cast<size_t>(*res) > positional.size())
           std::abort(); // Illegal number of values read by option
         numArgsRead += *res;
         if (eatAll.isTerminal())
           return;
-        if (*res != positional.size()) {
+        if (static_cast<size_t>(*res) != positional.size()) {
           const gsl::span<std::string_view> exceeding(positional.data() + *res,
                                                       positional.size() - *res);
           report(MaxPositionalExceededError{exceeding});
