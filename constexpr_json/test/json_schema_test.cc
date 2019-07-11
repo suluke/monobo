@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cmath>
 #include <iostream>
+#include <variant>
 
 using namespace cjson;
 
@@ -99,6 +100,7 @@ int main() {
   assert(p::parseNumber("01").first == 0);
   assert(p::parseNumber("01").second == 1);
   assert(p::parseNumber("1").first == 1.);
+  assert(p::parseNumber("1234").first == 1234.);
   assert(p::parseNumber("01").second == 1);
   assert(p::parseNumber("-1").first == -1.);
   assert(p::parseNumber("-1").second == 2);
@@ -110,6 +112,43 @@ int main() {
   assert(p::parseNumber("-1.0e-3").second == 7);
   assert(p::parseNumber("-1.0e-03").first == -0.001);
   assert(p::parseNumber("-1.0e-03").second == 8);
+  //   parseNull
+  assert(p::parseNull("abcdee") <= 0);
+  assert(p::parseNull("null") == 4);
+  assert(p::parseNull("nullabcd") == 4);
+  //   parseBool
+  assert(p::parseBool("abcdee").second <= 0);
+  assert(p::parseBool("true").first);
+  assert(p::parseBool("true").second == 4);
+  assert(!p::parseBool("false").first);
+  assert(p::parseBool("false").second == 5);
+  assert(p::parseBool("trueabc").first);
+  assert(p::parseBool("trueabc").second == 4);
+  assert(!p::parseBool("falseabc").first);
+  assert(p::parseBool("falseabc").second == 5);
+  // parseElement
+  struct JsonElement {
+    Entity::KIND itsType;
+    bool itsBoolVal;
+    double itsNumberVal;
+    constexpr void setBool(bool theBool) {
+      itsType = Entity::BOOLEAN;
+      itsBoolVal = theBool;
+    }
+    constexpr void setNumber(double theNum) {
+      itsType = Entity::DOUBLE;
+      itsNumberVal = theNum;
+    }
+    constexpr void setNull() { itsType = Entity::NUL; }
+  } aElement;
+  assert(p::parseElement("  null  ", aElement) == 8);
+  assert(aElement.itsType == Entity::NUL);
+  assert(p::parseElement("  true  ", aElement) == 8);
+  assert(aElement.itsType == Entity::BOOLEAN && aElement.itsBoolVal);
+  assert(p::parseElement("  false  ", aElement) == 9);
+  assert(aElement.itsType == Entity::BOOLEAN && !aElement.itsBoolVal);
+  assert(p::parseElement("  1234  ", aElement) == 8);
+  assert(aElement.itsType == Entity::DOUBLE && aElement.itsNumberVal == 1234.);
 #define USE_JSON_STRING(theJson) constexpr const char aJsonStr[] = theJson;
 #include "json_schema.h"
   // std::cout << aJsonStr;

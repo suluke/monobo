@@ -13,11 +13,122 @@ private:
   }
 
 public:
-  constexpr static std::pair<std::string_view, ssize_t>
-  parseString(std::string_view theString) {
-    constexpr const std::pair<std::string_view, ssize_t> aErrorResult =
-        std::make_pair(std::string_view{}, -1);
-    return aErrorResult;
+  template <typename ElementTy>
+  constexpr static ssize_t parseElement(std::string_view theString,
+                                        ElementTy &theElement) {
+    constexpr const ssize_t aErrorResult = -1;
+    // Step 1: Consume whitespace
+    const std::string_view aPreWS = readWhitespace(theString);
+    std::string_view aRemaining = theString.substr(aPreWS.size());
+    const auto [aFirstChar, aFirstCharWidth] = decodeFirst(aRemaining);
+    if (aFirstCharWidth <= 0)
+      // Expected *something*
+      return aErrorResult;
+    switch (aFirstChar) {
+    case 't':
+      [[fallthrough]];
+    case 'f': {
+      const auto [aBool, aBoolLen] = parseBool(aRemaining);
+      if (aBoolLen <= 0)
+        return aErrorResult;
+      theElement.setBool(aBool);
+      aRemaining.remove_prefix(aBoolLen);
+      break;
+    }
+    case 'n': {
+      const ssize_t aNullLen = parseNull(aRemaining);
+      if (aNullLen <= 0)
+        return aErrorResult;
+      theElement.setNull();
+      aRemaining.remove_prefix(aNullLen);
+      break;
+    }
+    case '"': {
+      // TODO
+      break;
+    }
+    case '[': {
+      // TODO
+      break;
+    }
+    case '{': {
+      // TODO
+      break;
+    }
+    case '0':
+      [[fallthrough]];
+    case '1':
+      [[fallthrough]];
+    case '2':
+      [[fallthrough]];
+    case '3':
+      [[fallthrough]];
+    case '4':
+      [[fallthrough]];
+    case '5':
+      [[fallthrough]];
+    case '6':
+      [[fallthrough]];
+    case '7':
+      [[fallthrough]];
+    case '8':
+      [[fallthrough]];
+    case '9': {
+      const auto [aNum, aNumLen] = parseNumber(aRemaining);
+      if (aNumLen <= 0)
+        return aErrorResult;
+      theElement.setNumber(aNum);
+      aRemaining.remove_prefix(aNumLen);
+      break;
+    }
+    default:
+      return aErrorResult;
+    }
+    const std::string_view aPostWS = readWhitespace(aRemaining);
+    aRemaining.remove_prefix(aPostWS.size());
+    return theString.size() - aRemaining.size();
+  }
+
+  constexpr static std::pair<bool, ssize_t>
+  parseBool(std::string_view theString) {
+    constexpr const std::pair<bool, ssize_t> aErrorResult =
+        std::make_pair(false, -1);
+    const auto [aFirstChar, aFirstCharWidth] = decodeFirst(theString);
+    if (aFirstCharWidth <= 0)
+      // Failed to decode first char
+      return aErrorResult;
+    if (aFirstChar != 't' && aFirstChar != 'f')
+      // Expected 't' or 'f', got something else
+      return aErrorResult;
+    const bool aExpectedVal = aFirstChar == 't';
+    const std::string_view aCmpStr = aExpectedVal ? "true" : "false";
+    std::string_view aRemaining = theString;
+    for (const char aExpected : aCmpStr) {
+      const auto [aChar, aCharWidth] = decodeFirst(aRemaining);
+      if (aCharWidth <= 0)
+        // failed to decode char
+        return aErrorResult;
+      if (static_cast<CharT>(aExpected) != aChar)
+        return aErrorResult;
+      aRemaining.remove_prefix(aCharWidth);
+    }
+    return std::make_pair(aExpectedVal, theString.size() - aRemaining.size());
+  }
+
+  constexpr static ssize_t parseNull(std::string_view theString) {
+    constexpr const ssize_t aErrorResult = -1;
+    const std::string_view aCmpStr = "null";
+    std::string_view aRemaining = theString;
+    for (const char aExpected : aCmpStr) {
+      const auto [aChar, aCharWidth] = decodeFirst(aRemaining);
+      if (aCharWidth <= 0)
+        // failed to decode char
+        return aErrorResult;
+      if (static_cast<CharT>(aExpected) != aChar)
+        return aErrorResult;
+      aRemaining.remove_prefix(aCharWidth);
+    }
+    return theString.size() - aRemaining.size();
   }
 
   constexpr static std::pair<double, ssize_t>
