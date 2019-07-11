@@ -2,6 +2,7 @@
 #define CONSTEXPR_JSON_UTILS_PARSING_H
 
 #include <cctype>
+#include <tuple>
 
 namespace cjson {
 template <typename EncodingTy> struct parsing {
@@ -12,9 +13,68 @@ private:
   }
 
 public:
-  constexpr std::pair<double, ssize_t> parseNumber(std::string_view theString) {
-    return std::make_pair(0., -1);
+  constexpr static std::pair<std::string_view, ssize_t>
+  parseString(std::string_view theString) {
+    constexpr const std::pair<std::string_view, ssize_t> aErrorResult =
+        std::make_pair(std::string_view{}, -1);
+    return aErrorResult;
   }
+
+  constexpr static std::pair<double, ssize_t>
+  parseNumber(std::string_view theString) {
+    constexpr const std::pair<double, ssize_t> aErrorResult =
+        std::make_pair(0., -1);
+    // Step 1: Read int
+    const auto [aInt, aIntLength] = parseInteger(theString);
+    if (aIntLength <= 0)
+      // the integer part is at least one character wide
+      return aErrorResult;
+    std::string_view aRemaining = theString.substr(aIntLength);
+    // Step 2: Read fraction
+    std::string_view aFractionStr = readFraction(aRemaining);
+    double aFrac = 0.;
+    if (!aFractionStr.empty()) {
+      aRemaining.remove_prefix(aFractionStr.size());
+      // Drop leading '.'
+      aFractionStr.remove_prefix(decodeFirst(aFractionStr).second);
+      // FIXME not a precise way to parse digits
+      double aDenom = 10.;
+      for (;;) {
+        const auto [aChar, aCharWidth] = decodeFirst(aFractionStr);
+        // Unneeded safety check
+        if (aCharWidth <= 0)
+          // Failed to decode a digit
+          return aErrorResult;
+        aFrac += (aChar - '0') / aDenom;
+        aDenom *= 10.;
+        if (aCharWidth > aFractionStr.size())
+          // how did we run out of characters?
+          return aErrorResult;
+        aFractionStr.remove_prefix(aCharWidth);
+        if (aFractionStr.empty())
+          break;
+      }
+    }
+    // Step 3: Read exponent
+    const auto [aExp, aExpLength] = parseExponent(aRemaining);
+    if (aExpLength < 0)
+      return aErrorResult;
+    aRemaining.remove_prefix(aExpLength);
+    // Step 4: Combine int, frac and exp
+    double aResult = aInt + (aInt >= 0 ? aFrac : -aFrac);
+    if (aExp == 0) {
+      aResult = 1.;
+    } else if (aExp > 0) {
+      for (int i = 1; i < aExp; ++i)
+        aResult *= 10.;
+    } else {
+      aResult = 1. / aResult;
+      for (int i = 0; i < -aExp; ++i)
+        aResult /= 10.;
+    }
+    return std::make_pair(aResult, theString.size() - aRemaining.size());
+  }
+
   /// @return the parsed integer and its length in bytes. The return type double
   /// is chosen for encoding negative zero
   static constexpr std::pair<double, ssize_t>
@@ -70,6 +130,7 @@ public:
         return std::make_pair(sign * aParsedInt, aParsedChars);
     }
   }
+
   static constexpr std::string_view readDigits(std::string_view theString) {
     std::string_view aDigits(theString.data(), 0);
     std::string_view aRemaining = theString;
@@ -85,16 +146,77 @@ public:
         // We ran out of remaining characters(?!)
         return aDigits;
       aRemaining.remove_prefix(aCharWidth);
-      aDigits = {aDigits.data(), aDigits.size() + aCharWidth};
+      aDigits = {theString.data(), aDigits.size() + aCharWidth};
     }
   }
+
   static constexpr std::string_view readFraction(std::string_view theString) {
-    return "";
+    if (theString.empty())
+      return "";
+    const auto [aChar, aCharWidth] = decodeFirst(theString);
+    if (aCharWidth <= 0)
+      // failed to decode first char
+      return "";
+    if (aChar != '.')
+      // expected '.', got something else
+      return "";
+    std::string_view aDigits = readDigits(theString.substr(aCharWidth));
+    if (aDigits.empty())
+      // expected at least one digit
+      return "";
+    return theString.substr(0, aDigits.size() + aCharWidth);
   }
+
   static constexpr std::pair<int, ssize_t>
   parseExponent(std::string_view theString) {
-    return std::make_pair(0, -1);
+    if (theString.empty())
+      return std::make_pair(1, 0);
+    constexpr const auto aErrorResult = std::make_pair(0, -1);
+
+    // Step 1: Check for expected 'e'/'E'
+    const auto [aChar, aCharWidth] = decodeFirst(theString);
+    if (aCharWidth <= 0)
+      // failed to decode first char
+      return aErrorResult;
+    if (aChar != 'e' && aChar != 'E')
+      // expected 'e'/'E', got something else
+      return std::make_pair(1, 0);
+    std::string_view aRemaining = theString.substr(aCharWidth);
+
+    // Step 2: Check for a sign char
+    const auto [aSignChar, aSignWidth] = decodeFirst(aRemaining);
+    int aSign = 1;
+    if (aSignChar == '-' || aSignChar == '+') {
+      if (aSignChar == '-')
+        aSign = -1;
+      aRemaining.remove_prefix(aSignWidth);
+    }
+
+    // Step 3: Read and parse exponent value
+    std::string_view aExponentStr = readDigits(aRemaining);
+    if (aExponentStr.empty())
+      // Expected digits, got empty string
+      return aErrorResult;
+    aRemaining.remove_prefix(aExponentStr.size());
+    int aExp = 0;
+    for (;;) {
+      const auto [aChar, aCharWidth] = decodeFirst(aExponentStr);
+      // Unneeded safety check
+      if (aCharWidth <= 0)
+        // Failed to decode a digit
+        return aErrorResult;
+      aExp *= 10;
+      aExp += (aChar - '0');
+      if (aCharWidth > aExponentStr.size())
+        // how did we run out of characters?
+        return aErrorResult;
+      aExponentStr.remove_prefix(aCharWidth);
+      if (aExponentStr.empty())
+        return std::make_pair(aSign * aExp,
+                              theString.size() - aRemaining.size());
+    }
   }
+
   static constexpr std::string_view readWhitespace(std::string_view theString) {
     std::string_view aWhitespace(theString.data(), 0);
     std::string_view aRemaining(theString);

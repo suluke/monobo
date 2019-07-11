@@ -1,7 +1,7 @@
 #ifndef USE_JSON_STRING
 #define USE_JSON_STRING(theJson)
 #endif
-USE_JSON_STRING(R"{"}(
+USE_JSON_STRING(R"{"}""{"}(
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "http://json-schema.org/draft-07/schema#",
@@ -170,5 +170,5 @@ USE_JSON_STRING(R"{"}(
     },
     "default": true
 }
-){"}")
+){"}""{"}")
 #undef USE_JSON_STRING

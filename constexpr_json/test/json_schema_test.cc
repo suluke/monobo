@@ -45,6 +45,7 @@ int main() {
   assert(Utf8::decodeFirst("¢").first == 0xa2);
   assert(Utf8::decodeFirst("ह").first == 0x939);
   assert(Utf8::decodeFirst("€").first == 0x20ac);
+
   // Test parsing procedures
   using p = parsing<Utf8>;
   //   readWhitespace
@@ -62,6 +63,8 @@ int main() {
   //   parseInt
   assert(p::parseInteger("").second <= 0);
   assert(p::parseInteger("0123").second == 1);
+  assert(p::parseInteger("-1").first == -1.);
+  assert(p::parseInteger("-1").second == 2);
   assert(p::parseInteger("-0123").first == 0.);
   assert(p::parseInteger("-0123").second == 2);
   assert(std::signbit(p::parseInteger("-0123").first));
@@ -75,6 +78,38 @@ int main() {
   assert(p::parseInteger("-10").second == 3);
   assert(p::parseInteger("-10abc").first == -10.);
   assert(p::parseInteger("-10abc").second == 3);
+  //   readFraction
+  assert(p::readFraction("") == "");
+  assert(p::readFraction(".") == "");
+  assert(p::readFraction(".1") == ".1");
+  //   parseExponent
+  assert(p::parseExponent("e0").first == 0);
+  assert(p::parseExponent("e0").second == 2);
+  assert(p::parseExponent("E0").first == 0);
+  assert(p::parseExponent("E0").second == 2);
+  assert(p::parseExponent("E1").first == 1);
+  assert(p::parseExponent("E1").second == 2);
+  assert(p::parseExponent("E+1").first == 1);
+  assert(p::parseExponent("E+1").second == 3);
+  assert(p::parseExponent("e-3").first == -3);
+  assert(p::parseExponent("e-3").second == 3);
+  //   parseNumber
+  assert(p::parseNumber("0").first == 0);
+  assert(p::parseNumber("0").second == 1);
+  assert(p::parseNumber("01").first == 0);
+  assert(p::parseNumber("01").second == 1);
+  assert(p::parseNumber("1").first == 1.);
+  assert(p::parseNumber("01").second == 1);
+  assert(p::parseNumber("-1").first == -1.);
+  assert(p::parseNumber("-1").second == 2);
+  assert(p::parseNumber("-1.2").first == -1.2);
+  assert(p::parseNumber("-1.2").second == 4);
+  assert(p::parseNumber("-1.0e3").first == -100.);
+  assert(p::parseNumber("-1.0e3").second == 6);
+  assert(p::parseNumber("-1.0e-3").first == -0.001);
+  assert(p::parseNumber("-1.0e-3").second == 7);
+  assert(p::parseNumber("-1.0e-03").first == -0.001);
+  assert(p::parseNumber("-1.0e-03").second == 8);
 #define USE_JSON_STRING(theJson) constexpr const char aJsonStr[] = theJson;
 #include "json_schema.h"
   // std::cout << aJsonStr;
