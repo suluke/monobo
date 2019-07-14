@@ -48,9 +48,9 @@ struct DocumentBase {
   virtual double getDouble(intptr_t theIdx) const = 0;
 };
 
-template <size_t NumDoubles, size_t NumChars, size_t NumStrings,
-          size_t NumArrays, size_t NumArrayEntries, size_t NumObjects,
-          size_t NumObjectProperties>
+template <ssize_t NumDoubles, ssize_t NumChars, ssize_t NumStrings,
+          ssize_t NumArrays, ssize_t NumArrayEntries, ssize_t NumObjects,
+          ssize_t NumObjectProperties>
 struct Document : public DocumentBase {
   static_assert(NumDoubles >= 0, "Negative NumDoubles for document is illegal");
   static_assert(NumChars >= 0, "Negative NumChars for document is illegal");

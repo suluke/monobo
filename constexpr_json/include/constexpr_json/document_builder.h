@@ -10,24 +10,79 @@ namespace cjson {
 template <size_t N> using StrLiteralRef = const char (&)[N];
 
 struct DocumentInfo {
-  ssize_t itsNumDoubles;
-  ssize_t itsNumChars;
-  ssize_t itsNumStrings;
-  ssize_t itsNumArrays;
-  ssize_t itsNumArrayEntries;
-  ssize_t itsNumObjects;
-  ssize_t itsNumObjectProperties;
+  ssize_t itsNumDoubles = 0;
+  ssize_t itsNumChars = 0;
+  ssize_t itsNumStrings = 0;
+  ssize_t itsNumArrays = 0;
+  ssize_t itsNumArrayEntries = 0;
+  ssize_t itsNumObjects = 0;
+  ssize_t itsNumObjectProperties = 0;
+
+  constexpr static DocumentInfo error() {
+    DocumentInfo aDI{-1, -1, -1, -1, -1, -1, -1};
+    return aDI;
+  }
 
   operator bool() const {
     return itsNumDoubles >= 0 && itsNumChars >= 0 && itsNumStrings >= 0 &&
            itsNumArrays >= 0 && itsNumArrayEntries >= 0 && itsNumObjects >= 0 &&
            itsNumObjectProperties >= 0;
   }
+  constexpr DocumentInfo operator+(const DocumentInfo &theOther) {
+    DocumentInfo aDI = *this;
+    aDI += theOther;
+    return aDI;
+  }
+  constexpr DocumentInfo &operator+=(const DocumentInfo &theOther) {
+    this->itsNumArrayEntries += theOther.itsNumArrayEntries;
+    this->itsNumArrays += theOther.itsNumArrays;
+    this->itsNumChars += theOther.itsNumChars;
+    this->itsNumDoubles += theOther.itsNumDoubles;
+    this->itsNumObjectProperties += theOther.itsNumObjectProperties;
+    this->itsNumObjects += theOther.itsNumObjects;
+    this->itsNumStrings += theOther.itsNumStrings;
+    return *this;
+  }
 };
 
-template <size_t N>
-constexpr DocumentInfo computeDocInfo(StrLiteralRef<N> theJsonString) {
-  return {};
+template <typename EncodingTy>
+constexpr DocumentInfo computeDocInfo(const std::string_view theJsonString) {
+  constexpr const DocumentInfo aErrorResult = DocumentInfo::error();
+  struct InfoElement {
+    Entity::KIND itsType = Entity::NUL;
+    DocumentInfo itsDocInfo;
+    constexpr void setBool(bool theBool) { itsType = Entity::BOOLEAN; }
+    constexpr void setNumber(double theNum) { itsType = Entity::DOUBLE; }
+    constexpr void setString(const std::string_view theStr) {
+      itsType = Entity::STRING;
+      itsDocInfo.itsNumChars += theStr.size();
+    }
+    constexpr void setNull() { itsType = Entity::NUL; }
+    constexpr void setArray() {
+      itsType = Entity::ARRAY;
+      ++itsDocInfo.itsNumArrays;
+    }
+    constexpr void addArrayEntry(const InfoElement &theEntry) {
+      ++itsDocInfo.itsNumArrayEntries;
+      itsDocInfo += theEntry.itsDocInfo;
+    }
+    constexpr void setObject() {
+      itsType = Entity::OBJECT;
+      ++itsDocInfo.itsNumObjects;
+    }
+    constexpr void addObjectProperty(const std::string_view theKey,
+                                     const InfoElement &theValue) {
+      ++itsDocInfo.itsNumObjectProperties;
+      itsDocInfo.itsNumChars += theKey.size();
+      itsDocInfo += theValue.itsDocInfo;
+    }
+    constexpr static InfoElement null() { return InfoElement{}; }
+  };
+  const auto [aParsed, aParsedLen] =
+      parsing<EncodingTy>::template parseElement<InfoElement>(theJsonString);
+  if (aParsedLen <= 0)
+    return aErrorResult;
+  return aParsed.itsDocInfo;
 }
 
 template <size_t N, typename DocTy>

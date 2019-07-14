@@ -251,13 +251,14 @@ int main() {
   CHECK_PARSE(parseElement, "  [\"a\", 2]  ", 12, JsonElement::array(2));
   CHECK_PARSE(parseElement, "  [\"a\", 2  ", -1, JsonElement::null());
 
-#define USE_JSON_STRING(theJson) constexpr const char aJsonStr[] = theJson;
+#define USE_JSON_STRING(theJson) constexpr std::string_view aJsonSV{theJson};
 #include "json_schema.h"
   // std::cout << aJsonStr;
-  constexpr DocumentInfo aDocInfo = computeDocInfo(aJsonStr);
+  constexpr DocumentInfo aDocInfo = computeDocInfo<Utf8>(aJsonSV);
   std::cout << aDocInfo;
   Document<aDocInfo.itsNumDoubles, aDocInfo.itsNumChars, aDocInfo.itsNumStrings,
            aDocInfo.itsNumArrays, aDocInfo.itsNumArrayEntries,
            aDocInfo.itsNumObjects, aDocInfo.itsNumObjectProperties>
       aDoc;
+  std::ignore = aDoc;
 }
