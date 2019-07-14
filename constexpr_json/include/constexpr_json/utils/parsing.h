@@ -113,8 +113,54 @@ public:
       return aErrorResult;
     if (aFirstChar != '{')
       return aErrorResult;
-    // std::string_view aRemaining = theString.substr(aFirstCharWidth);
-    return aErrorResult;
+    std::string_view aRemaining = theString.substr(aFirstCharWidth);
+    const std::string_view aWS = readWhitespace(aRemaining);
+    aRemaining.remove_prefix(aWS.size());
+    bool aNeedsMoreProps = false;
+    ElementTy aElement;
+    aElement.setObject();
+    for (;;) {
+      const auto [aChar, aCharWidth] = decodeFirst(aRemaining);
+      if (aCharWidth <= 0)
+        return aErrorResult;
+      if (!aNeedsMoreProps && aChar == '}') {
+        aRemaining.remove_prefix(aCharWidth);
+        break;
+      }
+      const std::string_view aLeadWs = readWhitespace(aRemaining);
+      aRemaining.remove_prefix(aLeadWs.size());
+      // Read key
+      const std::string_view aKey = readString(aRemaining);
+      if (aKey.size() <= 0)
+        return aErrorResult;
+      aRemaining.remove_prefix(aKey.size());
+      const std::string_view aTrailWs = readWhitespace(aRemaining);
+      aRemaining.remove_prefix(aTrailWs.size());
+      // Read colon
+      const auto [aColon, aColonWidth] = decodeFirst(aRemaining);
+      if (aColonWidth <= 0)
+        return aErrorResult;
+      if (aColon != ':')
+        return aErrorResult;
+      // Read element
+      aRemaining.remove_prefix(aColonWidth);
+      const auto [aElm, aElmLength] = parseElement<ElementTy>(aRemaining);
+      if (aElmLength <= 0)
+        return aErrorResult;
+      aElement.addObjectProperty(aKey, aElm);
+      aRemaining.remove_prefix(aElmLength);
+      // Look for ','
+      const auto [aPeekChar, aPeekCharWidth] = decodeFirst(aRemaining);
+      if (aPeekCharWidth <= 0)
+        return aErrorResult;
+      if (aPeekChar == ',') {
+        aNeedsMoreProps = true;
+        aRemaining.remove_prefix(aPeekCharWidth);
+      } else {
+        aNeedsMoreProps = false;
+      }
+    }
+    return std::make_pair(aElement, theString.size() - aRemaining.size());
   }
 
   template <typename ElementTy>
@@ -143,9 +189,9 @@ public:
         break;
       }
       const auto [aItem, aItemLength] = parseElement<ElementTy>(aRemaining);
-      aElement.addArrayEntry(aItem);
       if (aItemLength <= 0)
         return aErrorResult;
+      aElement.addArrayEntry(aItem);
       aRemaining.remove_prefix(aItemLength);
       const auto [aPeekChar, aPeekCharWidth] = decodeFirst(aRemaining);
       if (aPeekCharWidth <= 0)

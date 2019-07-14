@@ -141,6 +141,7 @@ int main() {
     double itsNumberVal = 0.;
     std::string_view itsStringVal;
     size_t itsArrayLen = 0;
+    size_t itsNumProperties = 0;
     constexpr void setBool(bool theBool) {
       itsType = Entity::BOOLEAN;
       itsBoolVal = theBool;
@@ -159,6 +160,14 @@ int main() {
       itsType = Entity::ARRAY;
     }
     constexpr void addArrayEntry(const JsonElement &) { ++itsArrayLen; }
+    constexpr void setObject() {
+      itsNumProperties = 0;
+      itsType = Entity::OBJECT;
+    }
+    constexpr void addObjectProperty(const std::string_view,
+                                     const JsonElement &) {
+      ++itsNumProperties;
+    }
     constexpr bool operator==(const JsonElement &theOther) const {
       if (theOther.itsType != itsType)
         return false;
@@ -173,6 +182,8 @@ int main() {
         return theOther.itsStringVal == itsStringVal;
       case Entity::ARRAY:
         return theOther.itsArrayLen == itsArrayLen;
+      case Entity::OBJECT:
+        return theOther.itsNumProperties == itsNumProperties;
       default:
         return false;
       }
@@ -203,8 +214,13 @@ int main() {
       aElm.itsArrayLen = theSize;
       return aElm;
     }
+    constexpr static JsonElement object(size_t theNumProps) {
+      JsonElement aElm;
+      aElm.setObject();
+      aElm.itsNumProperties = theNumProps;
+      return aElm;
+    }
   };
-  //   parseArray
   using namespace std::literals;
 #define CHECK_PARSE(FN, STR, EXPECTED_LEN, EXPECTED_ELM)                       \
   do {                                                                         \
@@ -216,8 +232,15 @@ int main() {
     static_assert(EXPECTED_LEN == aElemLength);                                \
     static_assert(aExpectedElm == aElem);                                      \
   } while (false)
+  //   parseArray
   CHECK_PARSE(parseArray, "[\"a\", 2]  ", 8, JsonElement::array(2));
   CHECK_PARSE(parseArray, "[\"a\", 2  ", -1, JsonElement::null());
+  //   parseObject
+  CHECK_PARSE(parseObject, "{\"a\": 2}  ", 8, JsonElement::object(1));
+  CHECK_PARSE(parseObject, "{\"a\": 2, \"b\": \"c\"}  ", 18,
+              JsonElement::object(2));
+  CHECK_PARSE(parseObject, "{\"a\": 2  ", -1, JsonElement::null());
+  CHECK_PARSE(parseObject, "{\"a\": 2,}", -1, JsonElement::null());
   //   parseElement
   CHECK_PARSE(parseElement, "  null  ", 8, JsonElement::null());
   CHECK_PARSE(parseElement, "  true  ", 8, JsonElement::boolean(true));
