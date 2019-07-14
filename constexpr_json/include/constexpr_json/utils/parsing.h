@@ -1,7 +1,6 @@
 #ifndef CONSTEXPR_JSON_UTILS_PARSING_H
 #define CONSTEXPR_JSON_UTILS_PARSING_H
 
-#include <cctype>
 #include <tuple>
 
 namespace cjson {
@@ -13,18 +12,36 @@ private:
   }
 
 public:
+  parsing() = delete;
+  parsing(const parsing &) = delete;
+  parsing(parsing &&) = delete;
+  parsing &operator=(const parsing &) = delete;
+  parsing &operator=(parsing &&) = delete;
+
+  constexpr static bool isdigit(CharT theChar) {
+    return '0' <= theChar && theChar <= '9';
+  }
+  constexpr static bool isxdigit(CharT theChar) {
+    return isdigit(theChar) || ('A' <= theChar && theChar <= 'F') ||
+           ('a' <= theChar && theChar <= 'f');
+  }
+
   template <typename ElementTy>
-  constexpr static ssize_t parseElement(std::string_view theString,
+  constexpr static ssize_t parseElement(const std::string_view theString,
                                         ElementTy &theElement) {
     constexpr const ssize_t aErrorResult = -1;
     // Step 1: Consume whitespace
     const std::string_view aPreWS = readWhitespace(theString);
     std::string_view aRemaining = theString.substr(aPreWS.size());
     const auto [aFirstChar, aFirstCharWidth] = decodeFirst(aRemaining);
+    // Reduce digits to '0' to avoid some case labels
+    const auto charZeroIfDigit = [](CharT aChar) {
+      return isdigit(aChar) ? '0' : aChar;
+    };
     if (aFirstCharWidth <= 0)
       // Expected *something*
       return aErrorResult;
-    switch (aFirstChar) {
+    switch (charZeroIfDigit(aFirstChar)) {
     case 't':
       [[fallthrough]];
     case 'f': {
@@ -44,7 +61,11 @@ public:
       break;
     }
     case '"': {
-      // TODO
+      const std::string_view aStr = readString(aRemaining);
+      if (aStr.empty())
+        return aErrorResult;
+      theElement.setString(aStr);
+      aRemaining.remove_prefix(aStr.size());
       break;
     }
     case '[': {
@@ -55,25 +76,7 @@ public:
       // TODO
       break;
     }
-    case '0':
-      [[fallthrough]];
-    case '1':
-      [[fallthrough]];
-    case '2':
-      [[fallthrough]];
-    case '3':
-      [[fallthrough]];
-    case '4':
-      [[fallthrough]];
-    case '5':
-      [[fallthrough]];
-    case '6':
-      [[fallthrough]];
-    case '7':
-      [[fallthrough]];
-    case '8':
-      [[fallthrough]];
-    case '9': {
+    case '0': {
       const auto [aNum, aNumLen] = parseNumber(aRemaining);
       if (aNumLen <= 0)
         return aErrorResult;
@@ -89,8 +92,113 @@ public:
     return theString.size() - aRemaining.size();
   }
 
+  constexpr static std::string_view
+  readString(const std::string_view theString) {
+    constexpr const std::string_view aErrorResult;
+    const auto [aFirstChar, aFirstCharWidth] = decodeFirst(theString);
+    if (aFirstCharWidth <= 0)
+      // Failed to decode first char
+      return aErrorResult;
+    if (aFirstChar != '"')
+      // Expected '"', got something else
+      return aErrorResult;
+    std::string_view aRemaining = theString.substr(aFirstCharWidth);
+    for (;;) {
+      const auto [aChar, aCharWidth] = decodeFirst(aRemaining);
+      if (aCharWidth <= 0)
+        // Failed to decode first char
+        return aErrorResult;
+      if (aChar == '"') {
+        // Found closing '"'
+        aRemaining.remove_prefix(aCharWidth);
+        return {theString.data(), theString.size() - aRemaining.size()};
+      } else if (aChar == '\\') {
+        const auto [aEscape, aEscapeWidth] = parseEscape(aRemaining);
+        aRemaining.remove_prefix(aEscapeWidth);
+      } else if (0x20 > aChar || aChar > 0x10ffff) {
+        // Not a valid JSON char
+        return aErrorResult;
+      } else {
+        aRemaining.remove_prefix(aCharWidth);
+      }
+    }
+  }
+
+  constexpr static std::pair<CharT, ssize_t>
+  parseEscape(const std::string_view theString) {
+    constexpr const std::pair<CharT, ssize_t> aErrorResult =
+        std::make_pair(0, -1);
+    const auto [aFirstChar, aFirstCharWidth] = decodeFirst(theString);
+    if (aFirstCharWidth <= 0)
+      // Failed to decode first char
+      return aErrorResult;
+    if (aFirstChar != '\\')
+      // Expected '\\', got something else
+      return aErrorResult;
+    std::string_view aRemaining = theString.substr(aFirstCharWidth);
+    const auto [aSecondChar, aSecondCharWidth] = decodeFirst(aRemaining);
+    if (aSecondCharWidth <= 0)
+      // Failed to decode second char
+      return aErrorResult;
+    const auto hexToNibble = [](CharT aHexChar) {
+      if ('0' <= aHexChar && aHexChar <= '9')
+        return aHexChar - '0';
+      if ('A' <= aHexChar && aHexChar <= 'F')
+        return aHexChar - 'A';
+      if ('a' <= aHexChar && aHexChar <= 'f')
+        return aHexChar - 'a';
+      return CharT{}; // FIXME throw or terminate
+    };
+    aRemaining.remove_prefix(aSecondCharWidth);
+    CharT aDecoded = 0;
+    switch (aSecondChar) {
+    case '"':
+      aDecoded = '"';
+      break;
+    case '\\':
+      aDecoded = '\\';
+      break;
+    case '/':
+      aDecoded = '/';
+      break;
+    case 'b':
+      aDecoded = '\b';
+      break;
+    case 'f':
+      aDecoded = '\f';
+      break;
+    case 'n':
+      aDecoded = '\n';
+      break;
+    case 'r':
+      aDecoded = '\r';
+      break;
+    case 't':
+      aDecoded = '\t';
+      break;
+    case 'u': {
+      for (int i = 0; i < 4; ++i) {
+        const auto [aChar, aCharWidth] = decodeFirst(aRemaining);
+        if (aCharWidth <= 0)
+          // Failed to decode char
+          return aErrorResult;
+        if (!isxdigit(aChar))
+          // Not a valid hex char
+          return aErrorResult;
+        aRemaining.remove_prefix(aCharWidth);
+        aDecoded <<= 4;
+        aDecoded |= hexToNibble(aChar);
+      }
+      break;
+    }
+    default:
+      return aErrorResult;
+    }
+    return {aDecoded, theString.size() - aRemaining.size()};
+  }
+
   constexpr static std::pair<bool, ssize_t>
-  parseBool(std::string_view theString) {
+  parseBool(const std::string_view theString) {
     constexpr const std::pair<bool, ssize_t> aErrorResult =
         std::make_pair(false, -1);
     const auto [aFirstChar, aFirstCharWidth] = decodeFirst(theString);
@@ -115,7 +223,7 @@ public:
     return std::make_pair(aExpectedVal, theString.size() - aRemaining.size());
   }
 
-  constexpr static ssize_t parseNull(std::string_view theString) {
+  constexpr static ssize_t parseNull(const std::string_view theString) {
     constexpr const ssize_t aErrorResult = -1;
     const std::string_view aCmpStr = "null";
     std::string_view aRemaining = theString;
@@ -132,7 +240,7 @@ public:
   }
 
   constexpr static std::pair<double, ssize_t>
-  parseNumber(std::string_view theString) {
+  parseNumber(const std::string_view theString) {
     constexpr const std::pair<double, ssize_t> aErrorResult =
         std::make_pair(0., -1);
     // Step 1: Read int
@@ -186,10 +294,12 @@ public:
     return std::make_pair(aResult, theString.size() - aRemaining.size());
   }
 
-  /// @return the parsed integer and its length in bytes. The return type double
-  /// is chosen for encoding negative zero
+  /// The return type double is chosen for encoding negative zero and because it
+  /// has the same integer precision as the parse target type (which is also
+  /// double)
+  /// @return the parsed integer and the number of bytes consumed while parsing.
   static constexpr std::pair<double, ssize_t>
-  parseInteger(std::string_view theString) {
+  parseInteger(const std::string_view theString) {
     constexpr const auto aErrorResult = std::make_pair(0., -1);
     if (theString.empty())
       // Cannot parse integer from empty string
@@ -242,7 +352,8 @@ public:
     }
   }
 
-  static constexpr std::string_view readDigits(std::string_view theString) {
+  static constexpr std::string_view
+  readDigits(const std::string_view theString) {
     std::string_view aDigits(theString.data(), 0);
     std::string_view aRemaining = theString;
     for (;;) {
@@ -250,7 +361,7 @@ public:
       if (aCharWidth <= 0)
         // Failed to decode a character. But we don't do error handling here
         return aDigits;
-      if (!std::isdigit(aChar))
+      if (!isdigit(aChar))
         // Found a non-digit character
         return aDigits;
       if (aCharWidth > aRemaining.size())
@@ -261,7 +372,8 @@ public:
     }
   }
 
-  static constexpr std::string_view readFraction(std::string_view theString) {
+  static constexpr std::string_view
+  readFraction(const std::string_view theString) {
     if (theString.empty())
       return "";
     const auto [aChar, aCharWidth] = decodeFirst(theString);
@@ -278,8 +390,10 @@ public:
     return theString.substr(0, aDigits.size() + aCharWidth);
   }
 
+  /// Expects a leading 'e' or 'E', then parses a (signed) int where leading '0'
+  /// are allowed as per the JSON spec
   static constexpr std::pair<int, ssize_t>
-  parseExponent(std::string_view theString) {
+  parseExponent(const std::string_view theString) {
     if (theString.empty())
       return std::make_pair(1, 0);
     constexpr const auto aErrorResult = std::make_pair(0, -1);
@@ -328,7 +442,8 @@ public:
     }
   }
 
-  static constexpr std::string_view readWhitespace(std::string_view theString) {
+  static constexpr std::string_view
+  readWhitespace(const std::string_view theString) {
     std::string_view aWhitespace(theString.data(), 0);
     std::string_view aRemaining(theString);
     for (;;) {

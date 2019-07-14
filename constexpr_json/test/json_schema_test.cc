@@ -126,11 +126,18 @@ int main() {
   assert(p::parseBool("trueabc").second == 4);
   assert(!p::parseBool("falseabc").first);
   assert(p::parseBool("falseabc").second == 5);
+  //   readString
+  assert(p::readString("").empty());
+  assert(p::readString(R"~("\")~").empty());
+  assert(p::readString(R"~("")~").size() == 2);
+  assert(p::readString(R"~("\n")~").size() == 4);
+  assert(p::readString(R"~("\uabcd")~").size() == 8);
   // parseElement
   struct JsonElement {
     Entity::KIND itsType;
     bool itsBoolVal;
     double itsNumberVal;
+    std::string_view itsStringVal;
     constexpr void setBool(bool theBool) {
       itsType = Entity::BOOLEAN;
       itsBoolVal = theBool;
@@ -138,6 +145,10 @@ int main() {
     constexpr void setNumber(double theNum) {
       itsType = Entity::DOUBLE;
       itsNumberVal = theNum;
+    }
+    constexpr void setString(const std::string_view theStr) {
+      itsType = Entity::STRING;
+      itsStringVal = theStr;
     }
     constexpr void setNull() { itsType = Entity::NUL; }
   } aElement;
@@ -149,6 +160,9 @@ int main() {
   assert(aElement.itsType == Entity::BOOLEAN && !aElement.itsBoolVal);
   assert(p::parseElement("  1234  ", aElement) == 8);
   assert(aElement.itsType == Entity::DOUBLE && aElement.itsNumberVal == 1234.);
+  assert(p::parseElement("  \"\"  ", aElement) == 6);
+  assert(aElement.itsType == Entity::STRING);
+  assert(aElement.itsStringVal == "\"\"");
 #define USE_JSON_STRING(theJson) constexpr const char aJsonStr[] = theJson;
 #include "json_schema.h"
   // std::cout << aJsonStr;
