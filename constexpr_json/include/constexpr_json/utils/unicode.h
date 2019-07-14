@@ -11,8 +11,7 @@ struct Utf8 {
     if (theString.empty())
       // Cannot decode empty string"
       return std::make_pair(CodePointTy{0}, size_t{0});
-    unsigned char aFirstByte =
-        *reinterpret_cast<const unsigned char *>(&theString[0]);
+    unsigned char aFirstByte = static_cast<unsigned char>(theString[0]);
     std::array<bool, 5> aInterestingBits{
         {static_cast<bool>(aFirstByte & 0x80u),
          static_cast<bool>(aFirstByte & 0x40u),

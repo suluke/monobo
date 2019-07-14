@@ -12,7 +12,7 @@ struct Entity {
 };
 struct Array {
   intptr_t itsPosition;
-  size_t itsNumProperties;
+  size_t itsNumElements;
 };
 struct Object {
   intptr_t itsPosition;
@@ -20,7 +20,7 @@ struct Object {
 };
 struct String {
   intptr_t itsPosition;
-  size_t itsNumProperties;
+  size_t itsSize;
 };
 
 struct DocumentBase;

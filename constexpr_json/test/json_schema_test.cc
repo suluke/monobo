@@ -112,6 +112,8 @@ int main() {
   assert(p::parseNumber("-1.0e-3").second == 7);
   assert(p::parseNumber("-1.0e-03").first == -0.001);
   assert(p::parseNumber("-1.0e-03").second == 8);
+  assert(p::parseNumber("2]").first == 2);
+  assert(p::parseNumber("2]").second == 1);
   //   parseNull
   assert(p::parseNull("abcdee") <= 0);
   assert(p::parseNull("null") == 4);
@@ -132,12 +134,13 @@ int main() {
   assert(p::readString(R"~("")~").size() == 2);
   assert(p::readString(R"~("\n")~").size() == 4);
   assert(p::readString(R"~("\uabcd")~").size() == 8);
-  // parseElement
+  // Parsing elements
   struct JsonElement {
-    Entity::KIND itsType;
-    bool itsBoolVal;
-    double itsNumberVal;
+    Entity::KIND itsType = Entity::NUL;
+    bool itsBoolVal = false;
+    double itsNumberVal = 0.;
     std::string_view itsStringVal;
+    size_t itsArrayLen = 0;
     constexpr void setBool(bool theBool) {
       itsType = Entity::BOOLEAN;
       itsBoolVal = theBool;
@@ -151,18 +154,80 @@ int main() {
       itsStringVal = theStr;
     }
     constexpr void setNull() { itsType = Entity::NUL; }
-  } aElement;
-  assert(p::parseElement("  null  ", aElement) == 8);
-  assert(aElement.itsType == Entity::NUL);
-  assert(p::parseElement("  true  ", aElement) == 8);
-  assert(aElement.itsType == Entity::BOOLEAN && aElement.itsBoolVal);
-  assert(p::parseElement("  false  ", aElement) == 9);
-  assert(aElement.itsType == Entity::BOOLEAN && !aElement.itsBoolVal);
-  assert(p::parseElement("  1234  ", aElement) == 8);
-  assert(aElement.itsType == Entity::DOUBLE && aElement.itsNumberVal == 1234.);
-  assert(p::parseElement("  \"\"  ", aElement) == 6);
-  assert(aElement.itsType == Entity::STRING);
-  assert(aElement.itsStringVal == "\"\"");
+    constexpr void setArray() {
+      itsArrayLen = 0;
+      itsType = Entity::ARRAY;
+    }
+    constexpr void addArrayEntry(const JsonElement &) { ++itsArrayLen; }
+    constexpr bool operator==(const JsonElement &theOther) const {
+      if (theOther.itsType != itsType)
+        return false;
+      switch (itsType) {
+      case Entity::NUL:
+        return true;
+      case Entity::BOOLEAN:
+        return theOther.itsBoolVal == itsBoolVal;
+      case Entity::DOUBLE:
+        return theOther.itsNumberVal == itsNumberVal;
+      case Entity::STRING:
+        return theOther.itsStringVal == itsStringVal;
+      case Entity::ARRAY:
+        return theOther.itsArrayLen == itsArrayLen;
+      default:
+        return false;
+      }
+    }
+    constexpr static JsonElement null() {
+      JsonElement aElm;
+      aElm.setNull();
+      return aElm;
+    }
+    constexpr static JsonElement boolean(bool theBool) {
+      JsonElement aElm;
+      aElm.setBool(theBool);
+      return aElm;
+    }
+    constexpr static JsonElement number(double theNumber) {
+      JsonElement aElm;
+      aElm.setNumber(theNumber);
+      return aElm;
+    }
+    constexpr static JsonElement string(std::string_view theString) {
+      JsonElement aElm;
+      aElm.setString(theString);
+      return aElm;
+    }
+    constexpr static JsonElement array(size_t theSize) {
+      JsonElement aElm;
+      aElm.setArray();
+      aElm.itsArrayLen = theSize;
+      return aElm;
+    }
+  };
+  //   parseArray
+  using namespace std::literals;
+#define CHECK_PARSE(FN, STR, EXPECTED_LEN, EXPECTED_ELM)                       \
+  do {                                                                         \
+    constexpr std::pair<JsonElement, ssize_t> aParsed =                        \
+        p::FN<JsonElement>(STR##sv);                                           \
+    constexpr JsonElement aElem = aParsed.first;                               \
+    constexpr ssize_t aElemLength = aParsed.second;                            \
+    constexpr JsonElement aExpectedElm = EXPECTED_ELM;                         \
+    static_assert(EXPECTED_LEN == aElemLength);                                \
+    static_assert(aExpectedElm == aElem);                                      \
+  } while (false)
+  CHECK_PARSE(parseArray, "[\"a\", 2]  ", 8, JsonElement::array(2));
+  CHECK_PARSE(parseArray, "[\"a\", 2  ", -1, JsonElement::null());
+  //   parseElement
+  CHECK_PARSE(parseElement, "  null  ", 8, JsonElement::null());
+  CHECK_PARSE(parseElement, "  true  ", 8, JsonElement::boolean(true));
+  CHECK_PARSE(parseElement, "  false  ", 9, JsonElement::boolean(false));
+  CHECK_PARSE(parseElement, "  1234  ", 8, JsonElement::number(1234));
+  CHECK_PARSE(parseElement, "  \"\"  ", 6, JsonElement::string("\"\""));
+  CHECK_PARSE(parseElement, "  []  ", 6, JsonElement::array(0));
+  CHECK_PARSE(parseElement, "  [\"a\", 2]  ", 12, JsonElement::array(2));
+  CHECK_PARSE(parseElement, "  [\"a\", 2  ", -1, JsonElement::null());
+
 #define USE_JSON_STRING(theJson) constexpr const char aJsonStr[] = theJson;
 #include "json_schema.h"
   // std::cout << aJsonStr;

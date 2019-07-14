@@ -7,7 +7,7 @@ namespace cjson {
 template <typename EncodingTy> struct parsing {
 private:
   using CharT = typename EncodingTy::CodePointTy;
-  static auto decodeFirst(std::string_view theString) {
+  constexpr static auto decodeFirst(std::string_view theString) {
     return EncodingTy::decodeFirst(theString);
   }
 
@@ -27,20 +27,22 @@ public:
   }
 
   template <typename ElementTy>
-  constexpr static ssize_t parseElement(const std::string_view theString,
-                                        ElementTy &theElement) {
-    constexpr const ssize_t aErrorResult = -1;
+  constexpr static std::pair<ElementTy, ssize_t>
+  parseElement(const std::string_view theString) {
+    constexpr const std::pair<ElementTy, ssize_t> aErrorResult =
+        std::make_pair(ElementTy::null(), -1);
     // Step 1: Consume whitespace
     const std::string_view aPreWS = readWhitespace(theString);
     std::string_view aRemaining = theString.substr(aPreWS.size());
     const auto [aFirstChar, aFirstCharWidth] = decodeFirst(aRemaining);
-    // Reduce digits to '0' to avoid some case labels
-    const auto charZeroIfDigit = [](CharT aChar) {
-      return isdigit(aChar) ? '0' : aChar;
-    };
     if (aFirstCharWidth <= 0)
       // Expected *something*
       return aErrorResult;
+    // Reduce digits to '0' to avoid some case labels
+    const auto charZeroIfDigit = [](CharT aChar) -> CharT {
+      return isdigit(aChar) ? '0' : aChar;
+    };
+    ElementTy aElement;
     switch (charZeroIfDigit(aFirstChar)) {
     case 't':
       [[fallthrough]];
@@ -48,7 +50,7 @@ public:
       const auto [aBool, aBoolLen] = parseBool(aRemaining);
       if (aBoolLen <= 0)
         return aErrorResult;
-      theElement.setBool(aBool);
+      aElement.setBool(aBool);
       aRemaining.remove_prefix(aBoolLen);
       break;
     }
@@ -56,7 +58,7 @@ public:
       const ssize_t aNullLen = parseNull(aRemaining);
       if (aNullLen <= 0)
         return aErrorResult;
-      theElement.setNull();
+      aElement.setNull();
       aRemaining.remove_prefix(aNullLen);
       break;
     }
@@ -64,23 +66,31 @@ public:
       const std::string_view aStr = readString(aRemaining);
       if (aStr.empty())
         return aErrorResult;
-      theElement.setString(aStr);
+      aElement.setString(aStr);
       aRemaining.remove_prefix(aStr.size());
       break;
     }
     case '[': {
-      // TODO
+      const auto [aArray, aArrayLen] = parseArray<ElementTy>(aRemaining);
+      if (aArrayLen <= 0)
+        return aErrorResult;
+      aRemaining.remove_prefix(aArrayLen);
+      aElement = aArray;
       break;
     }
     case '{': {
-      // TODO
+      const auto [aObject, aObjectLen] = parseObject<ElementTy>(aRemaining);
+      if (aObjectLen <= 0)
+        return aErrorResult;
+      aRemaining.remove_prefix(aObjectLen);
+      aElement = aObject;
       break;
     }
     case '0': {
       const auto [aNum, aNumLen] = parseNumber(aRemaining);
       if (aNumLen <= 0)
         return aErrorResult;
-      theElement.setNumber(aNum);
+      aElement.setNumber(aNum);
       aRemaining.remove_prefix(aNumLen);
       break;
     }
@@ -89,7 +99,65 @@ public:
     }
     const std::string_view aPostWS = readWhitespace(aRemaining);
     aRemaining.remove_prefix(aPostWS.size());
-    return theString.size() - aRemaining.size();
+    return std::make_pair(aElement, theString.size() - aRemaining.size());
+  }
+
+  template <typename ElementTy>
+  constexpr static std::pair<ElementTy, ssize_t>
+  parseObject(const std::string_view theString) {
+    constexpr const std::pair<ElementTy, ssize_t> aErrorResult =
+        std::make_pair(ElementTy::null(), -1);
+    const auto [aFirstChar, aFirstCharWidth] = decodeFirst(theString);
+    if (aFirstCharWidth <= 0)
+      // Failed to decode first char
+      return aErrorResult;
+    if (aFirstChar != '{')
+      return aErrorResult;
+    // std::string_view aRemaining = theString.substr(aFirstCharWidth);
+    return aErrorResult;
+  }
+
+  template <typename ElementTy>
+  constexpr static std::pair<ElementTy, ssize_t>
+  parseArray(const std::string_view theString) {
+    constexpr const std::pair<ElementTy, ssize_t> aErrorResult =
+        std::make_pair(ElementTy::null(), -1);
+    const auto [aFirstChar, aFirstCharWidth] = decodeFirst(theString);
+    if (aFirstCharWidth <= 0)
+      // Failed to decode first char
+      return aErrorResult;
+    if (aFirstChar != '[')
+      return aErrorResult;
+    std::string_view aRemaining = theString.substr(aFirstCharWidth);
+    const std::string_view aWS = readWhitespace(aRemaining);
+    aRemaining.remove_prefix(aWS.size());
+    bool aNeedsElement = false;
+    ElementTy aElement;
+    aElement.setArray();
+    for (;;) {
+      const auto [aChar, aCharWidth] = decodeFirst(aRemaining);
+      if (aCharWidth <= 0)
+        return aErrorResult;
+      if (!aNeedsElement && aChar == ']') {
+        aRemaining.remove_prefix(aCharWidth);
+        break;
+      }
+      const auto [aItem, aItemLength] = parseElement<ElementTy>(aRemaining);
+      aElement.addArrayEntry(aItem);
+      if (aItemLength <= 0)
+        return aErrorResult;
+      aRemaining.remove_prefix(aItemLength);
+      const auto [aPeekChar, aPeekCharWidth] = decodeFirst(aRemaining);
+      if (aPeekCharWidth <= 0)
+        return aErrorResult;
+      if (aPeekChar == ',') {
+        aNeedsElement = true;
+        aRemaining.remove_prefix(aPeekCharWidth);
+      } else {
+        aNeedsElement = false;
+      }
+    }
+    return std::make_pair(aElement, theString.size() - aRemaining.size());
   }
 
   constexpr static std::string_view
