@@ -228,6 +228,7 @@ public:
         return {theString.data(), theString.size() - aRemaining.size()};
       } else if (aChar == '\\') {
         const auto [aEscape, aEscapeWidth] = parseEscape(aRemaining);
+        std::ignore = aEscape;
         aRemaining.remove_prefix(aEscapeWidth);
       } else if (0x20 > aChar || aChar > 0x10ffff) {
         // Not a valid JSON char
