@@ -10,6 +10,8 @@ namespace cjson {
 template <size_t N> using StrLiteralRef = const char (&)[N];
 
 struct DocumentInfo {
+  ssize_t itsNumNulls = 0;
+  ssize_t itsNumBools = 0;
   ssize_t itsNumDoubles = 0;
   ssize_t itsNumChars = 0;
   ssize_t itsNumStrings = 0;
@@ -19,13 +21,14 @@ struct DocumentInfo {
   ssize_t itsNumObjectProperties = 0;
 
   constexpr static DocumentInfo error() {
-    DocumentInfo aDI{-1, -1, -1, -1, -1, -1, -1};
+    DocumentInfo aDI{-1, -1, -1, -1, -1, -1, -1, -1, -1};
     return aDI;
   }
 
   operator bool() const {
-    return itsNumDoubles >= 0 && itsNumChars >= 0 && itsNumStrings >= 0 &&
-           itsNumArrays >= 0 && itsNumArrayEntries >= 0 && itsNumObjects >= 0 &&
+    return itsNumNulls >= 0 && itsNumBools >= 0 && itsNumDoubles >= 0 &&
+           itsNumChars >= 0 && itsNumStrings >= 0 && itsNumArrays >= 0 &&
+           itsNumArrayEntries >= 0 && itsNumObjects >= 0 &&
            itsNumObjectProperties >= 0;
   }
   constexpr DocumentInfo operator+(const DocumentInfo &theOther) {
@@ -36,8 +39,10 @@ struct DocumentInfo {
   constexpr DocumentInfo &operator+=(const DocumentInfo &theOther) {
     this->itsNumArrayEntries += theOther.itsNumArrayEntries;
     this->itsNumArrays += theOther.itsNumArrays;
+    this->itsNumBools += theOther.itsNumBools;
     this->itsNumChars += theOther.itsNumChars;
     this->itsNumDoubles += theOther.itsNumDoubles;
+    this->itsNumNulls += theOther.itsNumNulls;
     this->itsNumObjectProperties += theOther.itsNumObjectProperties;
     this->itsNumObjects += theOther.itsNumObjects;
     this->itsNumStrings += theOther.itsNumStrings;
@@ -51,13 +56,23 @@ constexpr DocumentInfo computeDocInfo(const std::string_view theJsonString) {
   struct InfoElement {
     Entity::KIND itsType = Entity::NUL;
     DocumentInfo itsDocInfo;
-    constexpr void setBool(bool theBool) { itsType = Entity::BOOLEAN; }
-    constexpr void setNumber(double theNum) { itsType = Entity::DOUBLE; }
+    constexpr void setBool(bool theBool) {
+      itsType = Entity::BOOLEAN;
+      ++itsDocInfo.itsNumBools;
+    }
+    constexpr void setNumber(double theNum) {
+      itsType = Entity::DOUBLE;
+      ++itsDocInfo.itsNumDoubles;
+    }
     constexpr void setString(const std::string_view theStr) {
       itsType = Entity::STRING;
+      ++itsDocInfo.itsNumStrings;
       itsDocInfo.itsNumChars += theStr.size();
     }
-    constexpr void setNull() { itsType = Entity::NUL; }
+    constexpr void setNull() {
+      itsType = Entity::NUL;
+      ++itsDocInfo.itsNumNulls;
+    }
     constexpr void setArray() {
       itsType = Entity::ARRAY;
       ++itsDocInfo.itsNumArrays;

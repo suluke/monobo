@@ -8,7 +8,9 @@ using namespace cjson;
 
 std::ostream &operator<<(std::ostream &theStream,
                          const DocumentInfo &theDocInfo) {
-  return theStream << "Doubles: " << theDocInfo.itsNumDoubles << "\n"
+  return theStream << "Nulls: " << theDocInfo.itsNumNulls << "\n"
+                   << "Booleans: " << theDocInfo.itsNumBools << "\n"
+                   << "Doubles: " << theDocInfo.itsNumDoubles << "\n"
                    << "Characters: " << theDocInfo.itsNumChars << "\n"
                    << "Strings: " << theDocInfo.itsNumStrings << "\n"
                    << "Arrays: " << theDocInfo.itsNumArrays << "\n"
