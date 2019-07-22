@@ -39,8 +39,7 @@ struct Utf8 {
     unsigned aFirstByteMask = 0xffu >> (8u - aNumBitsFromFirstByte);
     aCP &= aFirstByteMask;
     for (unsigned i = 0; i < aNumExtraBytes; ++i) {
-      unsigned char aByte =
-          *reinterpret_cast<const unsigned char *>(&theString[1 + i]);
+      unsigned char aByte = static_cast<unsigned char>(theString[1 + i]);
       if ((aByte & 0xc0u) != 0x80u)
         // Error: Not a continuation byte
         return std::make_pair(CodePointTy{0}, size_t{0});
