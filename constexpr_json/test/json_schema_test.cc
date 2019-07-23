@@ -184,6 +184,16 @@ template <ssize_t L> struct CompareCharSeqs {
     static_assert(aExpectedElm == aElem);                                      \
   } while (false)
 
+#define CHECK_COUNTS(JSON, NULLS, BOOLS, DOUBLES, CHARS, STRS, ARRAYS,         \
+                     ENTRIES, OBJECTS, PROPS)                                  \
+  do {                                                                         \
+    constexpr const DocumentInfo aDI = computeDocInfo<Utf8, Utf8>(JSON);       \
+    constexpr const DocumentInfo aExpected = {                                 \
+        NULLS, BOOLS, DOUBLES, CHARS, STRS, ARRAYS, ENTRIES, OBJECTS, PROPS};  \
+    std::cout << aDI << "vs\n" << aExpected << "\n";                           \
+    static_assert(aDI == aExpected);                                           \
+  } while (false)
+
 int main() {
   // Test utf8 decoder
   CHECK_UTF8_DECODE("$", 0x24);
@@ -285,17 +295,29 @@ int main() {
   CHECK_PARSE(parseElement<JsonElement>, "  1234  ", 8,
               JsonElement::number(1234));
   CHECK_PARSE(parseElement<JsonElement>, "  \"\"  ", 6,
-              JsonElement::string("\"\""));
+              JsonElement::string(""));
   CHECK_PARSE(parseElement<JsonElement>, "  []  ", 6, JsonElement::array(0));
   CHECK_PARSE(parseElement<JsonElement>, "  [\"a\", 2]  ", 12,
               JsonElement::array(2));
   CHECK_PARSE(parseElement<JsonElement>, "  [\"a\", 2  ", -1,
               JsonElement::null());
 
+  // DocInfo computation
+  // null,bool,double,char,string,array,entries,object,props
+  CHECK_COUNTS("null", 1, 0, 0, 0, 0, 0, 0, 0, 0);
+  CHECK_COUNTS("true", 0, 1, 0, 0, 0, 0, 0, 0, 0);
+  CHECK_COUNTS("false", 0, 1, 0, 0, 0, 0, 0, 0, 0);
+  CHECK_COUNTS("1.2e-3", 0, 0, 1, 0, 0, 0, 0, 0, 0);
+  CHECK_COUNTS("\"abc\"", 0, 0, 0, 3, 1, 0, 0, 0, 0);
+  CHECK_COUNTS("\"¢\"", 0, 0, 0, 2, 1, 0, 0, 0, 0);
+  CHECK_COUNTS("\"\\n\"", 0, 0, 0, 1, 1, 0, 0, 0, 0);
+  CHECK_COUNTS("\"\\u002a\"", 0, 0, 0, 1, 1, 0, 0, 0, 0);
+  CHECK_COUNTS("{}", 0, 0, 0, 0, 0, 0, 0, 1, 0);
+  CHECK_COUNTS("[]", 0, 0, 0, 0, 0, 1, 0, 0, 0);
+
 #define USE_JSON_STRING(theJson) constexpr std::string_view aJsonSV{theJson};
 #include "json_schema.h"
-  // std::cout << aJsonStr;
-  constexpr DocumentInfo aDocInfo = computeDocInfo<Utf8>(aJsonSV);
+  constexpr DocumentInfo aDocInfo = computeDocInfo<Utf8, Utf8>(aJsonSV);
   std::cout << aDocInfo;
   Document<aDocInfo.itsNumDoubles, aDocInfo.itsNumChars, aDocInfo.itsNumStrings,
            aDocInfo.itsNumArrays, aDocInfo.itsNumArrayEntries,

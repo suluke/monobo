@@ -63,11 +63,15 @@ public:
       break;
     }
     case '"': {
-      const std::string_view aStr = readString(aRemaining);
+      std::string_view aStr = readString(aRemaining);
       if (aStr.empty())
         return aErrorResult;
-      aElement.setString(aStr);
       aRemaining.remove_prefix(aStr.size());
+      // Remove quotation marks surrounding string
+      const auto [aQuot, aQuotWidth] = decodeFirst(aStr);
+      aStr.remove_prefix(aQuotWidth);
+      aStr.remove_suffix(aQuotWidth);
+      aElement.setString(aStr);
       break;
     }
     case '[': {
@@ -130,7 +134,7 @@ public:
       const std::string_view aLeadWs = readWhitespace(aRemaining);
       aRemaining.remove_prefix(aLeadWs.size());
       // Read key
-      const std::string_view aKey = readString(aRemaining);
+      std::string_view aKey = readString(aRemaining);
       if (aKey.size() <= 0)
         return aErrorResult;
       aRemaining.remove_prefix(aKey.size());
@@ -147,6 +151,10 @@ public:
       const auto [aElm, aElmLength] = parseElement<ElementTy>(aRemaining);
       if (aElmLength <= 0)
         return aErrorResult;
+      // Remove quotation marks surrounding key
+      const auto [aQuot, aQuotWidth] = decodeFirst(aKey);
+      aKey.remove_prefix(aQuotWidth);
+      aKey.remove_suffix(aQuotWidth);
       aElement.addObjectProperty(aKey, aElm);
       aRemaining.remove_prefix(aElmLength);
       // Look for ','

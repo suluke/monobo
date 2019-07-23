@@ -25,7 +25,7 @@ struct DocumentInfo {
     return aDI;
   }
 
-  operator bool() const {
+  constexpr operator bool() const {
     return itsNumNulls >= 0 && itsNumBools >= 0 && itsNumDoubles >= 0 &&
            itsNumChars >= 0 && itsNumStrings >= 0 && itsNumArrays >= 0 &&
            itsNumArrayEntries >= 0 && itsNumObjects >= 0 &&
@@ -48,9 +48,20 @@ struct DocumentInfo {
     this->itsNumStrings += theOther.itsNumStrings;
     return *this;
   }
+  constexpr bool operator==(const DocumentInfo &theOther) const {
+    return itsNumArrayEntries == theOther.itsNumArrayEntries &&
+           itsNumArrays == theOther.itsNumArrays &&
+           itsNumBools == theOther.itsNumBools &&
+           itsNumChars == theOther.itsNumChars &&
+           itsNumDoubles == theOther.itsNumDoubles &&
+           itsNumNulls == theOther.itsNumNulls &&
+           itsNumObjectProperties == theOther.itsNumObjectProperties &&
+           itsNumObjects == theOther.itsNumObjects &&
+           itsNumStrings == theOther.itsNumStrings;
+  }
 };
 
-template <typename EncodingTy>
+template <typename SourceEncodingTy, typename DestEncodingTy>
 constexpr DocumentInfo computeDocInfo(const std::string_view theJsonString) {
   constexpr const DocumentInfo aErrorResult = DocumentInfo::error();
   struct InfoElement {
@@ -64,10 +75,24 @@ constexpr DocumentInfo computeDocInfo(const std::string_view theJsonString) {
       itsType = Entity::DOUBLE;
       ++itsDocInfo.itsNumDoubles;
     }
-    constexpr void setString(const std::string_view theStr) {
+    constexpr void setString(std::string_view theStr) {
       itsType = Entity::STRING;
       ++itsDocInfo.itsNumStrings;
-      itsDocInfo.itsNumChars += theStr.size();
+      // Count the required number of bytes in the output encoding
+      size_t aNumChars = 0;
+      while (!theStr.empty()) {
+        const auto [aChar, aCharWidth] = SourceEncodingTy::decodeFirst(theStr);
+        if (aChar == '\\') {
+          const auto [aCodepoint, aWidth] =
+              parsing<SourceEncodingTy>::parseEscape(theStr);
+          theStr.remove_prefix(aWidth);
+          aNumChars += DestEncodingTy::encode(aCodepoint).second;
+        } else {
+          theStr.remove_prefix(aCharWidth);
+          aNumChars += DestEncodingTy::encode(aChar).second;
+        }
+      }
+      itsDocInfo.itsNumChars += aNumChars;
     }
     constexpr void setNull() {
       itsType = Entity::NUL;
@@ -94,7 +119,8 @@ constexpr DocumentInfo computeDocInfo(const std::string_view theJsonString) {
     constexpr static InfoElement null() { return InfoElement{}; }
   };
   const auto [aParsed, aParsedLen] =
-      parsing<EncodingTy>::template parseElement<InfoElement>(theJsonString);
+      parsing<SourceEncodingTy>::template parseElement<InfoElement>(
+          theJsonString);
   if (aParsedLen <= 0)
     return aErrorResult;
   return aParsed.itsDocInfo;
