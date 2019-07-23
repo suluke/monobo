@@ -2,6 +2,7 @@
 #define CONSTEXPR_JSON_UTILS_UNICODE_H
 
 #include "constexpr_json/utils/parsing.h"
+#include <array>
 
 namespace cjson {
 struct Utf8 {
@@ -47,6 +48,39 @@ struct Utf8 {
       aCP |= (aByte & 0x3fu);
     }
     return std::make_pair(aCP, size_t{1 + aNumExtraBytes});
+  }
+
+  static constexpr size_t MAX_BYTES = 4;
+  static constexpr std::pair<std::array<char, MAX_BYTES>, ssize_t>
+  encode(CodePointTy theCodePoint) {
+    constexpr std::pair<std::array<char, MAX_BYTES>, ssize_t> aErrorResult =
+        std::make_pair(std::array<char, MAX_BYTES>{}, -1);
+    if (theCodePoint <= 0x7fu)
+      return std::make_pair(std::array<char, MAX_BYTES>(
+                                {static_cast<char>(theCodePoint), 0, 0, 0}),
+                            1);
+    if (theCodePoint <= 0x7ffu)
+      return std::make_pair(
+          std::array<char, MAX_BYTES>(
+              {static_cast<char>(0xc0u | (theCodePoint >> 6)),
+               static_cast<char>(0x80u | (theCodePoint & 0x3fu)), 0, 0}),
+          2);
+    if (theCodePoint <= 0xffffu)
+      return std::make_pair(
+          std::array<char, MAX_BYTES>(
+              {static_cast<char>(0xe0u | (theCodePoint >> 12)),
+               static_cast<char>(0x80u | ((theCodePoint >> 6) & 0x3fu)),
+               static_cast<char>(0x80u | (theCodePoint & 0x3fu)), 0}),
+          3);
+    if (theCodePoint <= 0x10ffffu)
+      return std::make_pair(
+          std::array<char, MAX_BYTES>(
+              {static_cast<char>(0xf0u | (theCodePoint >> 18)),
+               static_cast<char>(0x80u | ((theCodePoint >> 12) & 0x3fu)),
+               static_cast<char>(0x80u | ((theCodePoint >> 6) & 0x3fu)),
+               static_cast<char>(0x80u | (theCodePoint & 0x3fu))}),
+          4);
+    return aErrorResult;
   }
 };
 } // namespace cjson

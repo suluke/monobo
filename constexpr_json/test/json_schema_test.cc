@@ -135,6 +135,38 @@ struct JsonElement {
                   "UTF8: Failed to decode '" STR "'");                         \
   } while (false)
 
+template <ssize_t L> struct CompareCharSeqs {
+  bool value = true;
+  template <typename T1, typename T2>
+  constexpr CompareCharSeqs(T1 theFirst, T2 theSecond) {
+    if constexpr (L <= 0) {
+      std::ignore = theFirst;
+      std::ignore = theSecond;
+      return;
+    } else {
+      constexpr ssize_t aIdx = L - 1;
+      if (theFirst[aIdx] != theSecond[aIdx]) {
+        value = false;
+        return;
+      }
+      CompareCharSeqs<aIdx> aRemCmp(theFirst, theSecond);
+      value = aRemCmp.value;
+    }
+  }
+};
+
+#define CHECK_UTF8_ENCODE(CODEPOINT, EXPECTED)                                 \
+  do {                                                                         \
+    constexpr std::string_view aExpStr{EXPECTED};                              \
+    constexpr auto aResult = Utf8::encode(CODEPOINT);                          \
+    constexpr ssize_t aExpLen = static_cast<ssize_t>(aExpStr.size());          \
+    static_assert(aResult.second == aExpLen);                                  \
+    constexpr ssize_t aMinLen =                                                \
+        aResult.second < aExpLen ? aResult.second : aExpLen;                   \
+    constexpr CompareCharSeqs<aMinLen> aCmp(aResult.first, aExpStr);           \
+    static_assert(aCmp.value);                                                 \
+  } while (false)
+
 #define CHECK_READ(FN, STR, EXPECTED)                                          \
   do {                                                                         \
     static_assert(parsing<Utf8>::FN(STR) == EXPECTED,                          \
@@ -153,11 +185,17 @@ struct JsonElement {
   } while (false)
 
 int main() {
-  // Test unicode decoder
+  // Test utf8 decoder
   CHECK_UTF8_DECODE("$", 0x24);
   CHECK_UTF8_DECODE("¢", 0xa2);
   CHECK_UTF8_DECODE("ह", 0x939);
   CHECK_UTF8_DECODE("€", 0x20ac);
+
+  // Test utf8 encoder
+  CHECK_UTF8_ENCODE(0x24, "$");
+  CHECK_UTF8_ENCODE(0xa2, "¢");
+  CHECK_UTF8_ENCODE(0x939, "ह");
+  CHECK_UTF8_ENCODE(0x20ac, "€");
 
   // Test parsing procedures
   //   readWhitespace

@@ -55,7 +55,7 @@ constexpr DocumentInfo computeDocInfo(const std::string_view theJsonString) {
   constexpr const DocumentInfo aErrorResult = DocumentInfo::error();
   struct InfoElement {
     Entity::KIND itsType = Entity::NUL;
-    DocumentInfo itsDocInfo;
+    DocumentInfo itsDocInfo = {};
     constexpr void setBool(bool theBool) {
       itsType = Entity::BOOLEAN;
       ++itsDocInfo.itsNumBools;
