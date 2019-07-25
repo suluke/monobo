@@ -5,6 +5,7 @@
 #include "utils/parsing.h"
 #include "utils/unicode.h"
 #include <memory>
+#include <optional>
 
 namespace cjson {
 template <size_t N> using StrLiteralRef = const char (&)[N];
@@ -126,9 +127,10 @@ constexpr DocumentInfo computeDocInfo(const std::string_view theJsonString) {
   return aParsed.itsDocInfo;
 }
 
-template <size_t N, typename DocTy>
-constexpr bool parseDocument(StrLiteralRef<N> theJsonString, DocTy &theDoc) {
-  return true;
+template <typename DocTy>
+constexpr std::optional<DocTy>
+parseDocument(const std::string_view theJsonString) {
+  return std::nullopt;
 }
 
 template <size_t N>

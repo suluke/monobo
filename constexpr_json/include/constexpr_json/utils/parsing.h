@@ -1,6 +1,7 @@
 #ifndef CONSTEXPR_JSON_UTILS_PARSING_H
 #define CONSTEXPR_JSON_UTILS_PARSING_H
 
+#include <optional>
 #include <tuple>
 
 namespace cjson {
@@ -26,14 +27,13 @@ public:
            ('a' <= theChar && theChar <= 'f');
   }
 
-  template <typename ElementTy>
-  constexpr static std::pair<ElementTy, ssize_t>
-  parseElement(const std::string_view theString) {
-    constexpr const std::pair<ElementTy, ssize_t> aErrorResult =
-        std::make_pair(ElementTy::null(), -1);
-    // Step 1: Consume whitespace
-    const std::string_view aPreWS = readWhitespace(theString);
-    std::string_view aRemaining = theString.substr(aPreWS.size());
+  enum class Type { NUL, BOOL, NUMBER, STRING, ARRAY, OBJECT };
+
+  constexpr static std::optional<Type>
+  detectElementType(const std::string_view theJsonStr) {
+    constexpr const std::optional<Type> aErrorResult = std::nullopt;
+    const std::string_view aPreWS = readWhitespace(theJsonStr);
+    std::string_view aRemaining = theJsonStr.substr(aPreWS.size());
     const auto [aFirstChar, aFirstCharWidth] = decodeFirst(aRemaining);
     if (aFirstCharWidth <= 0)
       // Expected *something*
@@ -42,19 +42,42 @@ public:
     const auto charZeroIfDigit = [](CharT aChar) -> CharT {
       return isdigit(aChar) ? '0' : aChar;
     };
-    ElementTy aElement;
     switch (charZeroIfDigit(aFirstChar)) {
+    case 'n':
+      return Type::NUL;
     case 't':
       [[fallthrough]];
-    case 'f': {
-      const auto [aBool, aBoolLen] = parseBool(aRemaining);
-      if (aBoolLen <= 0)
-        return aErrorResult;
-      aElement.setBool(aBool);
-      aRemaining.remove_prefix(aBoolLen);
-      break;
+    case 'f':
+      return Type::BOOL;
+    case '0':
+      return Type::NUMBER;
+    case '"':
+      return Type::STRING;
+    case '[':
+      return Type::ARRAY;
+    case '{':
+      return Type::OBJECT;
     }
-    case 'n': {
+    return aErrorResult;
+  }
+
+  template <typename ElementTy>
+  constexpr static std::pair<ElementTy, ssize_t>
+  parseElement(const std::string_view theString) {
+    constexpr const std::pair<ElementTy, ssize_t> aErrorResult =
+        std::make_pair(ElementTy::null(), -1);
+    // Step 1: Consume whitespace
+    const std::string_view aPreWS = readWhitespace(theString);
+    std::string_view aRemaining = theString.substr(aPreWS.size());
+    ElementTy aElement;
+    // Step 2: Detect type of element
+    const std::optional<Type> aTypeMaybe = detectElementType(aRemaining);
+    if (!aTypeMaybe)
+      return aErrorResult;
+    Type aElmTy = *aTypeMaybe;
+    // Step 3: Parse element
+    switch (aElmTy) {
+    case Type::NUL: {
       const ssize_t aNullLen = parseNull(aRemaining);
       if (aNullLen <= 0)
         return aErrorResult;
@@ -62,7 +85,23 @@ public:
       aRemaining.remove_prefix(aNullLen);
       break;
     }
-    case '"': {
+    case Type::BOOL: {
+      const auto [aBool, aBoolLen] = parseBool(aRemaining);
+      if (aBoolLen <= 0)
+        return aErrorResult;
+      aElement.setBool(aBool);
+      aRemaining.remove_prefix(aBoolLen);
+      break;
+    }
+    case Type::NUMBER: {
+      const auto [aNum, aNumLen] = parseNumber(aRemaining);
+      if (aNumLen <= 0)
+        return aErrorResult;
+      aElement.setNumber(aNum);
+      aRemaining.remove_prefix(aNumLen);
+      break;
+    }
+    case Type::STRING: {
       std::string_view aStr = readString(aRemaining);
       if (aStr.empty())
         return aErrorResult;
@@ -74,7 +113,7 @@ public:
       aElement.setString(aStr);
       break;
     }
-    case '[': {
+    case Type::ARRAY: {
       const auto [aArray, aArrayLen] = parseArray<ElementTy>(aRemaining);
       if (aArrayLen <= 0)
         return aErrorResult;
@@ -82,20 +121,12 @@ public:
       aElement = aArray;
       break;
     }
-    case '{': {
+    case Type::OBJECT: {
       const auto [aObject, aObjectLen] = parseObject<ElementTy>(aRemaining);
       if (aObjectLen <= 0)
         return aErrorResult;
       aRemaining.remove_prefix(aObjectLen);
       aElement = aObject;
-      break;
-    }
-    case '0': {
-      const auto [aNum, aNumLen] = parseNumber(aRemaining);
-      if (aNumLen <= 0)
-        return aErrorResult;
-      aElement.setNumber(aNum);
-      aRemaining.remove_prefix(aNumLen);
       break;
     }
     default:
@@ -417,10 +448,11 @@ public:
     return std::make_pair(aResult, theString.size() - aRemaining.size());
   }
 
-  /// The return type double is chosen for encoding negative zero and because it
-  /// has the same integer precision as the parse target type (which is also
-  /// double)
-  /// @return the parsed integer and the number of bytes consumed while parsing.
+  /// The return type double is chosen for encoding negative zero and because
+  /// it has the same integer precision as the parse target type (which is
+  /// also double)
+  /// @return the parsed integer and the number of bytes consumed while
+  /// parsing.
   static constexpr std::pair<double, ssize_t>
   parseInteger(const std::string_view theString) {
     constexpr const auto aErrorResult = std::make_pair(0., -1);
@@ -513,8 +545,8 @@ public:
     return theString.substr(0, aDigits.size() + aCharWidth);
   }
 
-  /// Expects a leading 'e' or 'E', then parses a (signed) int where leading '0'
-  /// are allowed as per the JSON spec
+  /// Expects a leading 'e' or 'E', then parses a (signed) int where leading
+  /// '0' are allowed as per the JSON spec
   static constexpr std::pair<int, ssize_t>
   parseExponent(const std::string_view theString) {
     if (theString.empty())
