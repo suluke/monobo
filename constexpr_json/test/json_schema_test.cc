@@ -6,11 +6,12 @@
 
 using namespace cjson;
 
-std::ostream &operator<<(std::ostream &theStream,
-                         const DocumentInfo &theDocInfo) {
+static std::ostream &
+operator<<(std::ostream &theStream,
+           const DocumentBuilder<Utf8, Utf8>::DocumentInfo &theDocInfo) {
   return theStream << "Nulls: " << theDocInfo.itsNumNulls << "\n"
                    << "Booleans: " << theDocInfo.itsNumBools << "\n"
-                   << "Doubles: " << theDocInfo.itsNumDoubles << "\n"
+                   << "Numbers: " << theDocInfo.itsNumNumbers << "\n"
                    << "Characters: " << theDocInfo.itsNumChars << "\n"
                    << "Strings: " << theDocInfo.itsNumStrings << "\n"
                    << "Arrays: " << theDocInfo.itsNumArrays << "\n"
@@ -20,12 +21,13 @@ std::ostream &operator<<(std::ostream &theStream,
                    << "\n";
 }
 
-std::ostream &operator<<(std::ostream &theStream, const EntityRef &theEntity) {
+static std::ostream &operator<<(std::ostream &theStream,
+                                const EntityRef &theEntity) {
   switch (theEntity.getType()) {
   case Entity::BOOLEAN:
     return theStream << (theEntity.toBool() ? "true" : "false");
-  case Entity::DOUBLE:
-    return theStream << theEntity.toDouble();
+  case Entity::NUMBER:
+    return theStream << theEntity.toNumber();
   case Entity::NUL:
     return theStream << "null";
   case Entity::ARRAY:
@@ -33,13 +35,26 @@ std::ostream &operator<<(std::ostream &theStream, const EntityRef &theEntity) {
   case Entity::OBJECT:
     return theStream;
   case Entity::STRING:
-    return theStream;
+    return theStream << "\"" << theEntity.toString() << "\"";
   }
   return theStream;
 }
 
-std::ostream &operator<<(std::ostream &theStream, const DocumentBase &theDoc) {
+static std::ostream &operator<<(std::ostream &theStream,
+                                const DocumentBase &theDoc) {
   return theStream << theDoc.getRoot();
+}
+
+template <typename DocTy> static void dump(const DocTy &theDoc) {
+  std::cout << "======================================\n"
+            << "#Numbers: " << DocTy::itsNumNumbers << "\nNumbers: \n";
+  for (const double &aNum : theDoc.itsNumbers)
+    std::cout << aNum << "\n";
+  std::cout << "#Chars: " << DocTy::itsNumChars << "\nChars: \n";
+  for (const char &aChar : theDoc.itsChars)
+    std::cout << aChar << "\n";
+  std::cout << "#Strings: " << DocTy::itsNumStrings << "\n";
+  std::cout << "======================================\n";
 }
 
 struct JsonElement {
@@ -54,7 +69,7 @@ struct JsonElement {
     itsBoolVal = theBool;
   }
   constexpr void setNumber(double theNum) {
-    itsType = Entity::DOUBLE;
+    itsType = Entity::NUMBER;
     itsNumberVal = theNum;
   }
   constexpr void setString(const std::string_view theStr) {
@@ -83,7 +98,7 @@ struct JsonElement {
       return true;
     case Entity::BOOLEAN:
       return theOther.itsBoolVal == itsBoolVal;
-    case Entity::DOUBLE:
+    case Entity::NUMBER:
       return theOther.itsNumberVal == itsNumberVal;
     case Entity::STRING:
       return theOther.itsStringVal == itsStringVal;
@@ -187,14 +202,15 @@ template <ssize_t L> struct CompareCharSeqs {
 #define CHECK_COUNTS(JSON, NULLS, BOOLS, DOUBLES, CHARS, STRS, ARRAYS,         \
                      ENTRIES, OBJECTS, PROPS)                                  \
   do {                                                                         \
-    constexpr const DocumentInfo aDI = computeDocInfo<Utf8, Utf8>(JSON);       \
-    constexpr const DocumentInfo aExpected = {                                 \
+    using Builder = DocumentBuilder<Utf8, Utf8>;                               \
+    constexpr const Builder::DocumentInfo aDI = Builder::computeDocInfo(JSON); \
+    constexpr const Builder::DocumentInfo aExpected = {                        \
         NULLS, BOOLS, DOUBLES, CHARS, STRS, ARRAYS, ENTRIES, OBJECTS, PROPS};  \
     std::cout << aDI << "vs\n" << aExpected << "\n";                           \
     static_assert(aDI == aExpected);                                           \
   } while (false)
 
-int main() {
+static void static_tests() {
   // Test utf8 decoder
   CHECK_UTF8_DECODE("$", 0x24);
   CHECK_UTF8_DECODE("¢", 0xa2);
@@ -315,13 +331,44 @@ int main() {
   CHECK_COUNTS("{}", 0, 0, 0, 0, 0, 0, 0, 1, 0);
   CHECK_COUNTS("[]", 0, 0, 0, 0, 0, 1, 0, 0, 0);
 
+#define CHECK_DOCPARSE(JSON)                                                   \
+  do {                                                                         \
+    constexpr std::string_view aJsonStr{JSON};                                 \
+    using Builder = DocumentBuilder<Utf8, Utf8>;                               \
+    constexpr Builder::DocumentInfo aDocInfo =                                 \
+        Builder::computeDocInfo(aJsonStr);                                     \
+    using DocTy =                                                              \
+        Document<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,                 \
+                 aDocInfo.itsNumStrings, aDocInfo.itsNumArrays,                \
+                 aDocInfo.itsNumArrayEntries, aDocInfo.itsNumObjects,          \
+                 aDocInfo.itsNumObjectProperties>;                             \
+    constexpr const std::pair<std::optional<DocTy>, ssize_t> aDocAndLen =      \
+        Builder::parseDocument<DocTy>(aJsonStr);                               \
+    constexpr ssize_t aParsedLen = aDocAndLen.second;                          \
+    static_assert(aDocAndLen.first);                                           \
+    static_assert(aParsedLen == aJsonStr.size());                              \
+    constexpr DocTy aDoc{*aDocAndLen.first};                                   \
+    /*dump(aDoc);*/                                                            \
+    std::cout << aDoc << "\n";                                                 \
+  } while (false)
+  CHECK_DOCPARSE("null");
+  CHECK_DOCPARSE("true");
+  CHECK_DOCPARSE("false");
+  CHECK_DOCPARSE("123");
+  CHECK_DOCPARSE("\"123\"");
+}
+
+int main() {
+  static_tests();
 #define USE_JSON_STRING(theJson) constexpr std::string_view aJsonSV{theJson};
 #include "json_schema.h"
-  constexpr DocumentInfo aDocInfo = computeDocInfo<Utf8, Utf8>(aJsonSV);
+  using Builder = DocumentBuilder<Utf8, Utf8>;
+  constexpr Builder::DocumentInfo aDocInfo = Builder::computeDocInfo(aJsonSV);
   std::cout << aDocInfo;
-  Document<aDocInfo.itsNumDoubles, aDocInfo.itsNumChars, aDocInfo.itsNumStrings,
-           aDocInfo.itsNumArrays, aDocInfo.itsNumArrayEntries,
-           aDocInfo.itsNumObjects, aDocInfo.itsNumObjectProperties>
-      aDoc;
-  std::ignore = aDoc;
+  using DocTy = Document<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,
+                         aDocInfo.itsNumStrings, aDocInfo.itsNumArrays,
+                         aDocInfo.itsNumArrayEntries, aDocInfo.itsNumObjects,
+                         aDocInfo.itsNumObjectProperties>;
+  constexpr auto aDocAndLen = Builder::parseDocument<DocTy>(aJsonSV);
+  std::ignore = aDocAndLen;
 }

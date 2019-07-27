@@ -2,6 +2,7 @@
 #define CONSTEXPR_JSON_UTILS_PARSING_H
 
 #include <optional>
+#include <stdexcept>
 #include <tuple>
 
 namespace cjson {
@@ -61,6 +62,16 @@ public:
     return aErrorResult;
   }
 
+  constexpr static std::string_view stripQuotes(std::string_view theStr) {
+    const auto [aQuot, aQuotWidth] = decodeFirst(theStr);
+    if (aQuot != '"')
+      throw std::invalid_argument(
+          "Given string does not start with quotation mark");
+    theStr.remove_prefix(aQuotWidth);
+    theStr.remove_suffix(aQuotWidth);
+    return theStr;
+  }
+
   template <typename ElementTy>
   constexpr static std::pair<ElementTy, ssize_t>
   parseElement(const std::string_view theString) {
@@ -106,11 +117,7 @@ public:
       if (aStr.empty())
         return aErrorResult;
       aRemaining.remove_prefix(aStr.size());
-      // Remove quotation marks surrounding string
-      const auto [aQuot, aQuotWidth] = decodeFirst(aStr);
-      aStr.remove_prefix(aQuotWidth);
-      aStr.remove_suffix(aQuotWidth);
-      aElement.setString(aStr);
+      aElement.setString(stripQuotes(aStr));
       break;
     }
     case Type::ARRAY: {
@@ -183,10 +190,7 @@ public:
       if (aElmLength <= 0)
         return aErrorResult;
       // Remove quotation marks surrounding key
-      const auto [aQuot, aQuotWidth] = decodeFirst(aKey);
-      aKey.remove_prefix(aQuotWidth);
-      aKey.remove_suffix(aQuotWidth);
-      aElement.addObjectProperty(aKey, aElm);
+      aElement.addObjectProperty(stripQuotes(aKey), aElm);
       aRemaining.remove_prefix(aElmLength);
       // Look for ','
       const auto [aPeekChar, aPeekCharWidth] = decodeFirst(aRemaining);
@@ -276,6 +280,26 @@ public:
         aRemaining.remove_prefix(aCharWidth);
       }
     }
+  }
+
+  constexpr static std::pair<CharT, ssize_t>
+  parseFirstStringChar(const std::string_view aStr) {
+    constexpr const std::pair<CharT, ssize_t> aErrorResult =
+        std::make_pair(CharT{}, -1);
+    const auto [aChar, aCharWidth] = decodeFirst(aStr);
+    if (aCharWidth <= 0)
+      // Failed to decode first char
+      return aErrorResult;
+    if (aChar == '"')
+      // Cannot have bare '"' inside JSON string
+      return aErrorResult;
+    if (0x20 > aChar || aChar > 0x10ffff)
+      // Not a valid JSON char
+      return aErrorResult;
+    if (aChar == '\\')
+      // Escaped character
+      return parseEscape(aStr);
+    return std::make_pair(aChar, aCharWidth);
   }
 
   constexpr static std::pair<CharT, ssize_t>
