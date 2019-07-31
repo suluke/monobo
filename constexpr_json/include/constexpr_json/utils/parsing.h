@@ -12,14 +12,6 @@ private:
   constexpr static auto decodeFirst(std::string_view theString) {
     return EncodingTy::decodeFirst(theString);
   }
-
-public:
-  parsing() = delete;
-  parsing(const parsing &) = delete;
-  parsing(parsing &&) = delete;
-  parsing &operator=(const parsing &) = delete;
-  parsing &operator=(parsing &&) = delete;
-
   constexpr static bool isdigit(CharT theChar) {
     return '0' <= theChar && theChar <= '9';
   }
@@ -27,6 +19,13 @@ public:
     return isdigit(theChar) || ('A' <= theChar && theChar <= 'F') ||
            ('a' <= theChar && theChar <= 'f');
   }
+
+public:
+  parsing() = delete;
+  parsing(const parsing &) = delete;
+  parsing(parsing &&) = delete;
+  parsing &operator=(const parsing &) = delete;
+  parsing &operator=(parsing &&) = delete;
 
   enum class Type { NUL, BOOL, NUMBER, STRING, ARRAY, OBJECT };
 
@@ -59,6 +58,97 @@ public:
     case '{':
       return Type::OBJECT;
     }
+    return aErrorResult;
+  }
+
+  constexpr static std::optional<std::pair<Type, std::string_view>>
+  readElement(const std::string_view theJson) {
+    constexpr const std::optional<std::pair<Type, std::string_view>>
+        aErrorResult = std::nullopt;
+    const std::string_view aTrimmedJson =
+        theJson.substr(readWhitespace(theJson).size());
+    std::optional<Type> aTypeMaybe = detectElementType(aTrimmedJson);
+    if (!aTypeMaybe)
+      return aErrorResult;
+    switch (*aTypeMaybe) {
+    case Type::NUL: {
+      const ssize_t aNulLen = parseNull(aTrimmedJson);
+      if (aNulLen <= 0)
+        return aErrorResult;
+      return std::make_pair(Type::NUL, aTrimmedJson.substr(0, aNulLen));
+    }
+    case Type::BOOL: {
+      const ssize_t aBoolLen = parseBool(aTrimmedJson).second;
+      if (aBoolLen <= 0)
+        return aErrorResult;
+      return std::make_pair(Type::BOOL, aTrimmedJson.substr(0, aBoolLen));
+    }
+    case Type::NUMBER: {
+      const ssize_t aNumLen = parseNumber(aTrimmedJson).second;
+      if (aNumLen <= 0)
+        return aErrorResult;
+      return std::make_pair(Type::NUMBER, aTrimmedJson.substr(0, aNumLen));
+    }
+    case Type::STRING: {
+      std::string_view aStr = readString(aTrimmedJson);
+      if (aStr.size() <= 0)
+        return aErrorResult;
+      return std::make_pair(Type::STRING, aStr);
+    }
+    case Type::ARRAY: {
+      std::string_view aArr = readArray(aTrimmedJson);
+      if (aArr.size() <= 0)
+        return aErrorResult;
+      return std::make_pair(Type::ARRAY, aArr);
+    }
+    case Type::OBJECT: {
+      std::string_view aObj = readObject(aTrimmedJson);
+      if (aObj.size() <= 0)
+        return aErrorResult;
+      return std::make_pair(Type::OBJECT, aObj);
+    }
+    }
+    return aErrorResult;
+  }
+  constexpr static std::string_view readArray(const std::string_view theJson) {
+    std::string_view aErrorResult{};
+    const auto [aBracket, aBracketWidth] = decodeFirst(theJson);
+    if (aBracketWidth <= 0 || aBracket != '[')
+      return aErrorResult;
+    std::string_view aRemaining = theJson.substr(aBracketWidth);
+    bool aNeedsElement = false;
+    for (;;) {
+      aRemaining.remove_prefix(readWhitespace(aRemaining).size());
+      {
+        const auto [aChar, aCharWidth] = decodeFirst(aRemaining);
+        if (aCharWidth <= 0)
+          return aErrorResult;
+        if (!aNeedsElement && aChar == ']') {
+          aRemaining.remove_prefix(aCharWidth);
+          return theJson.substr(0, theJson.size() - aRemaining.size());
+        }
+      }
+      const std::optional<std::pair<Type, std::string_view>> aElmMaybe =
+          readElement(aRemaining);
+      if (!aElmMaybe)
+        return aErrorResult;
+      aRemaining.remove_prefix(aElmMaybe->second.size());
+      aRemaining.remove_prefix(readWhitespace(aRemaining).size());
+      {
+        const auto [aChar, aCharWidth] = decodeFirst(aRemaining);
+        if (aCharWidth <= 0)
+          return aErrorResult;
+        if (aChar == ',') {
+          aRemaining.remove_prefix(aCharWidth);
+          aNeedsElement = true;
+        } else {
+          aNeedsElement = false;
+        }
+      }
+    }
+  }
+  constexpr static std::string_view readObject(const std::string_view theJson) {
+    std::string_view aErrorResult{};
     return aErrorResult;
   }
 

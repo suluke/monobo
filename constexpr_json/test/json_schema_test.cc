@@ -401,7 +401,7 @@ static void static_tests() {
   CHECK_DOCPARSE("false");
   CHECK_DOCPARSE("123");
   CHECK_DOCPARSE("\"123\"");
-  CHECK_DOCPARSE("[3,2,1, \"123\"]");
+  CHECK_DOCPARSE("[3,2,1, \"123\",[null,true,false]]");
 }
 
 int main() {
@@ -410,11 +410,10 @@ int main() {
 #include "json_schema.h"
   using Builder = DocumentBuilder<Utf8, Utf8>;
   constexpr Builder::DocumentInfo aDocInfo = Builder::computeDocInfo(aJsonSV);
-  // std::cout << aDocInfo;
   using DocTy = Document<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,
                          aDocInfo.itsNumStrings, aDocInfo.itsNumArrays,
                          aDocInfo.itsNumArrayEntries, aDocInfo.itsNumObjects,
                          aDocInfo.itsNumObjectProperties>;
-  constexpr auto aDocAndLen = Builder::parseDocument<DocTy>(aJsonSV);
-  std::ignore = aDocAndLen;
+  // constexpr auto aDocAndLen = Builder::parseDocument<DocTy>(aJsonSV);
+  std::ignore = DocTy{}; // aDocAndLen;
 }

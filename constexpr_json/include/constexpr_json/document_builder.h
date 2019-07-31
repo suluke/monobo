@@ -269,16 +269,53 @@ struct DocumentBuilder {
       ssize_t aNumChars = 0;
       ssize_t aNumStrings = 0;
       ssize_t aNumArrays = 0;
+      const auto getEntityKindFromParsingType =
+          [](Type theType) -> Entity::KIND {
+        switch (theType) {
+        case Type::NUL:
+          return Entity::NUL;
+        case Type::BOOL:
+          return Entity::BOOL;
+        case Type::NUMBER:
+          return Entity::NUMBER;
+        case Type::STRING:
+          return Entity::STRING;
+        case Type::ARRAY:
+          return Entity::ARRAY;
+        case Type::OBJECT:
+          return Entity::OBJECT;
+        }
+        return Entity::NUL;
+      };
       for (Entity &aEntity : aResult.itsEntities) {
+        const std::string_view aEntityStr =
+            aRemaining.substr(aEntity.itsPayload);
         switch (aEntity.itsKind) {
-        case Entity::NUL:
-        case Entity::BOOL:
-        case Entity::NUMBER:
-          // these types are parsed when encountered
+        case Entity::NUL: {
+          ssize_t aNullLen = p::parseNull(aEntityStr);
+          if (aNullLen <= 0)
+            return aErrorResult;
+          aEntity.itsPayload = 0;
           break;
+        }
+        case Entity::BOOL: {
+          const auto [aBool, aBoolWidth] = p::parseBool(aEntityStr);
+          if (aBoolWidth <= 0)
+            return aErrorResult;
+          aEntity.itsPayload = aBool;
+          break;
+        }
+        case Entity::NUMBER: {
+          const auto [aNumber, aNumberWidth] = p::parseNumber(aEntityStr);
+          if (aNumberWidth <= 0)
+            return aErrorResult;
+          aResult.itsNumbers[aNumNumbers] = aNumber;
+          aEntity.itsPayload = aNumNumbers;
+          ++aNumNumbers;
+          break;
+        }
         case Entity::STRING: {
-          std::string_view aStr = p::stripQuotes(
-              p::readString(aRemaining.substr(aEntity.itsPayload)));
+          std::string_view aStr = p::stripQuotes(p::readString(aEntityStr));
           aEntity.itsPayload = aNumStrings;
           size_t aNumBytesInStr = 0;
           aResult.itsStrings[aNumStrings].itsPosition = aNumChars;
@@ -321,54 +358,16 @@ struct DocumentBuilder {
               if (!aNeedsElement && aChar == ']')
                 break;
             }
-            std::optional<Type> aTypeMaybe = p::detectElementType(aArrayJson);
-            if (!aTypeMaybe)
+            std::optional<std::pair<Type, std::string_view>> aElmMaybe =
+                p::readElement(aArrayJson);
+            if (!aElmMaybe)
               return aErrorResult;
-            switch (*aTypeMaybe) {
-            case Type::NUL: {
-              ssize_t aNullLen = p::parseNull(aArrayJson);
-              if (aNullLen <= 0)
-                return aErrorResult;
-              aArrayJson.remove_prefix(aNullLen);
-              aResult.itsEntities[aNumEntities++] = {Entity::NUL, 0};
-              break;
-            }
-            case Type::BOOL: {
-              const auto [aBool, aBoolLen] = p::parseBool(aArrayJson);
-              if (aBoolLen <= 0)
-                return aErrorResult;
-              aArrayJson.remove_prefix(aBoolLen);
-              aResult.itsEntities[aNumEntities++] = {Entity::BOOL, aBool};
-              break;
-            }
-            case Type::NUMBER: {
-              const auto [aNumber, aNumberLen] = p::parseNumber(aArrayJson);
-              if (aNumberLen <= 0)
-                return aErrorResult;
-              aArrayJson.remove_prefix(aNumberLen);
-              aResult.itsEntities[aNumEntities++] = {Entity::NUMBER,
-                                                     aNumNumbers};
-              aResult.itsNumbers[aNumNumbers++] = aNumber;
-              break;
-            }
-            case Type::STRING: {
-              const std::string_view aStr = p::readString(aArrayJson);
-              if (aStr.size() <= 0)
-                return aErrorResult;
-              aArrayJson.remove_prefix(aStr.size());
-              aResult.itsEntities[aNumEntities++] = {
-                  Entity::STRING,
-                  static_cast<intptr_t>(aRemaining.size() - aArrayJson.size() -
-                                        aStr.size())};
-              break;
-            }
-            case Type::ARRAY:
-              // TODO
-              break;
-            case Type::OBJECT:
-              // TODO
-              break;
-            }
+            std::string_view aElmStr = aElmMaybe->second;
+            aArrayJson.remove_prefix(aElmStr.size());
+            aResult.itsEntities[aNumEntities++] = {
+                getEntityKindFromParsingType(aElmMaybe->first),
+                static_cast<intptr_t>(aRemaining.size() - aArrayJson.size() -
+                                      aElmStr.size())};
             ++aNumArrayElts;
             aArrayJson.remove_prefix(p::readWhitespace(aArrayJson).size());
             {
