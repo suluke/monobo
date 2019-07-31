@@ -58,6 +58,25 @@ static std::ostream &operator<<(std::ostream &theStream,
   return theStream << theDoc.getRoot();
 }
 
+static std::ostream &operator<<(std::ostream &theStream,
+                                const Entity::KIND &theKind) {
+  switch (theKind) {
+  case Entity::NUL:
+    return theStream << "0";
+  case Entity::BOOL:
+    return theStream << "B";
+  case Entity::NUMBER:
+    return theStream << "N";
+  case Entity::STRING:
+    return theStream << "S";
+  case Entity::ARRAY:
+    return theStream << "A";
+  case Entity::OBJECT:
+    return theStream << "O";
+  }
+  return theStream;
+}
+
 template <typename DocTy> static void dump(const DocTy &theDoc) {
   std::cout << "======================================\n"
             << "#Numbers: " << DocTy::itsNumNumbers << "\nNumbers: \n";
@@ -67,11 +86,17 @@ template <typename DocTy> static void dump(const DocTy &theDoc) {
   for (const char &aChar : theDoc.itsChars)
     std::cout << aChar << "\n";
   std::cout << "#Strings: " << DocTy::itsNumStrings << "\n";
+  for (const String &aString : theDoc.itsStrings)
+    std::cout << "[" << aString.itsPosition << ": " << aString.itsSize << "]"
+              << "\n";
   std::cout << "#Arrays: " << DocTy::itsNumArrays << "\n";
   for (const Array &aArray : theDoc.itsArrays)
     std::cout << "[" << aArray.itsPosition << ": " << aArray.itsNumElements
               << "]"
               << "\n";
+  std::cout << "#Entities: " << DocTy::itsNumEntities << "\n";
+  for (const Entity &aEntity : theDoc.itsEntities)
+    std::cout << aEntity.itsKind << ":" << aEntity.itsPayload << "\n";
   std::cout << "======================================\n";
 }
 
@@ -376,7 +401,7 @@ static void static_tests() {
   CHECK_DOCPARSE("false");
   CHECK_DOCPARSE("123");
   CHECK_DOCPARSE("\"123\"");
-  CHECK_DOCPARSE("[3,2,1]");
+  CHECK_DOCPARSE("[3,2,1, \"123\"]");
 }
 
 int main() {

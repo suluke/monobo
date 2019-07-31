@@ -266,6 +266,8 @@ struct DocumentBuilder {
       }
       ssize_t aNumEntities = 1;
       ssize_t aNumNumbers = 0;
+      ssize_t aNumChars = 0;
+      ssize_t aNumStrings = 0;
       ssize_t aNumArrays = 0;
       for (Entity &aEntity : aResult.itsEntities) {
         switch (aEntity.itsKind) {
@@ -274,9 +276,29 @@ struct DocumentBuilder {
         case Entity::NUMBER:
           // these types are parsed when encountered
           break;
-        case Entity::STRING:
-          // TODO
+        case Entity::STRING: {
+          std::string_view aStr = p::stripQuotes(
+              p::readString(aRemaining.substr(aEntity.itsPayload)));
+          aEntity.itsPayload = aNumStrings;
+          size_t aNumBytesInStr = 0;
+          aResult.itsStrings[aNumStrings].itsPosition = aNumChars;
+          while (!aStr.empty()) {
+            const auto [aChar, aCharWidth] =
+                SourceEncodingTy::decodeFirst(aStr);
+            if (aCharWidth <= 0)
+              return aErrorResult;
+            const auto [aBytes, aBytesUsed] = DestEncodingTy::encode(aChar);
+            if (aBytesUsed <= 0)
+              return aErrorResult;
+            aStr.remove_prefix(aBytesUsed);
+            for (ssize_t i = 0; i < aBytesUsed; ++i)
+              aResult.itsChars[aNumChars++] = aBytes[i];
+            aNumBytesInStr += aBytesUsed;
+          }
+          aResult.itsStrings[aNumStrings].itsSize = aNumBytesInStr;
+          ++aNumStrings;
           break;
+        }
         case Entity::ARRAY: {
           std::string_view aArrayJson = aRemaining.substr(aEntity.itsPayload);
           const auto [aBracket, aBracketWidth] =
@@ -329,9 +351,17 @@ struct DocumentBuilder {
               aResult.itsNumbers[aNumNumbers++] = aNumber;
               break;
             }
-            case Type::STRING:
-              // TODO
+            case Type::STRING: {
+              const std::string_view aStr = p::readString(aArrayJson);
+              if (aStr.size() <= 0)
+                return aErrorResult;
+              aArrayJson.remove_prefix(aStr.size());
+              aResult.itsEntities[aNumEntities++] = {
+                  Entity::STRING,
+                  static_cast<intptr_t>(aRemaining.size() - aArrayJson.size() -
+                                        aStr.size())};
               break;
+            }
             case Type::ARRAY:
               // TODO
               break;
@@ -362,9 +392,6 @@ struct DocumentBuilder {
           // TODO
           break;
         }
-        // std::optional<Type> aTypeMaybe = p::detectElementType(aRemaining);
-        // Type aNestedTy = *aTypeMaybe;
-        // break;
       }
       return std::make_pair(aResult, theJsonString.size());
     }

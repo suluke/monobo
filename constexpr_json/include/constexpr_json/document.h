@@ -81,11 +81,12 @@ struct Document : public DocumentBase {
   static constexpr const ssize_t itsNumObjects = theNumObjects;
   static constexpr const ssize_t itsNumObjectProperties =
       theNumObjectProperties;
+  static constexpr const ssize_t itsNumEntities =
+      theNumArrayEntries + theNumObjectProperties + 1;
 
   std::array<double, theNumNumbers> itsNumbers = {};
   std::array<char, theNumChars> itsChars = {};
-  std::array<Entity, theNumArrayEntries + theNumObjectProperties + 1>
-      itsEntities = {};
+  std::array<Entity, itsNumEntities> itsEntities = {};
   std::array<Array, theNumArrays> itsArrays = {};
   std::array<Object, theNumObjects> itsObjects = {};
   std::array<String, theNumStrings> itsStrings = {};
