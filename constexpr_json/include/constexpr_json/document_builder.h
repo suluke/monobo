@@ -38,15 +38,15 @@ struct DocumentBuilder {
       return aDI;
     }
     constexpr DocumentInfo &operator+=(const DocumentInfo &theOther) {
-      this->itsNumArrayEntries += theOther.itsNumArrayEntries;
-      this->itsNumArrays += theOther.itsNumArrays;
-      this->itsNumBools += theOther.itsNumBools;
-      this->itsNumChars += theOther.itsNumChars;
-      this->itsNumNumbers += theOther.itsNumNumbers;
-      this->itsNumNulls += theOther.itsNumNulls;
-      this->itsNumObjectProperties += theOther.itsNumObjectProperties;
-      this->itsNumObjects += theOther.itsNumObjects;
-      this->itsNumStrings += theOther.itsNumStrings;
+      itsNumArrayEntries += theOther.itsNumArrayEntries;
+      itsNumArrays += theOther.itsNumArrays;
+      itsNumBools += theOther.itsNumBools;
+      itsNumChars += theOther.itsNumChars;
+      itsNumNumbers += theOther.itsNumNumbers;
+      itsNumNulls += theOther.itsNumNulls;
+      itsNumObjectProperties += theOther.itsNumObjectProperties;
+      itsNumObjects += theOther.itsNumObjects;
+      itsNumStrings += theOther.itsNumStrings;
       return *this;
     }
     constexpr bool operator==(const DocumentInfo &theOther) const {
@@ -60,6 +60,28 @@ struct DocumentBuilder {
              itsNumObjects == theOther.itsNumObjects &&
              itsNumStrings == theOther.itsNumStrings;
     }
+    // constexpr ssize_t size() const {
+    //  return itsNumArrayEntries + itsNumArrays + itsNumBools + itsNumChars +
+    //         itsNumNumbers + itsNumNulls + itsNumObjectProperties +
+    //         itsNumObjects + itsNumStrings;
+    //}
+    // constexpr ssize_t operator-(const DocumentInfo &theOther) const {
+    //  return size() - theOther.size();
+    //}
+    ///// NOTE: itsNumNulls and itsNumBools will always be zero.
+    /////       However, numNulls + numBools == itsNumArrayEntries +
+    /////       itsNumObjectProperties - itsNumNumbers - itsNumStrings
+    // template <typename DocTy> constexpr static DocumentInfo fromDoc() {
+    //  return {0,
+    //          0,
+    //          DocTy::itsNumNumbers,
+    //          DocTy::itsNumChars,
+    //          DocTy::itsNumStrings,
+    //          DocTy::itsNumArrays,
+    //          DocTy::itsNumArrayEntries,
+    //          DocTy::itsNumObjects,
+    //          DocTy::itsNumObjectProperties};
+    //}
   };
 
   constexpr static DocumentInfo
@@ -69,7 +91,7 @@ struct DocumentBuilder {
       Entity::KIND itsType = Entity::NUL;
       DocumentInfo itsDocInfo = {};
       constexpr void setBool(bool theBool) {
-        itsType = Entity::BOOLEAN;
+        itsType = Entity::BOOL;
         ++itsDocInfo.itsNumBools;
       }
       constexpr void setNumber(double theNum) {
@@ -135,17 +157,17 @@ struct DocumentBuilder {
 
   constexpr static NonAggregateDocument createNullDocument() {
     NonAggregateDocument aResult;
-    aResult.itsRoot = Entity{Entity::NUL, 0};
+    aResult.itsEntities[0] = Entity{Entity::NUL, 0};
     return aResult;
   }
   constexpr static NonAggregateDocument createBoolDocument(bool theValue) {
     NonAggregateDocument aResult;
-    aResult.itsRoot = Entity{Entity::BOOLEAN, theValue};
+    aResult.itsEntities[0] = Entity{Entity::BOOL, theValue};
     return aResult;
   }
   constexpr static NumberDocument createNumberDocument(double theValue) {
     NumberDocument aResult;
-    aResult.itsRoot = Entity{Entity::NUMBER, 0};
+    aResult.itsEntities[0] = Entity{Entity::NUMBER, 0};
     aResult.itsNumbers[0] = theValue;
     return aResult;
   }
@@ -218,24 +240,133 @@ struct DocumentBuilder {
             aStrDoc.itsChars[i] = aBytes[j];
         }
         aStrDoc.itsStrings[0] = String{0, DocTy::itsNumChars};
-        aStrDoc.itsRoot = Entity{Entity::STRING, 0};
+        aStrDoc.itsEntities[0] = Entity{Entity::STRING, 0};
         return std::make_pair(aStrDoc,
                               theJsonString.size() - aRemaining.size());
       }
       return aErrorResult;
     } else {
+      // Idea: Detect the types of the direct child elements of the
+      // root-array/object and store them in the result DocTy. However, only
+      // store their position inside the JSON string as the payload. Then
+      // re-iterate the entities array from left to right doing the same until
+      // the whole document is built up.
+      DocTy aResult;
+      aResult.itsEntities[0].itsPayload =
+          theJsonString.size() - aRemaining.size();
       switch (*aType) {
-      case Type::ARRAY: {
-        const auto [aBracket, aBracketWidth] = SourceEncodingTy::decodeFirst(aRemaining);
-        if (aBracket != '[')
-          return aErrorResult;
-        aRemaining.remove_prefix(aBracketWidth);
-        // TODO
-      }
+      case Type::ARRAY:
+        aResult.itsEntities[0].itsKind = Entity::ARRAY;
+        break;
       case Type::OBJECT:
+        aResult.itsEntities[0].itsKind = Entity::OBJECT;
+        break;
       default:
         return aErrorResult;
       }
+      ssize_t aNumEntities = 1;
+      ssize_t aNumNumbers = 0;
+      ssize_t aNumArrays = 0;
+      for (Entity &aEntity : aResult.itsEntities) {
+        switch (aEntity.itsKind) {
+        case Entity::NUL:
+        case Entity::BOOL:
+        case Entity::NUMBER:
+          // these types are parsed when encountered
+          break;
+        case Entity::STRING:
+          // TODO
+          break;
+        case Entity::ARRAY: {
+          std::string_view aArrayJson = aRemaining.substr(aEntity.itsPayload);
+          const auto [aBracket, aBracketWidth] =
+              SourceEncodingTy::decodeFirst(aArrayJson);
+          if (aBracket != '[')
+            throw std::logic_error{"Expected array position to start on '['"};
+          aArrayJson.remove_prefix(aBracketWidth);
+          bool aNeedsElement = false;
+          ssize_t aNumArrayElts = 0;
+          aEntity.itsPayload = aNumArrays++;
+          aResult.itsArrays[aEntity.itsPayload].itsPosition = aNumEntities;
+          for (;;) {
+            {
+              aArrayJson.remove_prefix(p::readWhitespace(aArrayJson).size());
+              const auto [aChar, aCharWidth] =
+                  SourceEncodingTy::decodeFirst(aArrayJson);
+              if (aCharWidth <= 0)
+                throw std::logic_error{
+                    "Failed to decode char where one was expected"};
+              if (!aNeedsElement && aChar == ']')
+                break;
+            }
+            std::optional<Type> aTypeMaybe = p::detectElementType(aArrayJson);
+            if (!aTypeMaybe)
+              return aErrorResult;
+            switch (*aTypeMaybe) {
+            case Type::NUL: {
+              ssize_t aNullLen = p::parseNull(aArrayJson);
+              if (aNullLen <= 0)
+                return aErrorResult;
+              aArrayJson.remove_prefix(aNullLen);
+              aResult.itsEntities[aNumEntities++] = {Entity::NUL, 0};
+              break;
+            }
+            case Type::BOOL: {
+              const auto [aBool, aBoolLen] = p::parseBool(aArrayJson);
+              if (aBoolLen <= 0)
+                return aErrorResult;
+              aArrayJson.remove_prefix(aBoolLen);
+              aResult.itsEntities[aNumEntities++] = {Entity::BOOL, aBool};
+              break;
+            }
+            case Type::NUMBER: {
+              const auto [aNumber, aNumberLen] = p::parseNumber(aArrayJson);
+              if (aNumberLen <= 0)
+                return aErrorResult;
+              aArrayJson.remove_prefix(aNumberLen);
+              aResult.itsEntities[aNumEntities++] = {Entity::NUMBER,
+                                                     aNumNumbers};
+              aResult.itsNumbers[aNumNumbers++] = aNumber;
+              break;
+            }
+            case Type::STRING:
+              // TODO
+              break;
+            case Type::ARRAY:
+              // TODO
+              break;
+            case Type::OBJECT:
+              // TODO
+              break;
+            }
+            ++aNumArrayElts;
+            aArrayJson.remove_prefix(p::readWhitespace(aArrayJson).size());
+            {
+              const auto [aChar, aCharWidth] =
+                  SourceEncodingTy::decodeFirst(aArrayJson);
+              if (aCharWidth <= 0)
+                throw std::logic_error{
+                    "Failed to decode char where one was expected"};
+              if (aChar == ',') {
+                aArrayJson.remove_prefix(aCharWidth);
+                aNeedsElement = true;
+              } else {
+                aNeedsElement = false;
+              }
+            }
+          }
+          aResult.itsArrays[aEntity.itsPayload].itsNumElements = aNumArrayElts;
+          break;
+        }
+        case Entity::OBJECT:
+          // TODO
+          break;
+        }
+        // std::optional<Type> aTypeMaybe = p::detectElementType(aRemaining);
+        // Type aNestedTy = *aTypeMaybe;
+        // break;
+      }
+      return std::make_pair(aResult, theJsonString.size());
     }
     return aErrorResult;
   }

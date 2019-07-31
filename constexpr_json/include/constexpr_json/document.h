@@ -4,10 +4,11 @@
 #include <array>
 #include <cstddef>
 #include <string_view>
+#include <vector>
 namespace cjson {
 
 struct Entity {
-  enum KIND { NUL = 0, ARRAY, BOOLEAN, NUMBER, OBJECT, STRING } itsKind = NUL;
+  enum KIND { NUL = 0, ARRAY, BOOL, NUMBER, OBJECT, STRING } itsKind = NUL;
   std::intptr_t itsPayload = 0;
 };
 struct Array {
@@ -38,6 +39,7 @@ public:
   bool toBool() const { return itsEntity->itsPayload; }
   double toNumber() const;
   std::string_view toString() const;
+  std::vector<EntityRef> toArray() const;
 
 private:
   const DocumentBase *itsDoc;
@@ -48,6 +50,9 @@ struct DocumentBase {
   virtual EntityRef getRoot() const = 0;
   virtual double getNumber(intptr_t theIdx) const = 0;
   virtual std::string_view getString(intptr_t theIdx) const = 0;
+  virtual const Entity *array_begin(intptr_t theIdx) const = 0;
+  virtual const Entity *array_end(intptr_t theIdx) const = 0;
+  virtual size_t array_size(intptr_t theIdx) const = 0;
 };
 
 template <ssize_t theNumNumbers, ssize_t theNumChars, ssize_t theNumStrings,
@@ -79,20 +84,28 @@ struct Document : public DocumentBase {
 
   std::array<double, theNumNumbers> itsNumbers = {};
   std::array<char, theNumChars> itsChars = {};
-  std::array<Entity, theNumArrayEntries + theNumObjectProperties> itsEntities =
-      {};
+  std::array<Entity, theNumArrayEntries + theNumObjectProperties + 1>
+      itsEntities = {};
   std::array<Array, theNumArrays> itsArrays = {};
   std::array<Object, theNumObjects> itsObjects = {};
   std::array<String, theNumStrings> itsStrings = {};
-  Entity itsRoot{Entity::NUL, 0};
 
-  EntityRef getRoot() const override { return {*this, itsRoot}; }
+  EntityRef getRoot() const override { return {*this, itsEntities[0]}; }
   double getNumber(intptr_t theIdx) const override {
     return itsNumbers[theIdx];
   }
   std::string_view getString(intptr_t theIdx) const override {
     const String &aStr = itsStrings[theIdx];
     return std::string_view{itsChars.data() + aStr.itsPosition, aStr.itsSize};
+  }
+  const Entity *array_begin(intptr_t theIdx) const override {
+    return &itsEntities[itsArrays[theIdx].itsPosition];
+  }
+  const Entity *array_end(intptr_t theIdx) const override {
+    return array_begin(theIdx) + array_size(theIdx);
+  }
+  size_t array_size(intptr_t theIdx) const override {
+    return itsArrays[theIdx].itsNumElements;
   }
 };
 
@@ -101,6 +114,17 @@ double EntityRef::toNumber() const {
 }
 std::string_view EntityRef::toString() const {
   return itsDoc->getString(itsEntity->itsPayload);
+}
+std::vector<EntityRef> EntityRef::toArray() const {
+  intptr_t aIdx = itsEntity->itsPayload;
+  std::vector<EntityRef> aArray;
+  aArray.reserve(itsDoc->array_size(aIdx));
+  for (const Entity *aIter = itsDoc->array_begin(aIdx),
+                    *aEnd = itsDoc->array_end(aIdx);
+       aIter != aEnd; ++aIter) {
+    aArray.emplace_back(*itsDoc, *aIter);
+  }
+  return aArray;
 }
 
 } // namespace cjson

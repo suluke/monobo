@@ -24,14 +24,27 @@ operator<<(std::ostream &theStream,
 static std::ostream &operator<<(std::ostream &theStream,
                                 const EntityRef &theEntity) {
   switch (theEntity.getType()) {
-  case Entity::BOOLEAN:
+  case Entity::BOOL:
     return theStream << (theEntity.toBool() ? "true" : "false");
   case Entity::NUMBER:
     return theStream << theEntity.toNumber();
   case Entity::NUL:
     return theStream << "null";
-  case Entity::ARRAY:
+  case Entity::ARRAY: {
+    theStream << "[";
+    const auto aArray = theEntity.toArray();
+    for (auto aIter = aArray.begin(), aEnd = aArray.end(); aIter != aEnd;
+         ++aIter) {
+      const auto &aEntity = *aIter;
+      theStream << aEntity;
+      auto aNext = aIter;
+      ++aNext;
+      if (aNext != aEnd)
+        theStream << ", ";
+    }
+    theStream << "]";
     return theStream;
+  }
   case Entity::OBJECT:
     return theStream;
   case Entity::STRING:
@@ -54,6 +67,11 @@ template <typename DocTy> static void dump(const DocTy &theDoc) {
   for (const char &aChar : theDoc.itsChars)
     std::cout << aChar << "\n";
   std::cout << "#Strings: " << DocTy::itsNumStrings << "\n";
+  std::cout << "#Arrays: " << DocTy::itsNumArrays << "\n";
+  for (const Array &aArray : theDoc.itsArrays)
+    std::cout << "[" << aArray.itsPosition << ": " << aArray.itsNumElements
+              << "]"
+              << "\n";
   std::cout << "======================================\n";
 }
 
@@ -65,7 +83,7 @@ struct JsonElement {
   size_t itsArrayLen = 0;
   size_t itsNumProperties = 0;
   constexpr void setBool(bool theBool) {
-    itsType = Entity::BOOLEAN;
+    itsType = Entity::BOOL;
     itsBoolVal = theBool;
   }
   constexpr void setNumber(double theNum) {
@@ -96,7 +114,7 @@ struct JsonElement {
     switch (itsType) {
     case Entity::NUL:
       return true;
-    case Entity::BOOLEAN:
+    case Entity::BOOL:
       return theOther.itsBoolVal == itsBoolVal;
     case Entity::NUMBER:
       return theOther.itsNumberVal == itsNumberVal;
@@ -206,7 +224,9 @@ template <ssize_t L> struct CompareCharSeqs {
     constexpr const Builder::DocumentInfo aDI = Builder::computeDocInfo(JSON); \
     constexpr const Builder::DocumentInfo aExpected = {                        \
         NULLS, BOOLS, DOUBLES, CHARS, STRS, ARRAYS, ENTRIES, OBJECTS, PROPS};  \
+    std::cout.setstate(std::ios_base::badbit); /* Disables cout */             \
     std::cout << aDI << "vs\n" << aExpected << "\n";                           \
+    std::cout.clear(); /* Re-enable cout */                                    \
     static_assert(aDI == aExpected);                                           \
   } while (false)
 
@@ -346,7 +366,7 @@ static void static_tests() {
         Builder::parseDocument<DocTy>(aJsonStr);                               \
     constexpr ssize_t aParsedLen = aDocAndLen.second;                          \
     static_assert(aDocAndLen.first);                                           \
-    static_assert(aParsedLen == aJsonStr.size());                              \
+    static_assert(aParsedLen == static_cast<ssize_t>(aJsonStr.size()));        \
     constexpr DocTy aDoc{*aDocAndLen.first};                                   \
     /*dump(aDoc);*/                                                            \
     std::cout << aDoc << "\n";                                                 \
@@ -356,6 +376,7 @@ static void static_tests() {
   CHECK_DOCPARSE("false");
   CHECK_DOCPARSE("123");
   CHECK_DOCPARSE("\"123\"");
+  CHECK_DOCPARSE("[3,2,1]");
 }
 
 int main() {
@@ -364,7 +385,7 @@ int main() {
 #include "json_schema.h"
   using Builder = DocumentBuilder<Utf8, Utf8>;
   constexpr Builder::DocumentInfo aDocInfo = Builder::computeDocInfo(aJsonSV);
-  std::cout << aDocInfo;
+  // std::cout << aDocInfo;
   using DocTy = Document<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,
                          aDocInfo.itsNumStrings, aDocInfo.itsNumArrays,
                          aDocInfo.itsNumArrayEntries, aDocInfo.itsNumObjects,
