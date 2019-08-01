@@ -149,6 +149,54 @@ public:
   }
   constexpr static std::string_view readObject(const std::string_view theJson) {
     std::string_view aErrorResult{};
+    const auto [aBrace, aBraceWidth] = decodeFirst(theJson);
+    if (aBraceWidth <= 0 || aBrace != '{')
+      return aErrorResult;
+    std::string_view aRemaining = theJson.substr(aBraceWidth);
+    bool aNeedsElement = false;
+    for (;;) {
+      aRemaining.remove_prefix(readWhitespace(aRemaining).size());
+      {
+        const auto [aChar, aCharWidth] = decodeFirst(aRemaining);
+        if (aCharWidth <= 0)
+          return aErrorResult;
+        if (!aNeedsElement && aChar == '}') {
+          aRemaining.remove_prefix(aCharWidth);
+          return theJson.substr(0, theJson.size() - aRemaining.size());
+        }
+      }
+      const std::string_view aKey = readString(aRemaining);
+      if (aKey.size() <= 0)
+        return aErrorResult;
+      aRemaining.remove_prefix(aKey.size());
+      aRemaining.remove_prefix(readWhitespace(aRemaining).size());
+      {
+        const auto [aColon, aColonWidth] = decodeFirst(aRemaining);
+        if (aColonWidth <= 0)
+          return aErrorResult;
+        if (aColon != ':')
+          return aErrorResult;
+        aRemaining.remove_prefix(aColonWidth);
+        aRemaining.remove_prefix(readWhitespace(aRemaining).size());
+      }
+      const std::optional<std::pair<Type, std::string_view>> aElmMaybe =
+          readElement(aRemaining);
+      if (!aElmMaybe)
+        return aErrorResult;
+      aRemaining.remove_prefix(aElmMaybe->second.size());
+      aRemaining.remove_prefix(readWhitespace(aRemaining).size());
+      {
+        const auto [aChar, aCharWidth] = decodeFirst(aRemaining);
+        if (aCharWidth <= 0)
+          return aErrorResult;
+        if (aChar == ',') {
+          aRemaining.remove_prefix(aCharWidth);
+          aNeedsElement = true;
+        } else {
+          aNeedsElement = false;
+        }
+      }
+    }
     return aErrorResult;
   }
 

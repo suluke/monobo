@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cstddef>
+#include <map>
 #include <string_view>
 #include <vector>
 namespace cjson {
@@ -12,15 +13,19 @@ struct Entity {
   std::intptr_t itsPayload = 0;
 };
 struct Array {
-  intptr_t itsPosition;
+  intptr_t itsPosition; // index into itsEntities
   size_t itsNumElements;
 };
 struct Object {
-  intptr_t itsPosition;
+  intptr_t itsKeysPos;   // index into itsObjectProps
+  intptr_t itsValuesPos; // index into itsEntities
   size_t itsNumProperties;
 };
+struct Property {
+  intptr_t itsKeyPos; // index into itsStrings
+};
 struct String {
-  intptr_t itsPosition;
+  intptr_t itsPosition; // index into itsChars
   size_t itsSize;
 };
 
@@ -40,6 +45,7 @@ public:
   double toNumber() const;
   std::string_view toString() const;
   std::vector<EntityRef> toArray() const;
+  std::map<std::string_view, EntityRef> toObject() const;
 
 private:
   const DocumentBase *itsDoc;
@@ -53,6 +59,9 @@ struct DocumentBase {
   virtual const Entity *array_begin(intptr_t theIdx) const = 0;
   virtual const Entity *array_end(intptr_t theIdx) const = 0;
   virtual size_t array_size(intptr_t theIdx) const = 0;
+  virtual size_t getNumProperties(intptr_t theObjIdx) const = 0;
+  virtual std::pair<std::string_view, EntityRef>
+  getProperty(intptr_t theObjIdx, intptr_t thePropIdx) const = 0;
 };
 
 template <ssize_t theNumNumbers, ssize_t theNumChars, ssize_t theNumStrings,
@@ -89,6 +98,7 @@ struct Document : public DocumentBase {
   std::array<Entity, itsNumEntities> itsEntities = {};
   std::array<Array, theNumArrays> itsArrays = {};
   std::array<Object, theNumObjects> itsObjects = {};
+  std::array<Property, itsNumObjectProperties> itsObjectProps = {};
   std::array<String, theNumStrings> itsStrings = {};
 
   EntityRef getRoot() const override { return {*this, itsEntities[0]}; }
@@ -108,6 +118,17 @@ struct Document : public DocumentBase {
   size_t array_size(intptr_t theIdx) const override {
     return itsArrays[theIdx].itsNumElements;
   }
+  size_t getNumProperties(intptr_t theObjIdx) const override {
+    return itsObjects[theObjIdx].itsNumProperties;
+  }
+  std::pair<std::string_view, EntityRef>
+  getProperty(intptr_t theObjIdx, intptr_t thePropIdx) const override {
+    const Object &aObject = itsObjects[theObjIdx];
+    std::string_view aKey =
+        getString(itsObjectProps[aObject.itsKeysPos + thePropIdx].itsKeyPos);
+    EntityRef aValue{*this, itsEntities[aObject.itsValuesPos + thePropIdx]};
+    return std::make_pair(aKey, aValue);
+  }
 };
 
 double EntityRef::toNumber() const {
@@ -126,6 +147,15 @@ std::vector<EntityRef> EntityRef::toArray() const {
     aArray.emplace_back(*itsDoc, *aIter);
   }
   return aArray;
+}
+std::map<std::string_view, EntityRef> EntityRef::toObject() const {
+  intptr_t aObjectIdx = itsEntity->itsPayload;
+  std::map<std::string_view, EntityRef> aObject;
+  for (size_t aPropIdx = 0u; aPropIdx < itsDoc->getNumProperties(aObjectIdx);
+       ++aPropIdx)
+    aObject.emplace(itsDoc->getProperty(aObjectIdx, aPropIdx));
+  std::ignore = aObject;
+  return aObject;
 }
 
 } // namespace cjson

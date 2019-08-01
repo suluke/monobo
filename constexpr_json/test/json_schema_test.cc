@@ -45,8 +45,21 @@ static std::ostream &operator<<(std::ostream &theStream,
     theStream << "]";
     return theStream;
   }
-  case Entity::OBJECT:
+  case Entity::OBJECT: {
+    theStream << "{";
+    const auto aObject = theEntity.toObject();
+    for (auto aIter = aObject.begin(), aEnd = aObject.end(); aIter != aEnd;
+         ++aIter) {
+      const auto &[aKey, aEntity] = *aIter;
+      theStream << "\"" << aKey << "\": " << aEntity;
+      auto aNext = aIter;
+      ++aNext;
+      if (aNext != aEnd)
+        theStream << ", ";
+    }
+    theStream << "}";
     return theStream;
+  }
   case Entity::STRING:
     return theStream << "\"" << theEntity.toString() << "\"";
   }
@@ -402,6 +415,7 @@ static void static_tests() {
   CHECK_DOCPARSE("123");
   CHECK_DOCPARSE("\"123\"");
   CHECK_DOCPARSE("[3,2,1, \"123\",[null,true,false]]");
+  CHECK_DOCPARSE("{\"Test\": false,\"Toast\":true,\"Tasty\":[null]}");
 }
 
 int main() {
@@ -410,10 +424,12 @@ int main() {
 #include "json_schema.h"
   using Builder = DocumentBuilder<Utf8, Utf8>;
   constexpr Builder::DocumentInfo aDocInfo = Builder::computeDocInfo(aJsonSV);
-  using DocTy = Document<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,
-                         aDocInfo.itsNumStrings, aDocInfo.itsNumArrays,
-                         aDocInfo.itsNumArrayEntries, aDocInfo.itsNumObjects,
-                         aDocInfo.itsNumObjectProperties>;
-  // constexpr auto aDocAndLen = Builder::parseDocument<DocTy>(aJsonSV);
-  std::ignore = DocTy{}; // aDocAndLen;
+  std::ignore = aDocInfo;
+  //using DocTy = Document<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,
+  //                       aDocInfo.itsNumStrings, aDocInfo.itsNumArrays,
+  //                       aDocInfo.itsNumArrayEntries, aDocInfo.itsNumObjects,
+  //                       aDocInfo.itsNumObjectProperties>;
+  //constexpr auto aDocAndLen = Builder::parseDocument<DocTy>(aJsonSV);
+  //static_assert(aDocAndLen);
+  //std::cout << aDocAndLen->first;
 }

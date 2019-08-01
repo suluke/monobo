@@ -60,28 +60,6 @@ struct DocumentBuilder {
              itsNumObjects == theOther.itsNumObjects &&
              itsNumStrings == theOther.itsNumStrings;
     }
-    // constexpr ssize_t size() const {
-    //  return itsNumArrayEntries + itsNumArrays + itsNumBools + itsNumChars +
-    //         itsNumNumbers + itsNumNulls + itsNumObjectProperties +
-    //         itsNumObjects + itsNumStrings;
-    //}
-    // constexpr ssize_t operator-(const DocumentInfo &theOther) const {
-    //  return size() - theOther.size();
-    //}
-    ///// NOTE: itsNumNulls and itsNumBools will always be zero.
-    /////       However, numNulls + numBools == itsNumArrayEntries +
-    /////       itsNumObjectProperties - itsNumNumbers - itsNumStrings
-    // template <typename DocTy> constexpr static DocumentInfo fromDoc() {
-    //  return {0,
-    //          0,
-    //          DocTy::itsNumNumbers,
-    //          DocTy::itsNumChars,
-    //          DocTy::itsNumStrings,
-    //          DocTy::itsNumArrays,
-    //          DocTy::itsNumArrayEntries,
-    //          DocTy::itsNumObjects,
-    //          DocTy::itsNumObjectProperties};
-    //}
   };
 
   constexpr static DocumentInfo
@@ -137,7 +115,24 @@ struct DocumentBuilder {
       constexpr void addObjectProperty(const std::string_view theKey,
                                        const InfoElement &theValue) {
         ++itsDocInfo.itsNumObjectProperties;
-        itsDocInfo.itsNumChars += theKey.size();
+        // Count the required number of bytes in the output encoding
+        size_t aNumChars = 0;
+        std::string_view aRemaining = theKey;
+        while (!aRemaining.empty()) {
+          const auto [aChar, aCharWidth] =
+              SourceEncodingTy::decodeFirst(aRemaining);
+          if (aChar == '\\') {
+            const auto [aCodepoint, aWidth] =
+                parsing<SourceEncodingTy>::parseEscape(aRemaining);
+            aRemaining.remove_prefix(aWidth);
+            aNumChars += DestEncodingTy::encode(aCodepoint).second;
+          } else {
+            aRemaining.remove_prefix(aCharWidth);
+            aNumChars += DestEncodingTy::encode(aChar).second;
+          }
+        }
+        itsDocInfo.itsNumChars += aNumChars;
+        ++itsDocInfo.itsNumStrings;
         itsDocInfo += theValue.itsDocInfo;
       }
       constexpr static InfoElement null() { return InfoElement{}; }
@@ -269,6 +264,8 @@ struct DocumentBuilder {
       ssize_t aNumChars = 0;
       ssize_t aNumStrings = 0;
       ssize_t aNumArrays = 0;
+      ssize_t aNumObjects = 0;
+      ssize_t aNumObjectProps = 0;
       const auto getEntityKindFromParsingType =
           [](Type theType) -> Entity::KIND {
         switch (theType) {
@@ -336,60 +333,120 @@ struct DocumentBuilder {
           ++aNumStrings;
           break;
         }
-        case Entity::ARRAY: {
-          std::string_view aArrayJson = aRemaining.substr(aEntity.itsPayload);
+        case Entity::ARRAY:
+          [[fallthrough]];
+        case Entity::OBJECT: {
+          std::string_view aAggregateJson =
+              aRemaining.substr(aEntity.itsPayload);
           const auto [aBracket, aBracketWidth] =
-              SourceEncodingTy::decodeFirst(aArrayJson);
-          if (aBracket != '[')
-            throw std::logic_error{"Expected array position to start on '['"};
-          aArrayJson.remove_prefix(aBracketWidth);
+              SourceEncodingTy::decodeFirst(aAggregateJson);
+          using CharT = typename SourceEncodingTy::CodePointTy;
+          const bool isObject = aEntity.itsKind == Entity::OBJECT;
+          const CharT aStartChar = isObject ? '{' : '[';
+          const CharT aStopChar = isObject ? '}' : ']';
+          if (aBracket != aStartChar)
+            throw std::logic_error{
+                "Expected aggregate position to start on '['/'{'"};
+          aAggregateJson.remove_prefix(aBracketWidth);
           bool aNeedsElement = false;
-          ssize_t aNumArrayElts = 0;
-          aEntity.itsPayload = aNumArrays++;
-          aResult.itsArrays[aEntity.itsPayload].itsPosition = aNumEntities;
+          ssize_t aNumChildren = 0;
+          if (isObject) {
+            aEntity.itsPayload = aNumObjects++;
+            aResult.itsObjects[aEntity.itsPayload].itsKeysPos = aNumObjectProps;
+            aResult.itsObjects[aEntity.itsPayload].itsValuesPos = aNumEntities;
+          } else {
+            aEntity.itsPayload = aNumArrays++;
+            aResult.itsArrays[aEntity.itsPayload].itsPosition = aNumEntities;
+          }
           for (;;) {
             {
-              aArrayJson.remove_prefix(p::readWhitespace(aArrayJson).size());
+              aAggregateJson.remove_prefix(
+                  p::readWhitespace(aAggregateJson).size());
               const auto [aChar, aCharWidth] =
-                  SourceEncodingTy::decodeFirst(aArrayJson);
+                  SourceEncodingTy::decodeFirst(aAggregateJson);
               if (aCharWidth <= 0)
                 throw std::logic_error{
                     "Failed to decode char where one was expected"};
-              if (!aNeedsElement && aChar == ']')
+              if (!aNeedsElement && aChar == aStopChar)
                 break;
             }
+            if (isObject) {
+              std::string_view aKeyStr = p::readString(aAggregateJson);
+              if (aKeyStr.size() <= 0)
+                return aErrorResult;
+              aAggregateJson.remove_prefix(aKeyStr.size());
+              aAggregateJson.remove_prefix(
+                  p::readWhitespace(aAggregateJson).size());
+              const auto [aColon, aColonWidth] =
+                  SourceEncodingTy::decodeFirst(aAggregateJson);
+              if (aColonWidth <= 0)
+                return aErrorResult;
+              if (aColon != ':')
+                return aErrorResult;
+              aAggregateJson.remove_prefix(aColonWidth);
+              aAggregateJson.remove_prefix(
+                  p::readWhitespace(aAggregateJson).size());
+              // Save key into strings
+              // TODO this is mostly duplicated code
+              aKeyStr = p::stripQuotes(aKeyStr);
+              aResult.itsObjectProps[aNumObjectProps].itsKeyPos = aNumStrings;
+              size_t aNumBytesInStr = 0;
+              aResult.itsStrings[aNumStrings].itsPosition = aNumChars;
+              while (!aKeyStr.empty()) {
+                const auto [aChar, aCharWidth] =
+                    SourceEncodingTy::decodeFirst(aKeyStr);
+                if (aCharWidth <= 0)
+                  return aErrorResult;
+                const auto [aBytes, aBytesUsed] = DestEncodingTy::encode(aChar);
+                if (aBytesUsed <= 0)
+                  return aErrorResult;
+                aKeyStr.remove_prefix(aBytesUsed);
+                for (ssize_t i = 0; i < aBytesUsed; ++i)
+                  aResult.itsChars[aNumChars++] = aBytes[i];
+                aNumBytesInStr += aBytesUsed;
+              }
+              aResult.itsStrings[aNumStrings].itsSize = aNumBytesInStr;
+              ++aNumStrings;
+              ++aNumObjectProps;
+            }
             std::optional<std::pair<Type, std::string_view>> aElmMaybe =
-                p::readElement(aArrayJson);
+                p::readElement(aAggregateJson);
             if (!aElmMaybe)
               return aErrorResult;
             std::string_view aElmStr = aElmMaybe->second;
-            aArrayJson.remove_prefix(aElmStr.size());
-            aResult.itsEntities[aNumEntities++] = {
+            aAggregateJson.remove_prefix(aElmStr.size());
+            aResult.itsEntities[aNumEntities] = {
                 getEntityKindFromParsingType(aElmMaybe->first),
-                static_cast<intptr_t>(aRemaining.size() - aArrayJson.size() -
-                                      aElmStr.size())};
-            ++aNumArrayElts;
-            aArrayJson.remove_prefix(p::readWhitespace(aArrayJson).size());
+                static_cast<intptr_t>(aRemaining.size() -
+                                      aAggregateJson.size() - aElmStr.size())};
+            ++aNumChildren;
+            ++aNumEntities;
+            aAggregateJson.remove_prefix(
+                p::readWhitespace(aAggregateJson).size());
             {
               const auto [aChar, aCharWidth] =
-                  SourceEncodingTy::decodeFirst(aArrayJson);
+                  SourceEncodingTy::decodeFirst(aAggregateJson);
               if (aCharWidth <= 0)
                 throw std::logic_error{
                     "Failed to decode char where one was expected"};
               if (aChar == ',') {
-                aArrayJson.remove_prefix(aCharWidth);
+                aAggregateJson.remove_prefix(aCharWidth);
                 aNeedsElement = true;
               } else {
                 aNeedsElement = false;
               }
             }
           }
-          aResult.itsArrays[aEntity.itsPayload].itsNumElements = aNumArrayElts;
+          if (isObject) {
+            aResult.itsObjects[aEntity.itsPayload].itsNumProperties =
+                aNumChildren;
+          } else {
+            aResult.itsArrays[aEntity.itsPayload].itsNumElements = aNumChildren;
+          }
           break;
         }
-        case Entity::OBJECT:
-          // TODO
-          break;
+        default:
+          return aErrorResult;
         }
       }
       return std::make_pair(aResult, theJsonString.size());
