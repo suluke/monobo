@@ -247,8 +247,7 @@ struct DocumentBuilder {
       // re-iterate the entities array from left to right doing the same until
       // the whole document is built up.
       DocTy aResult;
-      aResult.itsEntities[0].itsPayload =
-          theJsonString.size() - aRemaining.size();
+      aResult.itsEntities[0].itsPayload = 0;
       switch (*aType) {
       case Type::ARRAY:
         aResult.itsEntities[0].itsKind = Entity::ARRAY;
@@ -336,8 +335,7 @@ struct DocumentBuilder {
         case Entity::ARRAY:
           [[fallthrough]];
         case Entity::OBJECT: {
-          std::string_view aAggregateJson =
-              aRemaining.substr(aEntity.itsPayload);
+          std::string_view aAggregateJson = aEntityStr;
           const auto [aBracket, aBracketWidth] =
               SourceEncodingTy::decodeFirst(aAggregateJson);
           using CharT = typename SourceEncodingTy::CodePointTy;
