@@ -7,6 +7,7 @@
 #include <string_view>
 #include <vector>
 namespace cjson {
+using ssize_t = std::make_signed_t<size_t>;
 
 struct Entity {
   enum KIND { NUL = 0, ARRAY, BOOL, NUMBER, OBJECT, STRING } itsKind = NUL;

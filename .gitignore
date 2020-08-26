@@ -2,5 +2,6 @@
 .idea/
 .project
 .settings/
+.vscode/
 build/
 cmake-build-*/
