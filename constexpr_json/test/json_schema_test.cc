@@ -8,7 +8,7 @@ using namespace cjson;
 
 static std::ostream &
 operator<<(std::ostream &theStream,
-           const DocumentBuilder<Utf8, Utf8>::DocumentInfo &theDocInfo) {
+           const DocumentInfo &theDocInfo) {
   return theStream << "Nulls: " << theDocInfo.itsNumNulls << "\n"
                    << "Booleans: " << theDocInfo.itsNumBools << "\n"
                    << "Numbers: " << theDocInfo.itsNumNumbers << "\n"
@@ -259,8 +259,8 @@ template <ssize_t L> struct CompareCharSeqs {
                      ENTRIES, OBJECTS, PROPS)                                  \
   do {                                                                         \
     using Builder = DocumentBuilder<Utf8, Utf8>;                               \
-    constexpr const Builder::DocumentInfo aDI = Builder::computeDocInfo(JSON); \
-    constexpr const Builder::DocumentInfo aExpected = {                        \
+    constexpr const DocumentInfo aDI = Builder::computeDocInfo(JSON); \
+    constexpr const DocumentInfo aExpected = {                        \
         NULLS, BOOLS, DOUBLES, CHARS, STRS, ARRAYS, ENTRIES, OBJECTS, PROPS};  \
     std::cout.setstate(std::ios_base::badbit); /* Disables cout */             \
     std::cout << aDI << "vs\n" << aExpected << "\n";                           \
@@ -393,7 +393,7 @@ static void static_tests() {
   do {                                                                         \
     constexpr std::string_view aJsonStr{JSON};                                 \
     using Builder = DocumentBuilder<Utf8, Utf8>;                               \
-    constexpr Builder::DocumentInfo aDocInfo =                                 \
+    constexpr DocumentInfo aDocInfo =                                 \
         Builder::computeDocInfo(aJsonStr);                                     \
     using DocTy =                                                              \
         Document<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,                 \
@@ -424,7 +424,7 @@ int main() {
 #define USE_JSON_STRING(theJson) constexpr std::string_view aJsonSV{theJson};
 #include "json_schema.h"
   using Builder = DocumentBuilder<Utf8, Utf8>;
-  constexpr Builder::DocumentInfo aDocInfo = Builder::computeDocInfo(aJsonSV);
+  constexpr DocumentInfo aDocInfo = Builder::computeDocInfo(aJsonSV);
   using DocTy = Document<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,
                          aDocInfo.itsNumStrings, aDocInfo.itsNumArrays,
                          aDocInfo.itsNumArrayEntries, aDocInfo.itsNumObjects,

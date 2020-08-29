@@ -6,6 +6,8 @@
 #include <tuple>
 
 namespace cjson {
+using ssize_t = std::make_signed_t<size_t>;
+
 template <typename EncodingTy> struct parsing {
 private:
   using CharT = typename EncodingTy::CodePointTy;
@@ -440,6 +442,10 @@ public:
     return std::make_pair(aChar, aCharWidth);
   }
 
+  /**
+   * @return .first is the escaped code point, .second is the length of the
+   * escape sequence starting from the initial '\' or -1 if parsing failed.
+   */
   constexpr static std::pair<CharT, ssize_t>
   parseEscape(const std::string_view theString) {
     constexpr const std::pair<CharT, ssize_t> aErrorResult =
