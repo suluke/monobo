@@ -74,10 +74,10 @@ public:
       return aErrorResult;
     switch (*aTypeMaybe) {
     case Type::NUL: {
-      const ssize_t aNulLen = parseNull(aTrimmedJson);
-      if (aNulLen <= 0)
+      const std::string_view aNull = readNull(aTrimmedJson);
+      if (aNull.size() == 0)
         return aErrorResult;
-      return std::make_pair(Type::NUL, aTrimmedJson.substr(0, aNulLen));
+      return std::make_pair(Type::NUL, aNull);
     }
     case Type::BOOL: {
       const ssize_t aBoolLen = parseBool(aTrimmedJson).second;
@@ -212,214 +212,26 @@ public:
     return theStr;
   }
 
-  template <typename ElementTy>
-  constexpr static std::pair<ElementTy, ssize_t>
-  parseElement(const std::string_view theString) {
-    constexpr const std::pair<ElementTy, ssize_t> aErrorResult =
-        std::make_pair(ElementTy::null(), -1);
-    // Step 1: Consume whitespace
-    const std::string_view aPreWS = readWhitespace(theString);
-    std::string_view aRemaining = theString.substr(aPreWS.size());
-    ElementTy aElement;
-    // Step 2: Detect type of element
-    const std::optional<Type> aTypeMaybe = detectElementType(aRemaining);
-    if (!aTypeMaybe)
-      return aErrorResult;
-    Type aElmTy = *aTypeMaybe;
-    // Step 3: Parse element
-    switch (aElmTy) {
-    case Type::NUL: {
-      const ssize_t aNullLen = parseNull(aRemaining);
-      if (aNullLen <= 0)
-        return aErrorResult;
-      aElement.setNull();
-      aRemaining.remove_prefix(aNullLen);
-      break;
-    }
-    case Type::BOOL: {
-      const auto [aBool, aBoolLen] = parseBool(aRemaining);
-      if (aBoolLen <= 0)
-        return aErrorResult;
-      aElement.setBool(aBool);
-      aRemaining.remove_prefix(aBoolLen);
-      break;
-    }
-    case Type::NUMBER: {
-      const auto [aNum, aNumLen] = parseNumber(aRemaining);
-      if (aNumLen <= 0)
-        return aErrorResult;
-      aElement.setNumber(aNum);
-      aRemaining.remove_prefix(aNumLen);
-      break;
-    }
-    case Type::STRING: {
-      std::string_view aStr = readString(aRemaining);
-      if (aStr.empty())
-        return aErrorResult;
-      aRemaining.remove_prefix(aStr.size());
-      aElement.setString(stripQuotes(aStr));
-      break;
-    }
-    case Type::ARRAY: {
-      const auto [aArray, aArrayLen] = parseArray<ElementTy>(aRemaining);
-      if (aArrayLen <= 0)
-        return aErrorResult;
-      aRemaining.remove_prefix(aArrayLen);
-      aElement = aArray;
-      break;
-    }
-    case Type::OBJECT: {
-      const auto [aObject, aObjectLen] = parseObject<ElementTy>(aRemaining);
-      if (aObjectLen <= 0)
-        return aErrorResult;
-      aRemaining.remove_prefix(aObjectLen);
-      aElement = aObject;
-      break;
-    }
-    default:
-      return aErrorResult;
-    }
-    const std::string_view aPostWS = readWhitespace(aRemaining);
-    aRemaining.remove_prefix(aPostWS.size());
-    return std::make_pair(aElement, theString.size() - aRemaining.size());
-  }
-
-  template <typename ElementTy>
-  constexpr static std::pair<ElementTy, ssize_t>
-  parseObject(const std::string_view theString) {
-    constexpr const std::pair<ElementTy, ssize_t> aErrorResult =
-        std::make_pair(ElementTy::null(), -1);
-    const auto [aFirstChar, aFirstCharWidth] = decodeFirst(theString);
-    if (aFirstCharWidth <= 0)
-      // Failed to decode first char
-      return aErrorResult;
-    if (aFirstChar != '{')
-      return aErrorResult;
-    std::string_view aRemaining = theString.substr(aFirstCharWidth);
-    const std::string_view aWS = readWhitespace(aRemaining);
-    aRemaining.remove_prefix(aWS.size());
-    bool aNeedsMoreProps = false;
-    ElementTy aElement;
-    aElement.setObject();
-    for (;;) {
+  /// @param theStr source-encoded json string literal (unquoted)
+  /// @return number of chars (bytes) required to store the string literal's
+  /// contents in the target encoding
+  template <typename DestEncodingTy>
+  constexpr static ssize_t
+  computeEncodedSize(const std::string_view theString) {
+    std::string_view aRemaining = theString;
+    size_t aNumChars = 0;
+    while (!aRemaining.empty()) {
       const auto [aChar, aCharWidth] = decodeFirst(aRemaining);
-      if (aCharWidth <= 0)
-        return aErrorResult;
-      if (!aNeedsMoreProps && aChar == '}') {
-        aRemaining.remove_prefix(aCharWidth);
-        break;
-      }
-      const std::string_view aLeadWs = readWhitespace(aRemaining);
-      aRemaining.remove_prefix(aLeadWs.size());
-      // Read key
-      std::string_view aKey = readString(aRemaining);
-      if (aKey.size() <= 0)
-        return aErrorResult;
-      aRemaining.remove_prefix(aKey.size());
-      const std::string_view aTrailWs = readWhitespace(aRemaining);
-      aRemaining.remove_prefix(aTrailWs.size());
-      // Read colon
-      const auto [aColon, aColonWidth] = decodeFirst(aRemaining);
-      if (aColonWidth <= 0)
-        return aErrorResult;
-      if (aColon != ':')
-        return aErrorResult;
-      // Read element
-      aRemaining.remove_prefix(aColonWidth);
-      const auto [aElm, aElmLength] = parseElement<ElementTy>(aRemaining);
-      if (aElmLength <= 0)
-        return aErrorResult;
-      // Remove quotation marks surrounding key
-      aElement.addObjectProperty(stripQuotes(aKey), aElm);
-      aRemaining.remove_prefix(aElmLength);
-      // Look for ','
-      const auto [aPeekChar, aPeekCharWidth] = decodeFirst(aRemaining);
-      if (aPeekCharWidth <= 0)
-        return aErrorResult;
-      if (aPeekChar == ',') {
-        aNeedsMoreProps = true;
-        aRemaining.remove_prefix(aPeekCharWidth);
-      } else {
-        aNeedsMoreProps = false;
-      }
-    }
-    return std::make_pair(aElement, theString.size() - aRemaining.size());
-  }
-
-  template <typename ElementTy>
-  constexpr static std::pair<ElementTy, ssize_t>
-  parseArray(const std::string_view theString) {
-    constexpr const std::pair<ElementTy, ssize_t> aErrorResult =
-        std::make_pair(ElementTy::null(), -1);
-    const auto [aFirstChar, aFirstCharWidth] = decodeFirst(theString);
-    if (aFirstCharWidth <= 0)
-      // Failed to decode first char
-      return aErrorResult;
-    if (aFirstChar != '[')
-      return aErrorResult;
-    std::string_view aRemaining = theString.substr(aFirstCharWidth);
-    const std::string_view aWS = readWhitespace(aRemaining);
-    aRemaining.remove_prefix(aWS.size());
-    bool aNeedsElement = false;
-    ElementTy aElement;
-    aElement.setArray();
-    for (;;) {
-      const auto [aChar, aCharWidth] = decodeFirst(aRemaining);
-      if (aCharWidth <= 0)
-        return aErrorResult;
-      if (!aNeedsElement && aChar == ']') {
-        aRemaining.remove_prefix(aCharWidth);
-        break;
-      }
-      const auto [aItem, aItemLength] = parseElement<ElementTy>(aRemaining);
-      if (aItemLength <= 0)
-        return aErrorResult;
-      aElement.addArrayEntry(aItem);
-      aRemaining.remove_prefix(aItemLength);
-      const auto [aPeekChar, aPeekCharWidth] = decodeFirst(aRemaining);
-      if (aPeekCharWidth <= 0)
-        return aErrorResult;
-      if (aPeekChar == ',') {
-        aNeedsElement = true;
-        aRemaining.remove_prefix(aPeekCharWidth);
-      } else {
-        aNeedsElement = false;
-      }
-    }
-    return std::make_pair(aElement, theString.size() - aRemaining.size());
-  }
-
-  constexpr static std::string_view
-  readString(const std::string_view theString) {
-    constexpr const std::string_view aErrorResult;
-    const auto [aFirstChar, aFirstCharWidth] = decodeFirst(theString);
-    if (aFirstCharWidth <= 0)
-      // Failed to decode first char
-      return aErrorResult;
-    if (aFirstChar != '"')
-      // Expected '"', got something else
-      return aErrorResult;
-    std::string_view aRemaining = theString.substr(aFirstCharWidth);
-    for (;;) {
-      const auto [aChar, aCharWidth] = decodeFirst(aRemaining);
-      if (aCharWidth <= 0)
-        // Failed to decode first char
-        return aErrorResult;
-      if (aChar == '"') {
-        // Found closing '"'
-        aRemaining.remove_prefix(aCharWidth);
-        return {theString.data(), theString.size() - aRemaining.size()};
-      } else if (aChar == '\\') {
-        const auto [aEscape, aEscapeWidth] = parseEscape(aRemaining);
-        std::ignore = aEscape;
-        aRemaining.remove_prefix(aEscapeWidth);
-      } else if (0x20 > aChar || aChar > 0x10ffff) {
-        // Not a valid JSON char
-        return aErrorResult;
+      if (aChar == '\\') {
+        const auto [aCodepoint, aWidth] = parseEscape(aRemaining);
+        aRemaining.remove_prefix(aWidth);
+        aNumChars += DestEncodingTy::encode(aCodepoint).second;
       } else {
         aRemaining.remove_prefix(aCharWidth);
+        aNumChars += DestEncodingTy::encode(aChar).second;
       }
     }
+    return aNumChars;
   }
 
   constexpr static std::pair<CharT, ssize_t>
@@ -545,22 +357,6 @@ public:
     return std::make_pair(aExpectedVal, theString.size() - aRemaining.size());
   }
 
-  constexpr static ssize_t parseNull(const std::string_view theString) {
-    constexpr const ssize_t aErrorResult = -1;
-    const std::string_view aCmpStr = "null";
-    std::string_view aRemaining = theString;
-    for (const char aExpected : aCmpStr) {
-      const auto [aChar, aCharWidth] = decodeFirst(aRemaining);
-      if (aCharWidth <= 0)
-        // failed to decode char
-        return aErrorResult;
-      if (static_cast<CharT>(aExpected) != aChar)
-        return aErrorResult;
-      aRemaining.remove_prefix(aCharWidth);
-    }
-    return theString.size() - aRemaining.size();
-  }
-
   constexpr static std::pair<double, ssize_t>
   parseNumber(const std::string_view theString) {
     constexpr const std::pair<double, ssize_t> aErrorResult =
@@ -614,6 +410,58 @@ public:
         aResult /= 10.;
     }
     return std::make_pair(aResult, theString.size() - aRemaining.size());
+  }
+
+  /// Expects a leading 'e' or 'E', then parses a (signed) int where leading
+  /// '0' are allowed as per the JSON spec
+  static constexpr std::pair<int, ssize_t>
+  parseExponent(const std::string_view theString) {
+    if (theString.empty())
+      return std::make_pair(1, 0);
+    constexpr const auto aErrorResult = std::make_pair(0, -1);
+
+    // Step 1: Check for expected 'e'/'E'
+    const auto [aChar, aCharWidth] = decodeFirst(theString);
+    if (aCharWidth <= 0)
+      // failed to decode first char
+      return aErrorResult;
+    if (aChar != 'e' && aChar != 'E')
+      // expected 'e'/'E', got something else
+      return std::make_pair(1, 0);
+    std::string_view aRemaining = theString.substr(aCharWidth);
+
+    // Step 2: Check for a sign char
+    const auto [aSignChar, aSignWidth] = decodeFirst(aRemaining);
+    int aSign = 1;
+    if (aSignChar == '-' || aSignChar == '+') {
+      if (aSignChar == '-')
+        aSign = -1;
+      aRemaining.remove_prefix(aSignWidth);
+    }
+
+    // Step 3: Read and parse exponent value
+    std::string_view aExponentStr = readDigits(aRemaining);
+    if (aExponentStr.empty())
+      // Expected digits, got empty string
+      return aErrorResult;
+    aRemaining.remove_prefix(aExponentStr.size());
+    int aExp = 0;
+    for (;;) {
+      const auto [aChar, aCharWidth] = decodeFirst(aExponentStr);
+      // Unneeded safety check
+      if (aCharWidth <= 0)
+        // Failed to decode a digit
+        return aErrorResult;
+      aExp *= 10;
+      aExp += (aChar - '0');
+      if (aCharWidth > aExponentStr.size())
+        // how did we run out of characters?
+        return aErrorResult;
+      aExponentStr.remove_prefix(aCharWidth);
+      if (aExponentStr.empty())
+        return std::make_pair(aSign * aExp,
+                              theString.size() - aRemaining.size());
+    }
   }
 
   /// The return type double is chosen for encoding negative zero and because
@@ -675,6 +523,23 @@ public:
     }
   }
 
+  constexpr static std::string_view
+  readNull(const std::string_view theString) {
+    constexpr const std::string_view aErrorResult = "";
+    const std::string_view aCmpStr = "null";
+    std::string_view aRemaining = theString;
+    for (const char aExpected : aCmpStr) {
+      const auto [aChar, aCharWidth] = decodeFirst(aRemaining);
+      if (aCharWidth <= 0)
+        // failed to decode char
+        return aErrorResult;
+      if (static_cast<CharT>(aExpected) != aChar)
+        return aErrorResult;
+      aRemaining.remove_prefix(aCharWidth);
+    }
+    return {theString.data(), theString.size() - aRemaining.size()};
+  }
+
   static constexpr std::string_view
   readDigits(const std::string_view theString) {
     std::string_view aDigits(theString.data(), 0);
@@ -713,55 +578,104 @@ public:
     return theString.substr(0, aDigits.size() + aCharWidth);
   }
 
-  /// Expects a leading 'e' or 'E', then parses a (signed) int where leading
-  /// '0' are allowed as per the JSON spec
-  static constexpr std::pair<int, ssize_t>
-  parseExponent(const std::string_view theString) {
+  static constexpr std::string_view
+  readExponent(const std::string_view theString) {
     if (theString.empty())
-      return std::make_pair(1, 0);
-    constexpr const auto aErrorResult = std::make_pair(0, -1);
-
-    // Step 1: Check for expected 'e'/'E'
-    const auto [aChar, aCharWidth] = decodeFirst(theString);
-    if (aCharWidth <= 0)
-      // failed to decode first char
-      return aErrorResult;
-    if (aChar != 'e' && aChar != 'E')
-      // expected 'e'/'E', got something else
-      return std::make_pair(1, 0);
-    std::string_view aRemaining = theString.substr(aCharWidth);
-
-    // Step 2: Check for a sign char
-    const auto [aSignChar, aSignWidth] = decodeFirst(aRemaining);
-    int aSign = 1;
-    if (aSignChar == '-' || aSignChar == '+') {
-      if (aSignChar == '-')
-        aSign = -1;
-      aRemaining.remove_prefix(aSignWidth);
-    }
-
-    // Step 3: Read and parse exponent value
-    std::string_view aExponentStr = readDigits(aRemaining);
-    if (aExponentStr.empty())
-      // Expected digits, got empty string
-      return aErrorResult;
-    aRemaining.remove_prefix(aExponentStr.size());
-    int aExp = 0;
-    for (;;) {
-      const auto [aChar, aCharWidth] = decodeFirst(aExponentStr);
-      // Unneeded safety check
+      return "";
+    std::string_view aRemaining = theString;
+    { // Step 1: Check for expected 'e'/'E'
+      const auto [aChar, aCharWidth] = decodeFirst(aRemaining);
       if (aCharWidth <= 0)
-        // Failed to decode a digit
+        // failed to decode first char
+        return "";
+      if (aChar != 'e' && aChar != 'E')
+        // expected 'e'/'E', got something else
+        return "";
+      aRemaining.remove_prefix(aCharWidth);
+    }
+    { // Step 2: Check for a sign char
+      const auto [aSignChar, aSignWidth] = decodeFirst(aRemaining);
+      if (aSignChar == '-' || aSignChar == '+') {
+        aRemaining.remove_prefix(aSignWidth);
+      }
+    }
+    { // Step 3: Read and parse exponent value
+      std::string_view aDigits = readDigits(aRemaining);
+      if (aDigits.empty())
+        // Expected digits, got empty string
+        return "";
+      aRemaining.remove_prefix(aDigits.size());
+    }
+    return {theString.data(), theString.size() - aRemaining.size()};
+  }
+
+  static constexpr std::string_view
+  readNumber(const std::string_view theString) {
+    if (theString.empty())
+      return "";
+    std::string_view aRemaining = theString;
+    { // start by checking for sign
+      const auto [aChar, aCharWidth] = decodeFirst(aRemaining);
+      if (aCharWidth <= 0)
+        // failed to decode first char
+        return "";
+      if (aChar == '-')
+        aRemaining.remove_prefix(aCharWidth);
+    }
+    { // if the next code point is '0' we're done
+      const auto [aChar, aCharWidth] = decodeFirst(aRemaining);
+      if (aCharWidth <= 0)
+        // failed to decode first char
+        return "";
+      if (aChar == '0') {
+        aRemaining.remove_prefix(aCharWidth);
+        return {theString.data(), theString.size() - aRemaining.size()};
+      }
+    }
+    { // read digits
+      std::string_view aDigits = readDigits(aRemaining);
+      // there must be a non-zero-width integer part
+      if (aDigits.size() == 0)
+        return "";
+      aRemaining.remove_prefix(aDigits.size());
+    }
+    // read fraction
+    aRemaining.remove_prefix(readFraction(aRemaining).size());
+    // read exponent
+    aRemaining.remove_prefix(readExponent(aRemaining).size());
+    return {theString.data(), theString.size() - aRemaining.size()};
+  }
+
+  constexpr static std::string_view
+  readString(const std::string_view theString) {
+    constexpr const std::string_view aErrorResult;
+    const auto [aFirstChar, aFirstCharWidth] = decodeFirst(theString);
+    if (aFirstCharWidth <= 0)
+      // Failed to decode first char
+      return aErrorResult;
+    if (aFirstChar != '"')
+      // Expected '"', got something else
+      return aErrorResult;
+    std::string_view aRemaining = theString.substr(aFirstCharWidth);
+    for (;;) {
+      const auto [aChar, aCharWidth] = decodeFirst(aRemaining);
+      if (aCharWidth <= 0)
+        // Failed to decode first char
         return aErrorResult;
-      aExp *= 10;
-      aExp += (aChar - '0');
-      if (aCharWidth > aExponentStr.size())
-        // how did we run out of characters?
+      if (aChar == '"') {
+        // Found closing '"'
+        aRemaining.remove_prefix(aCharWidth);
+        return {theString.data(), theString.size() - aRemaining.size()};
+      } else if (aChar == '\\') {
+        const auto [aEscape, aEscapeWidth] = parseEscape(aRemaining);
+        std::ignore = aEscape;
+        aRemaining.remove_prefix(aEscapeWidth);
+      } else if (0x20 > aChar || aChar > 0x10ffff) {
+        // Not a valid JSON char
         return aErrorResult;
-      aExponentStr.remove_prefix(aCharWidth);
-      if (aExponentStr.empty())
-        return std::make_pair(aSign * aExp,
-                              theString.size() - aRemaining.size());
+      } else {
+        aRemaining.remove_prefix(aCharWidth);
+      }
     }
   }
 
@@ -783,6 +697,13 @@ public:
       aRemaining.remove_prefix(aCharWidth);
       aWhitespace = {aWhitespace.data(), aWhitespace.size() + aCharWidth};
     }
+  }
+
+  static constexpr std::string_view
+  removeLeadingWhitespace(const std::string_view theString) {
+    std::string_view aResult{theString};
+    aResult.remove_prefix(readWhitespace(theString).size());
+    return aResult;
   }
 };
 } // namespace cjson

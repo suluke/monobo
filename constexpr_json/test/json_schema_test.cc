@@ -6,9 +6,8 @@
 
 using namespace cjson;
 
-static std::ostream &
-operator<<(std::ostream &theStream,
-           const DocumentInfo &theDocInfo) {
+static std::ostream &operator<<(std::ostream &theStream,
+                                const DocumentInfo &theDocInfo) {
   return theStream << "Nulls: " << theDocInfo.itsNumNulls << "\n"
                    << "Booleans: " << theDocInfo.itsNumBools << "\n"
                    << "Numbers: " << theDocInfo.itsNumNumbers << "\n"
@@ -75,11 +74,11 @@ static std::ostream &operator<<(std::ostream &theStream,
                                 const Entity::KIND &theKind) {
   switch (theKind) {
   case Entity::NUL:
-    return theStream << "0";
+    return theStream << "N";
   case Entity::BOOL:
     return theStream << "B";
   case Entity::NUMBER:
-    return theStream << "N";
+    return theStream << "D";
   case Entity::STRING:
     return theStream << "S";
   case Entity::ARRAY:
@@ -112,93 +111,6 @@ template <typename DocTy> static void dump(const DocTy &theDoc) {
     std::cout << aEntity.itsKind << ":" << aEntity.itsPayload << "\n";
   std::cout << "======================================\n";
 }
-
-struct JsonElement {
-  Entity::KIND itsType = Entity::NUL;
-  bool itsBoolVal = false;
-  double itsNumberVal = 0.;
-  std::string_view itsStringVal;
-  size_t itsArrayLen = 0;
-  size_t itsNumProperties = 0;
-  constexpr void setBool(bool theBool) {
-    itsType = Entity::BOOL;
-    itsBoolVal = theBool;
-  }
-  constexpr void setNumber(double theNum) {
-    itsType = Entity::NUMBER;
-    itsNumberVal = theNum;
-  }
-  constexpr void setString(const std::string_view theStr) {
-    itsType = Entity::STRING;
-    itsStringVal = theStr;
-  }
-  constexpr void setNull() { itsType = Entity::NUL; }
-  constexpr void setArray() {
-    itsArrayLen = 0;
-    itsType = Entity::ARRAY;
-  }
-  constexpr void addArrayEntry(const JsonElement &) { ++itsArrayLen; }
-  constexpr void setObject() {
-    itsNumProperties = 0;
-    itsType = Entity::OBJECT;
-  }
-  constexpr void addObjectProperty(const std::string_view,
-                                   const JsonElement &) {
-    ++itsNumProperties;
-  }
-  constexpr bool operator==(const JsonElement &theOther) const {
-    if (theOther.itsType != itsType)
-      return false;
-    switch (itsType) {
-    case Entity::NUL:
-      return true;
-    case Entity::BOOL:
-      return theOther.itsBoolVal == itsBoolVal;
-    case Entity::NUMBER:
-      return theOther.itsNumberVal == itsNumberVal;
-    case Entity::STRING:
-      return theOther.itsStringVal == itsStringVal;
-    case Entity::ARRAY:
-      return theOther.itsArrayLen == itsArrayLen;
-    case Entity::OBJECT:
-      return theOther.itsNumProperties == itsNumProperties;
-    default:
-      return false;
-    }
-  }
-  constexpr static JsonElement null() {
-    JsonElement aElm;
-    aElm.setNull();
-    return aElm;
-  }
-  constexpr static JsonElement boolean(bool theBool) {
-    JsonElement aElm;
-    aElm.setBool(theBool);
-    return aElm;
-  }
-  constexpr static JsonElement number(double theNumber) {
-    JsonElement aElm;
-    aElm.setNumber(theNumber);
-    return aElm;
-  }
-  constexpr static JsonElement string(std::string_view theString) {
-    JsonElement aElm;
-    aElm.setString(theString);
-    return aElm;
-  }
-  constexpr static JsonElement array(size_t theSize) {
-    JsonElement aElm;
-    aElm.setArray();
-    aElm.itsArrayLen = theSize;
-    return aElm;
-  }
-  constexpr static JsonElement object(size_t theNumProps) {
-    JsonElement aElm;
-    aElm.setObject();
-    aElm.itsNumProperties = theNumProps;
-    return aElm;
-  }
-};
 
 #define CHECK_UTF8_DECODE(STR, EXPECTED)                                       \
   do {                                                                         \
@@ -259,9 +171,26 @@ template <ssize_t L> struct CompareCharSeqs {
                      ENTRIES, OBJECTS, PROPS)                                  \
   do {                                                                         \
     using Builder = DocumentBuilder<Utf8, Utf8>;                               \
-    constexpr const DocumentInfo aDI = Builder::computeDocInfo(JSON); \
-    constexpr const DocumentInfo aExpected = {                        \
+    constexpr const DocumentInfo aDI = Builder::computeDocInfo(JSON);          \
+    constexpr const DocumentInfo aExpected = {                                 \
         NULLS, BOOLS, DOUBLES, CHARS, STRS, ARRAYS, ENTRIES, OBJECTS, PROPS};  \
+    std::cout.setstate(std::ios_base::badbit); /* Disables cout */             \
+    std::cout << aDI << "vs\n" << aExpected << "\n";                           \
+    std::cout.clear(); /* Re-enable cout */                                    \
+    static_assert(aDI == aExpected);                                           \
+  } while (false)
+
+#define CHECK_COUNTS2(NULLS, BOOLS, DOUBLES, CHARS, STRS, ARRAYS, ENTRIES,     \
+                      OBJECTS, PROPS, LENGTH, JSON)                            \
+  do {                                                                         \
+    constexpr const auto aResult =                                             \
+        DocumentInfo::template compute<Utf8, Utf8>(JSON);               \
+    constexpr const DocumentInfo aDI = aResult.first;                          \
+    constexpr const DocumentInfo aExpected = {                                 \
+        NULLS, BOOLS, DOUBLES, CHARS, STRS, ARRAYS, ENTRIES, OBJECTS, PROPS};  \
+    static_assert(aResult.second == LENGTH);                                   \
+    static_assert(aDI != DocumentInfo::error());                               \
+    static_assert(aDI.assertSame(aExpected));                                  \
     std::cout.setstate(std::ios_base::badbit); /* Disables cout */             \
     std::cout << aDI << "vs\n" << aExpected << "\n";                           \
     std::cout.clear(); /* Re-enable cout */                                    \
@@ -306,6 +235,16 @@ static void static_tests() {
   CHECK_READ(readString, "\"\\n\"", "\"\\n\"");
   CHECK_READ(readString, "\"\uabcd\"", "\"\uabcd\"");
 
+  //   readNumber
+  CHECK_READ(readNumber, "1,", "1");
+  CHECK_READ(readNumber, "1.", "1");
+  CHECK_READ(readNumber, "1.23", "1.23");
+  CHECK_READ(readNumber, "-", "");
+  CHECK_READ(readNumber, "0123", "0");
+  CHECK_READ(readNumber, "1.23e45", "1.23e45");
+  CHECK_READ(readNumber, "1.23E45", "1.23E45");
+  CHECK_READ(readNumber, "-1.23E45", "-1.23E45");
+
   //   parseInt
   CHECK_PARSE(parseInteger, "", -1, 0.);
   CHECK_PARSE(parseInteger, "0123", 1, 0.);
@@ -336,10 +275,10 @@ static void static_tests() {
   CHECK_PARSE(parseNumber, "-1.0e-03", 8, -0.001);
   CHECK_PARSE(parseNumber, "2]", 1, 2.);
 
-  //   parseNull
-  CHECK_READ(parseNull, "abcdee", -1);
-  CHECK_READ(parseNull, "null", 4);
-  CHECK_READ(parseNull, "nullabcd", 4);
+  //   readNull
+  CHECK_READ(readNull, "abcdee", "");
+  CHECK_READ(readNull, "null", "null");
+  CHECK_READ(readNull, "nullabcd", "null");
 
   //   parseBool
   CHECK_PARSE(parseBool, "abcdee", -1, false);
@@ -347,34 +286,6 @@ static void static_tests() {
   CHECK_PARSE(parseBool, "false", 5, false);
   CHECK_PARSE(parseBool, "trueabc", 4, true);
   CHECK_PARSE(parseBool, "falseabc", 5, false);
-
-  // Parsing elements
-  //   parseArray
-  CHECK_PARSE(parseArray<JsonElement>, "[\"a\", 2]  ", 8,
-              JsonElement::array(2));
-  CHECK_PARSE(parseArray<JsonElement>, "[\"a\", 2  ", -1, JsonElement::null());
-  //   parseObject
-  CHECK_PARSE(parseObject<JsonElement>, "{\"a\": 2}  ", 8,
-              JsonElement::object(1));
-  CHECK_PARSE(parseObject<JsonElement>, "{\"a\": 2, \"b\": \"c\"}  ", 18,
-              JsonElement::object(2));
-  CHECK_PARSE(parseObject<JsonElement>, "{\"a\": 2  ", -1, JsonElement::null());
-  CHECK_PARSE(parseObject<JsonElement>, "{\"a\": 2,}", -1, JsonElement::null());
-  //   parseElement
-  CHECK_PARSE(parseElement<JsonElement>, "  null  ", 8, JsonElement::null());
-  CHECK_PARSE(parseElement<JsonElement>, "  true  ", 8,
-              JsonElement::boolean(true));
-  CHECK_PARSE(parseElement<JsonElement>, "  false  ", 9,
-              JsonElement::boolean(false));
-  CHECK_PARSE(parseElement<JsonElement>, "  1234  ", 8,
-              JsonElement::number(1234));
-  CHECK_PARSE(parseElement<JsonElement>, "  \"\"  ", 6,
-              JsonElement::string(""));
-  CHECK_PARSE(parseElement<JsonElement>, "  []  ", 6, JsonElement::array(0));
-  CHECK_PARSE(parseElement<JsonElement>, "  [\"a\", 2]  ", 12,
-              JsonElement::array(2));
-  CHECK_PARSE(parseElement<JsonElement>, "  [\"a\", 2  ", -1,
-              JsonElement::null());
 
   // DocInfo computation
   // null,bool,double,char,string,array,entries,object,props
@@ -387,14 +298,36 @@ static void static_tests() {
   CHECK_COUNTS("\"\\n\"", 0, 0, 0, 1, 1, 0, 0, 0, 0);
   CHECK_COUNTS("\"\\u002a\"", 0, 0, 0, 1, 1, 0, 0, 0, 0);
   CHECK_COUNTS("{}", 0, 0, 0, 0, 0, 0, 0, 1, 0);
+  CHECK_COUNTS("{\"abc\": []}", 0, 0, 0, 3, 1, 1, 0, 1, 1);
+  CHECK_COUNTS("{\"abc\": [], \"def\": 1, \"ghi\": true}", 0, 1, 1, 9, 3, 1, 0,
+               1, 3);
   CHECK_COUNTS("[]", 0, 0, 0, 0, 0, 1, 0, 0, 0);
+  CHECK_COUNTS("[\"abc\"]", 0, 0, 0, 3, 1, 1, 1, 0, 0);
+  CHECK_COUNTS("[\"abc\",\"def\",\"ghi\"]", 0, 0, 0, 9, 3, 1, 3, 0, 0);
+  //            N  B  D  C  S  A  a  O  o  L
+  CHECK_COUNTS2(1, 0, 0, 0, 0, 0, 0, 0, 0, 4, "null");
+  CHECK_COUNTS2(0, 1, 0, 0, 0, 0, 0, 0, 0, 4, "true");
+  CHECK_COUNTS2(0, 1, 0, 0, 0, 0, 0, 0, 0, 5, "false");
+  CHECK_COUNTS2(0, 0, 1, 0, 0, 0, 0, 0, 0, 6, "1.2e-3");
+  CHECK_COUNTS2(0, 0, 0, 3, 1, 0, 0, 0, 0, 5, "\"abc\"");
+  CHECK_COUNTS2(0, 0, 0, 2, 1, 0, 0, 0, 0, 4, "\"¢\"");
+  CHECK_COUNTS2(0, 0, 0, 1, 1, 0, 0, 0, 0, 4, "\"\\n\"");
+  CHECK_COUNTS2(0, 0, 0, 1, 1, 0, 0, 0, 0, 8, "\"\\u002a\"");
+  CHECK_COUNTS2(0, 0, 0, 0, 0, 0, 0, 1, 0, 2, "{}");
+  CHECK_COUNTS2(0, 0, 0, 3, 1, 1, 0, 1, 1, 11, "{\"abc\": []}");
+  CHECK_COUNTS2(0, 0, 0, 6, 2, 2, 0, 1, 2, 22, "{\"abc\": [], \"def\": []}");
+  CHECK_COUNTS2(1, 0, 0, 1, 1, 0, 0, 1, 1, 11, "{\"a\": null}");
+  CHECK_COUNTS2(0, 1, 1, 9, 3, 1, 0, 1, 3, 34,
+                "{\"abc\": [], \"def\": 1, \"ghi\": true}");
+  CHECK_COUNTS2(0, 0, 0, 0, 0, 1, 0, 0, 0, 2, "[]");
+  CHECK_COUNTS2(0, 0, 0, 3, 1, 1, 1, 0, 0, 7, "[\"abc\"]");
+  CHECK_COUNTS2(0, 0, 0, 9, 3, 1, 3, 0, 0, 19, "[\"abc\",\"def\",\"ghi\"]");
 
 #define CHECK_DOCPARSE(JSON)                                                   \
   do {                                                                         \
     constexpr std::string_view aJsonStr{JSON};                                 \
     using Builder = DocumentBuilder<Utf8, Utf8>;                               \
-    constexpr DocumentInfo aDocInfo =                                 \
-        Builder::computeDocInfo(aJsonStr);                                     \
+    constexpr DocumentInfo aDocInfo = Builder::computeDocInfo(aJsonStr);       \
     using DocTy =                                                              \
         Document<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,                 \
                  aDocInfo.itsNumStrings, aDocInfo.itsNumArrays,                \

@@ -11,7 +11,7 @@ using ssize_t = std::make_signed_t<size_t>;
 
 struct Entity {
   enum KIND { NUL = 0, ARRAY, BOOL, NUMBER, OBJECT, STRING } itsKind = NUL;
-  std::intptr_t itsPayload = 0;
+  intptr_t itsPayload = 0;
 };
 struct Array {
   intptr_t itsPosition; // index into itsEntities

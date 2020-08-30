@@ -13,85 +13,7 @@ template <typename SourceEncodingTy, typename DestEncodingTy>
 struct DocumentBuilder {
   constexpr static DocumentInfo
   computeDocInfo(const std::string_view theJsonString) {
-    constexpr const DocumentInfo aErrorResult = DocumentInfo::error();
-    struct InfoElement {
-      Entity::KIND itsType = Entity::NUL;
-      DocumentInfo itsDocInfo = {};
-      constexpr void setBool(bool theBool) {
-        itsType = Entity::BOOL;
-        ++itsDocInfo.itsNumBools;
-      }
-      constexpr void setNumber(double theNum) {
-        itsType = Entity::NUMBER;
-        ++itsDocInfo.itsNumNumbers;
-      }
-      constexpr void setString(std::string_view theStr) {
-        itsType = Entity::STRING;
-        ++itsDocInfo.itsNumStrings;
-        // Count the required number of bytes in the output encoding
-        size_t aNumChars = 0;
-        while (!theStr.empty()) {
-          const auto [aChar, aCharWidth] =
-              SourceEncodingTy::decodeFirst(theStr);
-          if (aChar == '\\') {
-            const auto [aCodepoint, aWidth] =
-                parsing<SourceEncodingTy>::parseEscape(theStr);
-            theStr.remove_prefix(aWidth);
-            aNumChars += DestEncodingTy::encode(aCodepoint).second;
-          } else {
-            theStr.remove_prefix(aCharWidth);
-            aNumChars += DestEncodingTy::encode(aChar).second;
-          }
-        }
-        itsDocInfo.itsNumChars += aNumChars;
-      }
-      constexpr void setNull() {
-        itsType = Entity::NUL;
-        ++itsDocInfo.itsNumNulls;
-      }
-      constexpr void setArray() {
-        itsType = Entity::ARRAY;
-        ++itsDocInfo.itsNumArrays;
-      }
-      constexpr void addArrayEntry(const InfoElement &theEntry) {
-        ++itsDocInfo.itsNumArrayEntries;
-        itsDocInfo += theEntry.itsDocInfo;
-      }
-      constexpr void setObject() {
-        itsType = Entity::OBJECT;
-        ++itsDocInfo.itsNumObjects;
-      }
-      constexpr void addObjectProperty(const std::string_view theKey,
-                                       const InfoElement &theValue) {
-        ++itsDocInfo.itsNumObjectProperties;
-        // Count the required number of bytes in the output encoding
-        size_t aNumChars = 0;
-        std::string_view aRemaining = theKey;
-        while (!aRemaining.empty()) {
-          const auto [aChar, aCharWidth] =
-              SourceEncodingTy::decodeFirst(aRemaining);
-          if (aChar == '\\') {
-            const auto [aCodepoint, aWidth] =
-                parsing<SourceEncodingTy>::parseEscape(aRemaining);
-            aRemaining.remove_prefix(aWidth);
-            aNumChars += DestEncodingTy::encode(aCodepoint).second;
-          } else {
-            aRemaining.remove_prefix(aCharWidth);
-            aNumChars += DestEncodingTy::encode(aChar).second;
-          }
-        }
-        itsDocInfo.itsNumChars += aNumChars;
-        ++itsDocInfo.itsNumStrings;
-        itsDocInfo += theValue.itsDocInfo;
-      }
-      constexpr static InfoElement null() { return InfoElement{}; }
-    };
-    const auto [aParsed, aParsedLen] =
-        parsing<SourceEncodingTy>::template parseElement<InfoElement>(
-            theJsonString);
-    if (aParsedLen <= 0)
-      return aErrorResult;
-    return aParsed.itsDocInfo;
+    return DocumentInfo::template compute<SourceEncodingTy, DestEncodingTy>(theJsonString).first;
   }
 
   using NonAggregateDocument = Document<0, 0, 0, 0, 0, 0, 0>;
@@ -136,10 +58,10 @@ struct DocumentBuilder {
     if constexpr (std::is_same_v<DocTy, NonAggregateDocument>) {
       switch (*aType) {
       case Type::NUL: {
-        const ssize_t aNullLen = p::parseNull(aRemaining);
-        if (aNullLen <= 0)
+        const std::string_view aNull = p::readNull(aRemaining);
+        if (aNull.size() == 0)
           return aErrorResult;
-        aRemaining.remove_prefix(aNullLen);
+        aRemaining.remove_prefix(aNull.size());
         return std::make_pair(createNullDocument(),
                               theJsonString.size() - aRemaining.size());
       }
@@ -237,8 +159,8 @@ struct DocumentBuilder {
             aRemaining.substr(aEntity.itsPayload);
         switch (aEntity.itsKind) {
         case Entity::NUL: {
-          ssize_t aNullLen = p::parseNull(aEntityStr);
-          if (aNullLen <= 0)
+          std::string_view aNull = p::readNull(aEntityStr);
+          if (aNull.size() == 0)
             return aErrorResult;
           aEntity.itsPayload = 0;
           break;
