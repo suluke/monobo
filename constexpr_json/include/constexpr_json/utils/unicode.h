@@ -1,7 +1,6 @@
 #ifndef CONSTEXPR_JSON_UTILS_UNICODE_H
 #define CONSTEXPR_JSON_UTILS_UNICODE_H
 
-#include "constexpr_json/utils/parsing.h"
 #include <array>
 
 namespace cjson {
@@ -51,10 +50,10 @@ struct Utf8 {
   }
 
   static constexpr size_t MAX_BYTES = 4;
-  static constexpr std::pair<std::array<char, MAX_BYTES>, ssize_t>
+  static constexpr std::pair<std::array<char, MAX_BYTES>, size_t>
   encode(CodePointTy theCodePoint) {
     constexpr std::pair<std::array<char, MAX_BYTES>, ssize_t> aErrorResult =
-        std::make_pair(std::array<char, MAX_BYTES>{}, -1);
+        std::make_pair(std::array<char, MAX_BYTES>{}, 0);
     if (theCodePoint <= 0x7fu)
       return std::make_pair(std::array<char, MAX_BYTES>(
                                 {static_cast<char>(theCodePoint), 0, 0, 0}),

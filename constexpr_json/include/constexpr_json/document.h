@@ -30,10 +30,10 @@ struct String {
   size_t itsSize;
 };
 
-struct DocumentBase;
+struct DocumentInterface;
 struct EntityRef {
 public:
-  EntityRef(const DocumentBase &theDoc, const Entity &theEntity)
+  EntityRef(const DocumentInterface &theDoc, const Entity &theEntity)
       : itsDoc(&theDoc), itsEntity(&theEntity) {}
   EntityRef() = default;
   EntityRef(const EntityRef &) = default;
@@ -49,11 +49,11 @@ public:
   std::map<std::string_view, EntityRef> toObject() const;
 
 private:
-  const DocumentBase *itsDoc;
+  const DocumentInterface *itsDoc;
   const Entity *itsEntity;
 };
 
-struct DocumentBase {
+struct DocumentInterface {
   virtual EntityRef getRoot() const = 0;
   virtual double getNumber(intptr_t theIdx) const = 0;
   virtual std::string_view getString(intptr_t theIdx) const = 0;
@@ -68,7 +68,7 @@ struct DocumentBase {
 template <ssize_t theNumNumbers, ssize_t theNumChars, ssize_t theNumStrings,
           ssize_t theNumArrays, ssize_t theNumArrayEntries,
           ssize_t theNumObjects, ssize_t theNumObjectProperties>
-struct Document : public DocumentBase {
+struct Document : public DocumentInterface {
   static_assert(theNumNumbers >= 0,
                 "Negative NumNumbers for document is illegal");
   static_assert(theNumChars >= 0, "Negative NumChars for document is illegal");
