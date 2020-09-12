@@ -1,6 +1,10 @@
+
 #include "constexpr_json/document_builder.h"
+#include "constexpr_json/dynamic_document.h"
 #include "constexpr_json/impl/document_builder1.h"
 #include "constexpr_json/impl/document_builder2.h"
+#include "constexpr_json/static_document.h"
+
 #include <cassert>
 #include <cmath>
 #include <iostream>
@@ -202,8 +206,7 @@ template <ssize_t L> struct CompareCharSeqs {
     static_assert(aDI == aExpected);                                           \
   } while (false)
 
-template<typename Builder>
-static void static_tests() {
+template <typename Builder> static void static_tests() {
   // Test utf8 decoder
   CHECK_UTF8_DECODE("$", 0x24);
   CHECK_UTF8_DECODE("¢", 0xa2);
@@ -334,12 +337,12 @@ static void static_tests() {
     constexpr std::string_view aJsonStr{JSON};                                 \
     constexpr DocumentInfo aDocInfo = Builder::computeDocInfo(aJsonStr);       \
     using DocTy =                                                              \
-        Document<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,                 \
-                 aDocInfo.itsNumStrings, aDocInfo.itsNumArrays,                \
-                 aDocInfo.itsNumArrayEntries, aDocInfo.itsNumObjects,          \
-                 aDocInfo.itsNumObjectProperties>;                             \
+        StaticDocument<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,           \
+                       aDocInfo.itsNumStrings, aDocInfo.itsNumArrays,          \
+                       aDocInfo.itsNumArrayEntries, aDocInfo.itsNumObjects,    \
+                       aDocInfo.itsNumObjectProperties>;                       \
     constexpr std::optional<DocTy> aDoc =                                      \
-        Builder::template parseDocument<DocTy>(aJsonStr, aDocInfo);                     \
+        Builder::template parseDocument<DocTy>(aJsonStr, aDocInfo);            \
     static_assert(aDoc);                                                       \
     /*dump(*aDoc);*/                                                           \
     /*std::cout << *aDoc << "\n";*/                                            \
@@ -362,26 +365,34 @@ int main() {
 #include "json_schema.h"
   constexpr DocumentInfo aDocInfo =
       DocumentInfo::compute<Utf8, Utf8>(aJsonSV).first;
-  using DocTy = Document<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,
-                         aDocInfo.itsNumStrings, aDocInfo.itsNumArrays,
-                         aDocInfo.itsNumArrayEntries, aDocInfo.itsNumObjects,
-                         aDocInfo.itsNumObjectProperties>;
-  {
+  using DocTy =
+      StaticDocument<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,
+                     aDocInfo.itsNumStrings, aDocInfo.itsNumArrays,
+                     aDocInfo.itsNumArrayEntries, aDocInfo.itsNumObjects,
+                     aDocInfo.itsNumObjectProperties>;
+  { // Test DocumentBuilder1
     using Builder = DocumentBuilder1<Utf8, Utf8>;
     constexpr auto aDoc = Builder::parseDocument<DocTy>(aJsonSV, aDocInfo);
     static_assert(aDoc);
     std::cout << "\n" << *aDoc << "\n";
   }
-  {
+  { // Test DocumentBuilder2
     using Builder = DocumentBuilder2<Utf8, Utf8>;
     constexpr auto aDoc = Builder::parseDocument<DocTy>(aJsonSV, aDocInfo);
     static_assert(aDoc);
     std::cout << "\n" << *aDoc << "\n";
   }
-  {
+  { // Test default DocumentBuilder
     using Builder = DocumentBuilder<Utf8, Utf8>;
     constexpr auto aDoc = Builder::parseDocument<DocTy>(aJsonSV, aDocInfo);
     static_assert(aDoc);
+    std::cout << "\n" << *aDoc << "\n";
+  }
+  { // Test default DocumentBuilder with DynamicDocument (parsing at runtime)
+    using Builder = DocumentBuilder<Utf8, Utf8>;
+    const auto aDoc =
+        Builder::parseDocument<DynamicDocument>(aJsonSV, aDocInfo);
+    assert(aDoc);
     std::cout << "\n" << *aDoc << "\n";
   }
 }

@@ -67,57 +67,39 @@ struct DocumentInterface {
   getProperty(intptr_t theObjIdx, intptr_t thePropIdx) const = 0;
 };
 
-template <ssize_t theNumNumbers, ssize_t theNumChars, ssize_t theNumStrings,
-          ssize_t theNumArrays, ssize_t theNumArrayEntries,
-          ssize_t theNumObjects, ssize_t theNumObjectProperties>
-struct Document : public DocumentInterface {
-  constexpr Document(const DocumentInfo &theDocInfo)
-      : itsNumbers{createBuffer<double, theNumNumbers>(
+template <typename Storage> struct DocumentBase : public DocumentInterface {
+  template <typename T, size_t N> using Buffer = typename Storage::Buffer<T, N>;
+
+  Buffer<double, Storage::MAX_NUMBERS()> itsNumbers;
+  Buffer<char, Storage::MAX_CHARS()> itsChars;
+  Buffer<Entity, Storage::MAX_ENTITIES()> itsEntities;
+  Buffer<Array, Storage::MAX_ARRAYS()> itsArrays;
+  Buffer<Object, Storage::MAX_OBJECTS()> itsObjects;
+  Buffer<Property, Storage::MAX_OBJECT_PROPS()> itsObjectProps;
+  Buffer<String, Storage::MAX_STRINGS()> itsStrings;
+
+  constexpr DocumentBase(const DocumentInfo &theDocInfo)
+      : itsNumbers{Storage::template createBuffer<double,
+                                                  Storage::MAX_NUMBERS()>(
             theDocInfo.itsNumNumbers)},
-        itsChars{createBuffer<char, theNumChars>(theDocInfo.itsNumChars)},
-        itsEntities{createBuffer<Entity, MAX_ENTITIES()>(
-            theDocInfo.itsNumObjectProperties + theDocInfo.itsNumArrayEntries +
-            1)},
-        itsArrays{createBuffer<Array, theNumArrays>(theDocInfo.itsNumArrays)},
+        itsChars{Storage::template createBuffer<char, Storage::MAX_CHARS()>(
+            theDocInfo.itsNumChars)},
+        itsEntities{
+            Storage::template createBuffer<Entity, Storage::MAX_ENTITIES()>(
+                theDocInfo.itsNumObjectProperties +
+                theDocInfo.itsNumArrayEntries + 1)},
+        itsArrays{Storage::template createBuffer<Array, Storage::MAX_ARRAYS()>(
+            theDocInfo.itsNumArrays)},
         itsObjects{
-            createBuffer<Object, theNumObjects>(theDocInfo.itsNumObjects)},
-        itsObjectProps{createBuffer<Property, theNumObjectProperties>(
-            theDocInfo.itsNumObjectProperties)},
+            Storage::template createBuffer<Object, Storage::MAX_OBJECTS()>(
+                theDocInfo.itsNumObjects)},
+        itsObjectProps{
+            Storage::template createBuffer<Property,
+                                           Storage::MAX_OBJECT_PROPS()>(
+                theDocInfo.itsNumObjectProperties)},
         itsStrings{
-            createBuffer<String, theNumStrings>(theDocInfo.itsNumStrings)} {}
-
-  static_assert(theNumNumbers >= 0,
-                "Negative NumNumbers for document is illegal");
-  static_assert(theNumChars >= 0, "Negative NumChars for document is illegal");
-  static_assert(theNumStrings >= 0,
-                "Negative NumStrings for document is illegal");
-  static_assert(theNumArrays >= 0,
-                "Negative NumArrays for document is illegal");
-  static_assert(theNumArrayEntries >= 0,
-                "Negative NumArrayEntries for document is illegal");
-  static_assert(theNumObjects >= 0,
-                "Negative NumObjects for document is illegal");
-  static_assert(theNumObjectProperties >= 0,
-                "Negative NumObjectProperties for document is illegal");
-
-  static constexpr ssize_t MAX_ENTITIES() {
-    return theNumArrayEntries + theNumObjectProperties + 1;
-  }
-
-  template <typename T, size_t N> using Buffer = std::array<T, N>;
-
-  template <typename T, size_t N>
-  static constexpr Buffer<T, N> createBuffer(size_t theSize) {
-    return Buffer<T, N>{};
-  }
-
-  Buffer<double, theNumNumbers> itsNumbers;
-  Buffer<char, theNumChars> itsChars;
-  Buffer<Entity, MAX_ENTITIES()> itsEntities;
-  Buffer<Array, theNumArrays> itsArrays;
-  Buffer<Object, theNumObjects> itsObjects;
-  Buffer<Property, theNumObjectProperties> itsObjectProps;
-  Buffer<String, theNumStrings> itsStrings;
+            Storage::template createBuffer<String, Storage::MAX_STRINGS()>(
+                theDocInfo.itsNumStrings)} {}
 
   EntityRef getRoot() const override { return {*this, itsEntities[0]}; }
   double getNumber(intptr_t theIdx) const override {

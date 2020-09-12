@@ -10,36 +10,51 @@
 namespace cjson {
 template <typename SourceEncodingTy, typename DestEncodingTy>
 struct DocumentBuilder1 {
-  using NonAggregateDocument = Document<0, 0, 0, 0, 0, 0, 0>;
-  using NumberDocument = Document<1, 0, 0, 0, 0, 0, 0>;
-  template <size_t NumChars>
-  using StringDocument = Document<0, NumChars, 1, 0, 0, 0, 0>;
-
-  constexpr static NonAggregateDocument createNullDocument(const DocumentInfo &theDocInfo) {
-    NonAggregateDocument aResult{theDocInfo};
+  template <typename DocTy>
+  constexpr static DocTy createNullDocument(const DocumentInfo &theDocInfo) {
+    DocTy aResult{theDocInfo};
     aResult.itsEntities[0] = Entity{Entity::NUL, 0};
     return aResult;
   }
-  constexpr static NonAggregateDocument createBoolDocument(bool theValue, const DocumentInfo &theDocInfo) {
-    NonAggregateDocument aResult{theDocInfo};
+  template <typename DocTy>
+  constexpr static DocTy createBoolDocument(bool theValue,
+                                            const DocumentInfo &theDocInfo) {
+    DocTy aResult{theDocInfo};
     aResult.itsEntities[0] = Entity{Entity::BOOL, theValue};
     return aResult;
   }
-  constexpr static NumberDocument createNumberDocument(double theValue, const DocumentInfo &theDocInfo) {
-    NumberDocument aResult{theDocInfo};
+  template <typename DocTy>
+  constexpr static DocTy createNumberDocument(double theValue,
+                                              const DocumentInfo &theDocInfo) {
+    DocTy aResult{theDocInfo};
     aResult.itsEntities[0] = Entity{Entity::NUMBER, 0};
     aResult.itsNumbers[0] = theValue;
     return aResult;
   }
+  constexpr static bool
+  isNonAggregateDocumentType(const DocumentInfo &theDocInfo) {
+    return theDocInfo.itsNumNumbers == 0 && theDocInfo.itsNumStrings == 0 &&
+           theDocInfo.itsNumArrays == 0 && theDocInfo.itsNumArrayEntries == 0 &&
+           theDocInfo.itsNumObjects == 0 &&
+           theDocInfo.itsNumObjectProperties == 0;
+  }
+  constexpr static bool isNumberDocumentType(const DocumentInfo &theDocInfo) {
+    return theDocInfo.itsNumNumbers == 1 && theDocInfo.itsNumStrings == 0 &&
+           theDocInfo.itsNumArrays == 0 && theDocInfo.itsNumArrayEntries == 0 &&
+           theDocInfo.itsNumObjects == 0 &&
+           theDocInfo.itsNumObjectProperties == 0;
+  }
   constexpr static bool isStringDocumentType(const DocumentInfo &theDocInfo) {
     return theDocInfo.itsNumNumbers == 0 && theDocInfo.itsNumStrings == 1 &&
            theDocInfo.itsNumArrays == 0 && theDocInfo.itsNumArrayEntries == 0 &&
-           theDocInfo.itsNumObjects == 0 && theDocInfo.itsNumObjectProperties == 0;
+           theDocInfo.itsNumObjects == 0 &&
+           theDocInfo.itsNumObjectProperties == 0;
   }
 
   template <typename DocTy>
   constexpr static std::optional<DocTy>
-  parseDocument(const std::string_view theJsonString, const DocumentInfo &theDocInfo) {
+  parseDocument(const std::string_view theJsonString,
+                const DocumentInfo &theDocInfo) {
     constexpr const std::optional<DocTy> aErrorResult = std::nullopt;
     using p = parsing<SourceEncodingTy>;
     using Type = typename p::Type;
@@ -48,32 +63,32 @@ struct DocumentBuilder1 {
     std::optional<Type> aType = p::detectElementType(aRemaining);
     if (!aType)
       return aErrorResult;
-    if constexpr (std::is_same_v<DocTy, NonAggregateDocument>) {
+    if (isNonAggregateDocumentType(theDocInfo)) {
       switch (*aType) {
       case Type::NUL: {
         const std::string_view aNull = p::readNull(aRemaining);
         if (aNull.size() == 0)
           return aErrorResult;
         aRemaining.remove_prefix(aNull.size());
-        return createNullDocument(theDocInfo);
+        return createNullDocument<DocTy>(theDocInfo);
       }
       case Type::BOOL: {
         const auto [aBoolVal, aBoolLen] = p::parseBool(aRemaining);
         if (aBoolLen <= 0)
           return aErrorResult;
         aRemaining.remove_prefix(aBoolLen);
-        return createBoolDocument(aBoolVal, theDocInfo);
+        return createBoolDocument<DocTy>(aBoolVal, theDocInfo);
       }
       default:
         return aErrorResult;
       }
-    } else if constexpr (std::is_same_v<DocTy, NumberDocument>) {
+    } else if (isNumberDocumentType(theDocInfo)) {
       if (*aType == Type::NUMBER) {
         const auto [aNumVal, aNumLen] = p::parseNumber(aRemaining);
         if (aNumLen <= 0)
           return aErrorResult;
         aRemaining.remove_prefix(aNumLen);
-        return createNumberDocument(aNumVal, theDocInfo);
+        return createNumberDocument<DocTy>(aNumVal, theDocInfo);
       }
       return aErrorResult;
     } else if (isStringDocumentType(theDocInfo)) {
@@ -92,10 +107,13 @@ struct DocumentBuilder1 {
           if (aBytesNum <= 0)
             return aErrorResult;
           aStr.remove_prefix(aCharWidth);
-          for (size_t j = 0; j < aBytesNum && i < static_cast<size_t>(theDocInfo.itsNumChars); ++i, ++j)
+          for (size_t j = 0;
+               j < aBytesNum && i < static_cast<size_t>(theDocInfo.itsNumChars);
+               ++i, ++j)
             aStrDoc.itsChars[i] = aBytes[j];
         }
-        aStrDoc.itsStrings[0] = String{0, static_cast<size_t>(theDocInfo.itsNumChars)};
+        aStrDoc.itsStrings[0] =
+            String{0, static_cast<size_t>(theDocInfo.itsNumChars)};
         aStrDoc.itsEntities[0] = Entity{Entity::STRING, 0};
         return aStrDoc;
       }

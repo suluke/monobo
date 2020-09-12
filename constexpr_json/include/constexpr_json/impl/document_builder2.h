@@ -154,7 +154,7 @@ public:
 
 private:
   template <typename DocTy>
-  using ElementInfos = typename DocTy::Buffer<ElementInfo, DocTy::MAX_ENTITIES()>;
+  using ElementInfos = typename DocTy::Storage::Buffer<ElementInfo, DocTy::Storage::MAX_ENTITIES()>;
 
   static constexpr std::string_view
   consumeObjectKey(const std::string_view theString) {
@@ -176,9 +176,10 @@ private:
       -> std::optional<ElementInfos<DocTy>> {
     // state variables
     ElementInfos<DocTy> aEntities{
-        DocTy::template createBuffer<ElementInfo, DocTy::MAX_ENTITIES()>(
-            static_cast<size_t>(theDocInfo.itsNumArrayEntries + theDocInfo.itsNumObjectProperties +
-            1))};
+        DocTy::Storage::template createBuffer<ElementInfo,
+                                              DocTy::Storage::MAX_ENTITIES()>(
+            static_cast<size_t>(theDocInfo.itsNumArrayEntries +
+                                theDocInfo.itsNumObjectProperties + 1))};
     ParentId aCurrentParent = -1;
     Type aCurrentParentType = Type::NUL;
     bool aIsFirstChild = true;
