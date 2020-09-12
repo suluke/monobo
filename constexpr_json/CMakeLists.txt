@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.8)
 project(constexpr_json CXX C)
 set(CMAKE_CXX_STANDARD 17)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+
 include_directories(include/)
 
-add_executable(json_schema test/json_schema_test.cc)
+add_subdirectory(test)
