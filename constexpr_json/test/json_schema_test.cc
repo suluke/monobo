@@ -1,6 +1,6 @@
 #include "constexpr_json/document_builder.h"
-#include "constexpr_json/document_builder1.h"
-#include "constexpr_json/document_builder2.h"
+#include "constexpr_json/impl/document_builder1.h"
+#include "constexpr_json/impl/document_builder2.h"
 #include <cassert>
 #include <cmath>
 #include <iostream>
@@ -93,27 +93,27 @@ static std::ostream &operator<<(std::ostream &theStream,
 
 template <typename DocTy> static void dump(const DocTy &theDoc) {
   std::cout << "======================================\n"
-            << "#Numbers: " << DocTy::itsNumNumbers << "\nNumbers: \n";
+            << "#Numbers: " << theDoc.itsNumbers.size() << "\nNumbers: \n";
   for (const double &aNum : theDoc.itsNumbers)
     std::cout << aNum << "\n";
-  std::cout << "#Chars: " << DocTy::itsNumChars << "\nChars: \n";
+  std::cout << "#Chars: " << theDoc.itsChars.size() << "\nChars: \n";
   for (const char &aChar : theDoc.itsChars)
     std::cout << aChar << "\n";
-  std::cout << "#Strings: " << DocTy::itsNumStrings << "\n";
+  std::cout << "#Strings: " << theDoc.itsStrings.size() << "\n";
   for (const String &aString : theDoc.itsStrings)
     std::cout << "[" << aString.itsPosition << ": " << aString.itsSize << "]"
               << "\n";
-  std::cout << "#Arrays: " << DocTy::itsNumArrays << "\n";
+  std::cout << "#Arrays: " << theDoc.itsArrays.size() << "\n";
   for (const Array &aArray : theDoc.itsArrays)
     std::cout << "[" << aArray.itsPosition << ": " << aArray.itsNumElements
               << "]"
               << "\n";
-  std::cout << "#Objects: " << DocTy::itsNumObjects << "\n";
+  std::cout << "#Objects: " << theDoc.itsObjects.size() << "\n";
   for (const Object &aObject : theDoc.itsObjects)
     std::cout << "{" << aObject.itsKeysPos << "/" << aObject.itsValuesPos
               << ": " << aObject.itsNumProperties << "}"
               << "\n";
-  std::cout << "#Entities: " << DocTy::itsNumEntities << "\n";
+  std::cout << "#Entities: " << theDoc.itsEntities.size() << "\n";
   for (const Entity &aEntity : theDoc.itsEntities)
     std::cout << aEntity.itsKind << ":" << aEntity.itsPayload << "\n";
   std::cout << "======================================\n";
@@ -177,7 +177,6 @@ template <ssize_t L> struct CompareCharSeqs {
 #define CHECK_COUNTS(JSON, NULLS, BOOLS, DOUBLES, CHARS, STRS, ARRAYS,         \
                      ENTRIES, OBJECTS, PROPS)                                  \
   do {                                                                         \
-    using Builder = DocumentBuilder<Utf8, Utf8>;                               \
     constexpr const DocumentInfo aDI = Builder::computeDocInfo(JSON);          \
     constexpr const DocumentInfo aExpected = {                                 \
         NULLS, BOOLS, DOUBLES, CHARS, STRS, ARRAYS, ENTRIES, OBJECTS, PROPS};  \
@@ -203,6 +202,7 @@ template <ssize_t L> struct CompareCharSeqs {
     static_assert(aDI == aExpected);                                           \
   } while (false)
 
+template<typename Builder>
 static void static_tests() {
   // Test utf8 decoder
   CHECK_UTF8_DECODE("$", 0x24);
@@ -332,7 +332,6 @@ static void static_tests() {
 #define CHECK_DOCPARSE(JSON)                                                   \
   do {                                                                         \
     constexpr std::string_view aJsonStr{JSON};                                 \
-    using Builder = DocumentBuilder<Utf8, Utf8>;                               \
     constexpr DocumentInfo aDocInfo = Builder::computeDocInfo(aJsonStr);       \
     using DocTy =                                                              \
         Document<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,                 \
@@ -340,7 +339,7 @@ static void static_tests() {
                  aDocInfo.itsNumArrayEntries, aDocInfo.itsNumObjects,          \
                  aDocInfo.itsNumObjectProperties>;                             \
     constexpr std::optional<DocTy> aDoc =                                      \
-        Builder::parseDocument<DocTy>(aJsonStr);                               \
+        Builder::template parseDocument<DocTy>(aJsonStr, aDocInfo);                     \
     static_assert(aDoc);                                                       \
     /*dump(*aDoc);*/                                                           \
     /*std::cout << *aDoc << "\n";*/                                            \
@@ -356,7 +355,9 @@ static void static_tests() {
 }
 
 int main() {
-  static_tests();
+  static_tests<DocumentBuilder<Utf8, Utf8, DocumentBuilder1>>();
+  static_tests<DocumentBuilder<Utf8, Utf8, DocumentBuilder2>>();
+  static_tests<DocumentBuilder<Utf8, Utf8>>();
 #define USE_JSON_STRING(theJson) constexpr std::string_view aJsonSV{theJson};
 #include "json_schema.h"
   constexpr DocumentInfo aDocInfo =
@@ -366,21 +367,20 @@ int main() {
                          aDocInfo.itsNumArrayEntries, aDocInfo.itsNumObjects,
                          aDocInfo.itsNumObjectProperties>;
   {
-
     using Builder = DocumentBuilder1<Utf8, Utf8>;
-    constexpr auto aDoc = Builder::parseDocument<DocTy>(aJsonSV);
+    constexpr auto aDoc = Builder::parseDocument<DocTy>(aJsonSV, aDocInfo);
     static_assert(aDoc);
     std::cout << "\n" << *aDoc << "\n";
   }
   {
     using Builder = DocumentBuilder2<Utf8, Utf8>;
-    constexpr auto aDoc = Builder::parseDocument<DocTy>(aJsonSV);
+    constexpr auto aDoc = Builder::parseDocument<DocTy>(aJsonSV, aDocInfo);
     static_assert(aDoc);
     std::cout << "\n" << *aDoc << "\n";
   }
   {
     using Builder = DocumentBuilder<Utf8, Utf8>;
-    constexpr auto aDoc = Builder::parseDocument<DocTy>(aJsonSV);
+    constexpr auto aDoc = Builder::parseDocument<DocTy>(aJsonSV, aDocInfo);
     static_assert(aDoc);
     std::cout << "\n" << *aDoc << "\n";
   }

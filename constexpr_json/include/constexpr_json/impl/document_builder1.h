@@ -1,10 +1,10 @@
 #ifndef CONSTEXPR_JSON_DOCUMENT_BUILDER1_H
 #define CONSTEXPR_JSON_DOCUMENT_BUILDER1_H
 
-#include "document.h"
-#include "document_info.h"
-#include "utils/parsing.h"
-#include "utils/unicode.h"
+#include "constexpr_json/document.h"
+#include "constexpr_json/document_info.h"
+#include "constexpr_json/utils/parsing.h"
+#include "constexpr_json/utils/unicode.h"
 #include <optional>
 
 namespace cjson {
@@ -15,31 +15,31 @@ struct DocumentBuilder1 {
   template <size_t NumChars>
   using StringDocument = Document<0, NumChars, 1, 0, 0, 0, 0>;
 
-  constexpr static NonAggregateDocument createNullDocument() {
-    NonAggregateDocument aResult;
+  constexpr static NonAggregateDocument createNullDocument(const DocumentInfo &theDocInfo) {
+    NonAggregateDocument aResult{theDocInfo};
     aResult.itsEntities[0] = Entity{Entity::NUL, 0};
     return aResult;
   }
-  constexpr static NonAggregateDocument createBoolDocument(bool theValue) {
-    NonAggregateDocument aResult;
+  constexpr static NonAggregateDocument createBoolDocument(bool theValue, const DocumentInfo &theDocInfo) {
+    NonAggregateDocument aResult{theDocInfo};
     aResult.itsEntities[0] = Entity{Entity::BOOL, theValue};
     return aResult;
   }
-  constexpr static NumberDocument createNumberDocument(double theValue) {
-    NumberDocument aResult;
+  constexpr static NumberDocument createNumberDocument(double theValue, const DocumentInfo &theDocInfo) {
+    NumberDocument aResult{theDocInfo};
     aResult.itsEntities[0] = Entity{Entity::NUMBER, 0};
     aResult.itsNumbers[0] = theValue;
     return aResult;
   }
-  template <typename DocTy> constexpr static bool isStringDocumentType() {
-    return DocTy::itsNumNumbers == 0 && DocTy::itsNumStrings == 1 &&
-           DocTy::itsNumArrays == 0 && DocTy::itsNumArrayEntries == 0 &&
-           DocTy::itsNumObjects == 0 && DocTy::itsNumObjectProperties == 0;
+  constexpr static bool isStringDocumentType(const DocumentInfo &theDocInfo) {
+    return theDocInfo.itsNumNumbers == 0 && theDocInfo.itsNumStrings == 1 &&
+           theDocInfo.itsNumArrays == 0 && theDocInfo.itsNumArrayEntries == 0 &&
+           theDocInfo.itsNumObjects == 0 && theDocInfo.itsNumObjectProperties == 0;
   }
 
   template <typename DocTy>
   constexpr static std::optional<DocTy>
-  parseDocument(const std::string_view theJsonString) {
+  parseDocument(const std::string_view theJsonString, const DocumentInfo &theDocInfo) {
     constexpr const std::optional<DocTy> aErrorResult = std::nullopt;
     using p = parsing<SourceEncodingTy>;
     using Type = typename p::Type;
@@ -55,16 +55,14 @@ struct DocumentBuilder1 {
         if (aNull.size() == 0)
           return aErrorResult;
         aRemaining.remove_prefix(aNull.size());
-        return std::make_pair(createNullDocument(),
-                              theJsonString.size() - aRemaining.size());
+        return createNullDocument(theDocInfo);
       }
       case Type::BOOL: {
         const auto [aBoolVal, aBoolLen] = p::parseBool(aRemaining);
         if (aBoolLen <= 0)
           return aErrorResult;
         aRemaining.remove_prefix(aBoolLen);
-        return std::make_pair(createBoolDocument(aBoolVal),
-                              theJsonString.size() - aRemaining.size());
+        return createBoolDocument(aBoolVal, theDocInfo);
       }
       default:
         return aErrorResult;
@@ -75,19 +73,18 @@ struct DocumentBuilder1 {
         if (aNumLen <= 0)
           return aErrorResult;
         aRemaining.remove_prefix(aNumLen);
-        return std::make_pair(createNumberDocument(aNumVal),
-                              theJsonString.size() - aRemaining.size());
+        return createNumberDocument(aNumVal, theDocInfo);
       }
       return aErrorResult;
-    } else if constexpr (isStringDocumentType<DocTy>()) {
+    } else if (isStringDocumentType(theDocInfo)) {
       if (*aType == Type::STRING) {
         const std::string_view aStrQuot = p::readString(aRemaining);
         if (aStrQuot.empty())
           return aErrorResult;
         aRemaining.remove_prefix(aStrQuot.size());
         std::string_view aStr = p::stripQuotes(aStrQuot);
-        DocTy aStrDoc;
-        for (size_t i = 0; i < DocTy::itsNumChars;) {
+        DocTy aStrDoc{theDocInfo};
+        for (size_t i = 0; i < static_cast<size_t>(theDocInfo.itsNumChars);) {
           const auto [aChar, aCharWidth] = p::parseFirstStringChar(aStr);
           if (aCharWidth <= 0)
             return aErrorResult;
@@ -95,13 +92,12 @@ struct DocumentBuilder1 {
           if (aBytesNum <= 0)
             return aErrorResult;
           aStr.remove_prefix(aCharWidth);
-          for (size_t j = 0; j < aBytesNum && i < DocTy::itsNumChars; ++i, ++j)
+          for (size_t j = 0; j < aBytesNum && i < static_cast<size_t>(theDocInfo.itsNumChars); ++i, ++j)
             aStrDoc.itsChars[i] = aBytes[j];
         }
-        aStrDoc.itsStrings[0] = String{0, DocTy::itsNumChars};
+        aStrDoc.itsStrings[0] = String{0, static_cast<size_t>(theDocInfo.itsNumChars)};
         aStrDoc.itsEntities[0] = Entity{Entity::STRING, 0};
-        return std::make_pair(aStrDoc,
-                              theJsonString.size() - aRemaining.size());
+        return aStrDoc;
       }
       return aErrorResult;
     } else {
@@ -110,7 +106,7 @@ struct DocumentBuilder1 {
       // store their position inside the JSON string as the payload. Then
       // re-iterate the entities array from left to right doing the same until
       // the whole document is built up.
-      DocTy aResult;
+      DocTy aResult{theDocInfo};
       aResult.itsEntities[0].itsPayload = 0;
       switch (*aType) {
       case Type::ARRAY:

@@ -1,10 +1,10 @@
 #ifndef CONSTEXPR_JSON_DOCUMENT_BUILDER2_H
 #define CONSTEXPR_JSON_DOCUMENT_BUILDER2_H
 
-#include "document.h"
-#include "document_info.h"
-#include "utils/parsing.h"
-#include "utils/unicode.h"
+#include "constexpr_json/document.h"
+#include "constexpr_json/document_info.h"
+#include "constexpr_json/utils/parsing.h"
+#include "constexpr_json/utils/unicode.h"
 
 namespace cjson {
 template <typename SourceEncodingTy, typename DestEncodingTy>
@@ -29,13 +29,16 @@ private:
 public:
   constexpr static DocumentInfo
   computeDocInfo(const std::string_view theJsonString) {
-    return DocumentInfo::compute<SourceEncodingTy, DestEncodingTy>(theJsonString).first;
+    return DocumentInfo::compute<SourceEncodingTy, DestEncodingTy>(
+               theJsonString)
+        .first;
   }
 
   template <typename DocTy>
   static constexpr std::optional<DocTy>
-  parseDocument(const std::string_view theJsonString) {
-    const auto aElementInfos = computeElementInfos<DocTy>(theJsonString);
+  parseDocument(const std::string_view theJsonString,
+                const DocumentInfo &theDocInfo) {
+    const auto aElementInfos = computeElementInfos<DocTy>(theJsonString, theDocInfo);
     if (!aElementInfos)
       return makeError<DocTy>("Failed to compute element infos");
     const ElementInfo *aCurrentElm = &aElementInfos->front();
@@ -47,7 +50,7 @@ public:
     intptr_t aNumArrays = 0;
     intptr_t aNumObjects = 0;
     intptr_t aNumObjectProps = 0;
-    DocTy aResult;
+    DocTy aResult{theDocInfo};
 #define PARSE_STRING(theJson, theNumRead)                                      \
   do {                                                                         \
     std::string_view aStr = p::readString(theJson);                            \
@@ -151,9 +154,7 @@ public:
 
 private:
   template <typename DocTy>
-  using ElementInfos =
-      std::array<ElementInfo,
-                 DocTy::itsNumArrayEntries + DocTy::itsNumObjectProperties + 1>;
+  using ElementInfos = typename DocTy::Buffer<ElementInfo, DocTy::MAX_ENTITIES()>;
 
   static constexpr std::string_view
   consumeObjectKey(const std::string_view theString) {
@@ -170,10 +171,14 @@ private:
 
   template <typename DocTy>
   static constexpr auto
-  computeElementInfos(const std::string_view theJsonString)
+  computeElementInfos(const std::string_view theJsonString,
+                      const DocumentInfo &theDocInfo)
       -> std::optional<ElementInfos<DocTy>> {
     // state variables
-    ElementInfos<DocTy> aEntities{};
+    ElementInfos<DocTy> aEntities{
+        DocTy::template createBuffer<ElementInfo, DocTy::MAX_ENTITIES()>(
+            static_cast<size_t>(theDocInfo.itsNumArrayEntries + theDocInfo.itsNumObjectProperties +
+            1))};
     ParentId aCurrentParent = -1;
     Type aCurrentParentType = Type::NUL;
     bool aIsFirstChild = true;

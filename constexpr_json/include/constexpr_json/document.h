@@ -1,6 +1,8 @@
 #ifndef CONSTEXPR_JSON_DOCUMENT_H
 #define CONSTEXPR_JSON_DOCUMENT_H
 
+#include "document_info.h"
+
 #include <array>
 #include <cstddef>
 #include <map>
@@ -69,6 +71,21 @@ template <ssize_t theNumNumbers, ssize_t theNumChars, ssize_t theNumStrings,
           ssize_t theNumArrays, ssize_t theNumArrayEntries,
           ssize_t theNumObjects, ssize_t theNumObjectProperties>
 struct Document : public DocumentInterface {
+  constexpr Document(const DocumentInfo &theDocInfo)
+      : itsNumbers{createBuffer<double, theNumNumbers>(
+            theDocInfo.itsNumNumbers)},
+        itsChars{createBuffer<char, theNumChars>(theDocInfo.itsNumChars)},
+        itsEntities{createBuffer<Entity, MAX_ENTITIES()>(
+            theDocInfo.itsNumObjectProperties + theDocInfo.itsNumArrayEntries +
+            1)},
+        itsArrays{createBuffer<Array, theNumArrays>(theDocInfo.itsNumArrays)},
+        itsObjects{
+            createBuffer<Object, theNumObjects>(theDocInfo.itsNumObjects)},
+        itsObjectProps{createBuffer<Property, theNumObjectProperties>(
+            theDocInfo.itsNumObjectProperties)},
+        itsStrings{
+            createBuffer<String, theNumStrings>(theDocInfo.itsNumStrings)} {}
+
   static_assert(theNumNumbers >= 0,
                 "Negative NumNumbers for document is illegal");
   static_assert(theNumChars >= 0, "Negative NumChars for document is illegal");
@@ -83,24 +100,24 @@ struct Document : public DocumentInterface {
   static_assert(theNumObjectProperties >= 0,
                 "Negative NumObjectProperties for document is illegal");
 
-  static constexpr const ssize_t itsNumNumbers = theNumNumbers;
-  static constexpr const ssize_t itsNumChars = theNumChars;
-  static constexpr const ssize_t itsNumStrings = theNumStrings;
-  static constexpr const ssize_t itsNumArrays = theNumArrays;
-  static constexpr const ssize_t itsNumArrayEntries = theNumArrayEntries;
-  static constexpr const ssize_t itsNumObjects = theNumObjects;
-  static constexpr const ssize_t itsNumObjectProperties =
-      theNumObjectProperties;
-  static constexpr const ssize_t itsNumEntities =
-      theNumArrayEntries + theNumObjectProperties + 1;
+  static constexpr ssize_t MAX_ENTITIES() {
+    return theNumArrayEntries + theNumObjectProperties + 1;
+  }
 
-  std::array<double, theNumNumbers> itsNumbers = {};
-  std::array<char, theNumChars> itsChars = {};
-  std::array<Entity, itsNumEntities> itsEntities = {};
-  std::array<Array, theNumArrays> itsArrays = {};
-  std::array<Object, theNumObjects> itsObjects = {};
-  std::array<Property, itsNumObjectProperties> itsObjectProps = {};
-  std::array<String, theNumStrings> itsStrings = {};
+  template <typename T, size_t N> using Buffer = std::array<T, N>;
+
+  template <typename T, size_t N>
+  static constexpr Buffer<T, N> createBuffer(size_t theSize) {
+    return Buffer<T, N>{};
+  }
+
+  Buffer<double, theNumNumbers> itsNumbers;
+  Buffer<char, theNumChars> itsChars;
+  Buffer<Entity, MAX_ENTITIES()> itsEntities;
+  Buffer<Array, theNumArrays> itsArrays;
+  Buffer<Object, theNumObjects> itsObjects;
+  Buffer<Property, theNumObjectProperties> itsObjectProps;
+  Buffer<String, theNumStrings> itsStrings;
 
   EntityRef getRoot() const override { return {*this, itsEntities[0]}; }
   double getNumber(intptr_t theIdx) const override {
