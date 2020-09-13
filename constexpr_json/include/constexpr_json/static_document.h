@@ -1,7 +1,7 @@
 #ifndef CONSTEXPR_JSON_STATIC_DOCUMENT_H
 #define CONSTEXPR_JSON_STATIC_DOCUMENT_H
 
-#include "document.h"
+#include "constexpr_json/document.h"
 
 namespace cjson {
 namespace impl {
@@ -30,6 +30,10 @@ struct StaticDocumentStorage {
 template <typename StaticDocTy> struct StaticDocumentAccessor {
   constexpr StaticDocumentAccessor(const StaticDocTy &theDoc)
       : itsDoc{&theDoc} {}
+
+  constexpr bool operator==(const StaticDocumentAccessor& theOther) const noexcept {
+    return itsDoc == theOther.itsDoc;
+  }
 
   constexpr double getNumber(intptr_t theIdx) const {
     return itsDoc->itsNumbers[theIdx];

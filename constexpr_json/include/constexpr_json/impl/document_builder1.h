@@ -53,7 +53,7 @@ struct DocumentBuilder1 {
   constexpr static std::optional<DocTy>
   parseDocument(const std::string_view theJsonString,
                 const DocumentInfo &theDocInfo) {
-    constexpr const std::optional<DocTy> aErrorResult = std::nullopt;
+    const std::optional<DocTy> aErrorResult = std::nullopt;
     using p = parsing<SourceEncodingTy>;
     using Type = typename p::Type;
     const std::string_view aWS = p::readWhitespace(theJsonString);

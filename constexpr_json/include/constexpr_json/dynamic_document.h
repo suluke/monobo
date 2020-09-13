@@ -1,7 +1,7 @@
 #ifndef CONSTEXPR_JSON_DYNAMIC_DOCUMENT_H
 #define CONSTEXPR_JSON_DYNAMIC_DOCUMENT_H
 
-#include "document.h"
+#include "constexpr_json/document.h"
 
 #include <limits>
 

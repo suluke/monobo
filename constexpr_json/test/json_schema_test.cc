@@ -26,8 +26,9 @@ static std::ostream &operator<<(std::ostream &theStream,
                    << "\n";
 }
 
-static std::ostream &operator<<(std::ostream &theStream,
-                                const DocumentInterface::EntityRef &theEntity) {
+template<typename EntityRef>
+static std::ostream &print(std::ostream &theStream,
+                                const EntityRef &theEntity) {
   switch (theEntity.getType()) {
   case Entity::BOOL:
     return theStream << (theEntity.toBool() ? "true" : "false");
@@ -41,7 +42,7 @@ static std::ostream &operator<<(std::ostream &theStream,
     for (auto aIter = aArray.begin(), aEnd = aArray.end(); aIter != aEnd;
          ++aIter) {
       const auto &aEntity = *aIter;
-      theStream << aEntity;
+      print(theStream, aEntity);
       auto aNext = aIter;
       ++aNext;
       if (aNext != aEnd)
@@ -56,7 +57,7 @@ static std::ostream &operator<<(std::ostream &theStream,
     for (auto aIter = aObject.begin(), aEnd = aObject.end(); aIter != aEnd;
          ++aIter) {
       const auto &[aKey, aEntity] = *aIter;
-      theStream << "\"" << aKey << "\": " << aEntity;
+      print(theStream << "\"" << aKey << "\": ", aEntity);
       auto aNext = aIter;
       ++aNext;
       if (aNext != aEnd)
@@ -69,6 +70,11 @@ static std::ostream &operator<<(std::ostream &theStream,
     return theStream << "\"" << theEntity.toString() << "\"";
   }
   return theStream;
+}
+
+static std::ostream &operator<<(std::ostream &theStream,
+                                const DocumentInterface::EntityRef &theEntity) {
+  return print(theStream, theEntity);
 }
 
 static std::ostream &operator<<(std::ostream &theStream,
@@ -356,6 +362,27 @@ static void static_tests() {
   CHECK_DOCPARSE("[3,2,1, \"123\",[null,true,false]]");
   CHECK_DOCPARSE("  {\n    \"Test\": false,\n    \"Toast\":true,\n    "
                  "\"Tasty\":[null]\n}  ");
+
+  {
+    constexpr std::string_view aJsonStr{"[123,true,null,\"abc\"]"};
+    constexpr DocumentInfo aDocInfo = Builder::computeDocInfo(aJsonStr);
+    using DocTy =
+        StaticDocument<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,
+                       aDocInfo.itsNumStrings, aDocInfo.itsNumArrays,
+                       aDocInfo.itsNumArrayEntries, aDocInfo.itsNumObjects,
+                       aDocInfo.itsNumObjectProperties>;
+    constexpr auto aDoc = Builder::template parseDocument<DocTy>(aJsonStr, aDocInfo);
+    static_assert(aDoc->getStaticRoot().toArray().size() == 4);
+
+    // FIXME the following code is only here for temporary testing/demo'ing of toArray and operator==(EntityRef)
+    for (typename DocTy::EntityRef aEntity : aDoc->getStaticRoot().toArray()) {
+      print(std::cout, aEntity) << "\n";
+    }
+
+    const auto aDynamicDoc =
+        Builder::template parseDocument<DynamicDocument>(aJsonStr, aDocInfo);
+    assert(aDynamicDoc == aDoc);
+  }
 }
 
 int main() {
