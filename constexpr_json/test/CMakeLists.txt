@@ -1,3 +1,5 @@
+add_executable(basic basic.cc)
+
 include(GenerateJsonHeader)
 
 generate_json_header("${CMAKE_CURRENT_BINARY_DIR}/json_schema.h" "json_schema.json")

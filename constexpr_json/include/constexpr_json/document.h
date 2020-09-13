@@ -5,6 +5,7 @@
 
 #include <array>
 #include <cstddef>
+#include <functional>
 #include <map>
 #include <string_view>
 #include <vector>
@@ -33,29 +34,34 @@ struct String {
 };
 
 struct DocumentInterface;
-struct EntityRef {
+namespace impl {
+template <typename DocumentRefType> struct EntityRefImpl {
 public:
-  EntityRef(const DocumentInterface &theDoc, const Entity &theEntity)
-      : itsDoc(&theDoc), itsEntity(&theEntity) {}
-  EntityRef() = default;
-  EntityRef(const EntityRef &) = default;
-  EntityRef(EntityRef &&) = default;
-  EntityRef &operator=(const EntityRef &) = default;
-  EntityRef &operator=(EntityRef &&) = default;
+  constexpr EntityRefImpl(const DocumentRefType theDoc,
+                          const Entity &theEntity)
+      : itsDoc(theDoc), itsEntity(&theEntity) {}
+  constexpr EntityRefImpl() = delete;
+  constexpr EntityRefImpl(const EntityRefImpl &) = default;
+  constexpr EntityRefImpl(EntityRefImpl &&) = default;
+  constexpr EntityRefImpl &operator=(const EntityRefImpl &) = default;
+  constexpr EntityRefImpl &operator=(EntityRefImpl &&) = default;
 
-  Entity::KIND getType() const { return itsEntity->itsKind; }
-  bool toBool() const { return itsEntity->itsPayload; }
-  double toNumber() const;
-  std::string_view toString() const;
-  std::vector<EntityRef> toArray() const;
-  std::map<std::string_view, EntityRef> toObject() const;
+  constexpr Entity::KIND getType() const { return itsEntity->itsKind; }
+  constexpr bool toBool() const { return itsEntity->itsPayload; }
+  constexpr double toNumber() const;
+  constexpr std::string_view toString() const;
+  constexpr std::vector<EntityRefImpl> toArray() const;
+  constexpr std::map<std::string_view, EntityRefImpl> toObject() const;
 
 private:
-  const DocumentInterface *itsDoc;
-  const Entity *itsEntity;
+  DocumentRefType itsDoc = {};
+  const Entity *itsEntity = nullptr;
 };
+} // namespace impl
 
 struct DocumentInterface {
+  using EntityRef = impl::EntityRefImpl<const DocumentInterface *>;
+
   virtual EntityRef getRoot() const = 0;
   virtual double getNumber(intptr_t theIdx) const = 0;
   virtual std::string_view getString(intptr_t theIdx) const = 0;
@@ -69,6 +75,7 @@ struct DocumentInterface {
 
 template <typename Storage> struct DocumentBase : public DocumentInterface {
   template <typename T, size_t N> using Buffer = typename Storage::Buffer<T, N>;
+  using EntityRef = DocumentInterface::EntityRef;
 
   Buffer<double, Storage::MAX_NUMBERS()> itsNumbers;
   Buffer<char, Storage::MAX_CHARS()> itsChars;
@@ -101,7 +108,7 @@ template <typename Storage> struct DocumentBase : public DocumentInterface {
             Storage::template createBuffer<String, Storage::MAX_STRINGS()>(
                 theDocInfo.itsNumStrings)} {}
 
-  EntityRef getRoot() const override { return {*this, itsEntities[0]}; }
+  EntityRef getRoot() const override { return {this, itsEntities[0]}; }
   double getNumber(intptr_t theIdx) const override {
     return itsNumbers[theIdx];
   }
@@ -126,37 +133,44 @@ template <typename Storage> struct DocumentBase : public DocumentInterface {
     const Object &aObject = itsObjects[theObjIdx];
     std::string_view aKey =
         getString(itsObjectProps[aObject.itsKeysPos + thePropIdx].itsKeyPos);
-    EntityRef aValue{*this, itsEntities[aObject.itsValuesPos + thePropIdx]};
+    EntityRef aValue{this, itsEntities[aObject.itsValuesPos + thePropIdx]};
     return std::make_pair(aKey, aValue);
   }
 };
 
-double EntityRef::toNumber() const {
+namespace impl {
+template <typename DocumentType>
+constexpr double EntityRefImpl<DocumentType>::toNumber() const {
   return itsDoc->getNumber(itsEntity->itsPayload);
 }
-std::string_view EntityRef::toString() const {
+template <typename DocumentType>
+constexpr std::string_view EntityRefImpl<DocumentType>::toString() const {
   return itsDoc->getString(itsEntity->itsPayload);
 }
-std::vector<EntityRef> EntityRef::toArray() const {
+template <typename DocumentType>
+constexpr std::vector<EntityRefImpl<DocumentType>>
+EntityRefImpl<DocumentType>::toArray() const {
   intptr_t aIdx = itsEntity->itsPayload;
-  std::vector<EntityRef> aArray;
+  std::vector<EntityRefImpl<DocumentType>> aArray;
   aArray.reserve(itsDoc->array_size(aIdx));
   for (const Entity *aIter = itsDoc->array_begin(aIdx),
                     *aEnd = itsDoc->array_end(aIdx);
        aIter != aEnd; ++aIter) {
-    aArray.emplace_back(*itsDoc, *aIter);
+    aArray.emplace_back(itsDoc, *aIter);
   }
   return aArray;
 }
-std::map<std::string_view, EntityRef> EntityRef::toObject() const {
+template <typename DocumentType>
+constexpr std::map<std::string_view, EntityRefImpl<DocumentType>>
+EntityRefImpl<DocumentType>::toObject() const {
   intptr_t aObjectIdx = itsEntity->itsPayload;
-  std::map<std::string_view, EntityRef> aObject;
+  std::map<std::string_view, EntityRefImpl<DocumentType>> aObject;
   for (size_t aPropIdx = 0u; aPropIdx < itsDoc->getNumProperties(aObjectIdx);
        ++aPropIdx)
     aObject.emplace(itsDoc->getProperty(aObjectIdx, aPropIdx));
   std::ignore = aObject;
   return aObject;
 }
-
+} // namespace impl
 } // namespace cjson
 #endif // CONSTEXPR_JSON_DOCUMENT_H

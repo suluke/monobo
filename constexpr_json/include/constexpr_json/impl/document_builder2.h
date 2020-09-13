@@ -4,7 +4,6 @@
 #include "constexpr_json/document.h"
 #include "constexpr_json/document_info.h"
 #include "constexpr_json/utils/parsing.h"
-#include "constexpr_json/utils/unicode.h"
 
 namespace cjson {
 template <typename SourceEncodingTy, typename DestEncodingTy>

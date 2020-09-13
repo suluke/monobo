@@ -27,7 +27,7 @@ static std::ostream &operator<<(std::ostream &theStream,
 }
 
 static std::ostream &operator<<(std::ostream &theStream,
-                                const EntityRef &theEntity) {
+                                const DocumentInterface::EntityRef &theEntity) {
   switch (theEntity.getType()) {
   case Entity::BOOL:
     return theStream << (theEntity.toBool() ? "true" : "false");
@@ -206,7 +206,8 @@ template <ssize_t L> struct CompareCharSeqs {
     static_assert(aDI == aExpected);                                           \
   } while (false)
 
-template <typename Builder> static void static_tests() {
+template <typename Builder = DocumentBuilder<Utf8, Utf8>>
+static void static_tests() {
   // Test utf8 decoder
   CHECK_UTF8_DECODE("$", 0x24);
   CHECK_UTF8_DECODE("¢", 0xa2);
@@ -360,7 +361,7 @@ template <typename Builder> static void static_tests() {
 int main() {
   static_tests<DocumentBuilder<Utf8, Utf8, DocumentBuilder1>>();
   static_tests<DocumentBuilder<Utf8, Utf8, DocumentBuilder2>>();
-  static_tests<DocumentBuilder<Utf8, Utf8>>();
+  static_tests();
 #define USE_JSON_STRING(theJson) constexpr std::string_view aJsonSV{theJson};
 #include "json_schema.h"
   constexpr DocumentInfo aDocInfo =

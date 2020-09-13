@@ -26,6 +26,47 @@ struct StaticDocumentStorage {
     return Buffer<T, N>{};
   }
 };
+
+template <typename StaticDocTy> struct StaticDocumentAccessor {
+  constexpr StaticDocumentAccessor(const StaticDocTy &theDoc)
+      : itsDoc{&theDoc} {}
+
+  constexpr double getNumber(intptr_t theIdx) const {
+    return itsDoc->itsNumbers[theIdx];
+  }
+  constexpr std::string_view getString(intptr_t theIdx) const {
+    const String &aStr = itsDoc->itsStrings[theIdx];
+    return std::string_view{itsDoc->itsChars.data() + aStr.itsPosition,
+                            aStr.itsSize};
+  }
+  constexpr const Entity *array_begin(intptr_t theIdx) const {
+    return &itsDoc->itsEntities[itsDoc->itsArrays[theIdx].itsPosition];
+  }
+  constexpr const Entity *array_end(intptr_t theIdx) const {
+    return array_begin(theIdx) + array_size(theIdx);
+  }
+  constexpr size_t array_size(intptr_t theIdx) const {
+    return itsDoc->itsArrays[theIdx].itsNumElements;
+  }
+  constexpr size_t getNumProperties(intptr_t theObjIdx) const {
+    return itsDoc->itsObjects[theObjIdx].itsNumProperties;
+  }
+  constexpr std::pair<std::string_view, typename StaticDocTy::EntityRef>
+  getProperty(intptr_t theObjIdx, intptr_t thePropIdx) const {
+    const Object &aObject = itsDoc->itsObjects[theObjIdx];
+    std::string_view aKey = getString(
+        itsDoc->itsObjectProps[aObject.itsKeysPos + thePropIdx].itsKeyPos);
+    typename StaticDocTy::EntityRef aValue{
+        *this, itsDoc->itsEntities[aObject.itsValuesPos + thePropIdx]};
+    return std::make_pair(aKey, aValue);
+  }
+
+  // FIXME typesystem hack. Remove if this can be compiled with c++20's constexpr reference_wrapper
+  constexpr const StaticDocumentAccessor *operator->() const { return this; }
+
+private:
+  const StaticDocTy* itsDoc;
+};
 } // namespace impl
 
 template <ssize_t theNumNumbers, ssize_t theNumChars, ssize_t theNumStrings,
@@ -35,10 +76,17 @@ struct StaticDocument
     : public DocumentBase<impl::StaticDocumentStorage<
           theNumNumbers, theNumChars, theNumStrings, theNumArrays,
           theNumArrayEntries, theNumObjects, theNumObjectProperties>> {
+  using BaseClass = DocumentBase<impl::StaticDocumentStorage<
+      theNumNumbers, theNumChars, theNumStrings, theNumArrays,
+      theNumArrayEntries, theNumObjects, theNumObjectProperties>>;
+  using Self =
+      StaticDocument<theNumNumbers, theNumChars, theNumStrings, theNumArrays,
+                     theNumArrayEntries, theNumObjects, theNumObjectProperties>;
   using Storage =
       impl::StaticDocumentStorage<theNumNumbers, theNumChars, theNumStrings,
                                   theNumArrays, theNumArrayEntries,
                                   theNumObjects, theNumObjectProperties>;
+  using EntityRef = impl::EntityRefImpl<impl::StaticDocumentAccessor<Self>>;
 
   constexpr StaticDocument(const DocumentInfo &theDocInfo)
       : DocumentBase<Storage>{theDocInfo} {}
@@ -56,6 +104,10 @@ struct StaticDocument
                 "Negative NumObjects for document is illegal");
   static_assert(theNumObjectProperties >= 0,
                 "Negative NumObjectProperties for document is illegal");
+
+  constexpr inline EntityRef getStaticRoot() const {
+    return {*this, BaseClass::itsEntities[0]};
+  }
 };
 } // namespace cjson
 #endif // CONSTEXPR_JSON_STATIC_DOCUMENT_H
