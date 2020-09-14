@@ -39,7 +39,7 @@ template <typename DocumentRefType> struct ArrayRefImpl {
         itsNumElements{theDoc->array_size(theEntity.itsPayload)} {}
 
   constexpr iterator begin() const { return {itsDoc, itsBegin}; }
-  constexpr iterator end() const { return {itsDoc, itsBegin + itsNumElements}; }
+  constexpr iterator end() const { return {itsDoc, itsBegin + size()}; }
   constexpr EntityRefImpl<DocumentRefType> operator[](size_t theIdx) const;
 
   constexpr size_t size() const { return itsNumElements; }
@@ -49,6 +49,64 @@ private:
   DocumentRefType itsDoc;
   const Entity *itsBegin;
   size_t itsNumElements;
+};
+
+template <typename DocumentRefType> struct ObjectIteratorImpl {
+  constexpr ObjectIteratorImpl() noexcept = default;
+  constexpr ObjectIteratorImpl(const DocumentRefType theDoc,
+                               const intptr_t &theObjectIdx,
+                               const size_t thePosition) noexcept
+      : itsDoc{theDoc}, itsObjectIdx{theObjectIdx}, itsPosition{thePosition} {}
+
+  using value_type =
+      std::pair<std::string_view, EntityRefImpl<DocumentRefType>>;
+
+  constexpr value_type operator*() const;
+  constexpr ObjectIteratorImpl &operator++() {
+    ++itsPosition;
+    return *this;
+  }
+  constexpr bool operator==(const ObjectIteratorImpl &theOther) const noexcept {
+    return itsDoc == theOther.itsDoc && itsObjectIdx == theOther.itsObjectIdx &&
+           itsPosition == theOther.itsPosition;
+  }
+  constexpr bool operator!=(const ObjectIteratorImpl &theOther) const noexcept {
+    return !(*this == theOther);
+  }
+
+private:
+  DocumentRefType itsDoc = {};
+  intptr_t itsObjectIdx = 0;
+  size_t itsPosition = 0;
+};
+
+template <typename DocumentRefType> struct ObjectRefImpl {
+  using iterator = ObjectIteratorImpl<DocumentRefType>;
+
+  constexpr ObjectRefImpl(const DocumentRefType theDoc, const Entity &theEntity)
+      : itsDoc{theDoc}, itsObjectIdx{theEntity.itsPayload} {}
+
+  constexpr iterator begin() const { return {itsDoc, itsObjectIdx, 0}; }
+  constexpr iterator end() const { return {itsDoc, itsObjectIdx, size()}; }
+  constexpr std::optional<EntityRefImpl<DocumentRefType>>
+  operator[](std::string_view theKey) const;
+  constexpr bool operator==(const ObjectRefImpl &theOther) const noexcept {
+    for (const auto aKVPair : *this) {
+      const auto aOtherVal = theOther[aKVPair.first];
+      if (!aOtherVal || !(aKVPair.second == *aOtherVal))
+        return false;
+    }
+    return true;
+  }
+
+  constexpr size_t size() const {
+    return itsDoc->getNumProperties(itsObjectIdx);
+  }
+  constexpr bool empty() const { return !size(); }
+
+private:
+  DocumentRefType itsDoc;
+  intptr_t itsObjectIdx = 0;
 };
 
 template <typename DocumentRefType> struct EntityRefImpl {
@@ -63,6 +121,7 @@ public:
   constexpr EntityRefImpl &operator=(EntityRefImpl &&) = default;
 
   using ArrayRef = ArrayRefImpl<DocumentRefType>;
+  using ObjectRef = ObjectRefImpl<DocumentRefType>;
 
   constexpr bool operator==(const EntityRefImpl &theOther) const noexcept {
     if (theOther.getType() != getType())
@@ -113,7 +172,8 @@ public:
     }
     return aArray;
   }
-  std::map<std::string_view, EntityRefImpl> toObject() const {
+  constexpr ObjectRef toObject() const { return {itsDoc, *itsEntity}; }
+  std::map<std::string_view, EntityRefImpl> toMap() const {
     intptr_t aObjectIdx = itsEntity->itsPayload;
     std::map<std::string_view, EntityRefImpl> aObject;
     for (size_t aPropIdx = 0u; aPropIdx < itsDoc->getNumProperties(aObjectIdx);
@@ -138,6 +198,23 @@ template <typename DocumentRefType>
 constexpr EntityRefImpl<DocumentRefType>
 ArrayRefImpl<DocumentRefType>::operator[](size_t theIdx) const {
   return {itsDoc, *(itsBegin + theIdx)};
+}
+
+template <typename DocumentRefType>
+constexpr typename ObjectIteratorImpl<DocumentRefType>::value_type
+ObjectIteratorImpl<DocumentRefType>::operator*() const {
+  return itsDoc->getProperty(itsObjectIdx, itsPosition);
+}
+
+template <typename DocumentRefType>
+constexpr std::optional<EntityRefImpl<DocumentRefType>>
+ObjectRefImpl<DocumentRefType>::operator[](std::string_view theKey) const {
+  // TODO linear search is quite inefficient
+  for (const auto aKVPair : *this) {
+    if (aKVPair.first == theKey)
+      return aKVPair.second;
+  }
+  return std::nullopt;
 }
 
 } // namespace impl

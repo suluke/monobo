@@ -364,7 +364,7 @@ static void static_tests() {
                  "\"Tasty\":[null]\n}  ");
 
   {
-    constexpr std::string_view aJsonStr{"[123,true,null,\"abc\"]"};
+    constexpr std::string_view aJsonStr{"[123,true,null,\"abc\",{\"def\":\"ghi\"}]"};
     constexpr DocumentInfo aDocInfo = Builder::computeDocInfo(aJsonStr);
     using DocTy =
         StaticDocument<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,
@@ -372,7 +372,7 @@ static void static_tests() {
                        aDocInfo.itsNumArrayEntries, aDocInfo.itsNumObjects,
                        aDocInfo.itsNumObjectProperties>;
     constexpr auto aDoc = Builder::template parseDocument<DocTy>(aJsonStr, aDocInfo);
-    static_assert(aDoc->getStaticRoot().toArray().size() == 4);
+    static_assert(aDoc->getStaticRoot().toArray().size() == 5);
 
     // FIXME the following code is only here for temporary testing/demo'ing of toArray and operator==(EntityRef)
     for (typename DocTy::EntityRef aEntity : aDoc->getStaticRoot().toArray()) {
@@ -380,6 +380,7 @@ static void static_tests() {
     }
     static_assert(aDoc->getStaticRoot().toArray()[1].toBool());
     static_assert(aDoc->getStaticRoot().toArray()[3].toString() == "abc");
+    static_assert(aDoc->getStaticRoot().toArray()[4].toObject()["def"]->toString() == "ghi");
 
     const auto aDynamicDoc =
         Builder::template parseDocument<DynamicDocument>(aJsonStr, aDocInfo);
