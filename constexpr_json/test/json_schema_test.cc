@@ -378,6 +378,8 @@ static void static_tests() {
     for (typename DocTy::EntityRef aEntity : aDoc->getStaticRoot().toArray()) {
       print(std::cout, aEntity) << "\n";
     }
+    static_assert(aDoc->getStaticRoot().toArray()[1].toBool());
+    static_assert(aDoc->getStaticRoot().toArray()[3].toString() == "abc");
 
     const auto aDynamicDoc =
         Builder::template parseDocument<DynamicDocument>(aJsonStr, aDocInfo);

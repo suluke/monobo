@@ -40,6 +40,7 @@ template <typename DocumentRefType> struct ArrayRefImpl {
 
   constexpr iterator begin() const { return {itsDoc, itsBegin}; }
   constexpr iterator end() const { return {itsDoc, itsBegin + itsNumElements}; }
+  constexpr EntityRefImpl<DocumentRefType> operator[](size_t theIdx) const;
 
   constexpr size_t size() const { return itsNumElements; }
   constexpr bool empty() const { return !size(); }
@@ -52,7 +53,8 @@ private:
 
 template <typename DocumentRefType> struct EntityRefImpl {
 public:
-  constexpr EntityRefImpl(const DocumentRefType theDoc, const Entity &theEntity) noexcept
+  constexpr EntityRefImpl(const DocumentRefType theDoc,
+                          const Entity &theEntity) noexcept
       : itsDoc(theDoc), itsEntity(&theEntity) {}
   constexpr EntityRefImpl() = delete;
   constexpr EntityRefImpl(const EntityRefImpl &) = default;
@@ -130,6 +132,12 @@ template <typename DocumentRefType>
 constexpr EntityRefImpl<DocumentRefType>
 ArrayIteratorImpl<DocumentRefType>::operator*() const {
   return {itsDoc, *itsPosition};
+}
+
+template <typename DocumentRefType>
+constexpr EntityRefImpl<DocumentRefType>
+ArrayRefImpl<DocumentRefType>::operator[](size_t theIdx) const {
+  return {itsDoc, *(itsBegin + theIdx)};
 }
 
 } // namespace impl
