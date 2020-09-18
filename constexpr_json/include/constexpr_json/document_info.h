@@ -230,6 +230,7 @@ struct DocumentInfo {
       return makeDocInfoError("UNREACHABLE");
     }
     }
+    return makeDocInfoError("UNREACHABLE");
   }
 
 private:

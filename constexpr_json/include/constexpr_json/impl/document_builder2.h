@@ -37,6 +37,8 @@ public:
   static constexpr std::optional<DocTy>
   parseDocument(const std::string_view theJsonString,
                 const DocumentInfo &theDocInfo) {
+    if (!theDocInfo)
+      return makeError<DocTy>("Using illegal DocInfo for parsing");
     const auto aElementInfos = computeElementInfos<DocTy>(theJsonString, theDocInfo);
     if (!aElementInfos)
       return makeError<DocTy>("Failed to compute element infos");

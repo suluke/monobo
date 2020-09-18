@@ -24,6 +24,9 @@ struct DocumentBuilder : public Impl<SourceEncodingTy, DestEncodingTy> {
   }
 
   using BaseClass::parseDocument;
+
+  using src_encoding = SourceEncodingTy;
+  using dest_encoding = DestEncodingTy;
 };
 } // namespace cjson
 #endif // CONSTEXPR_JSON_DOCUMENT_BUILDER_H
