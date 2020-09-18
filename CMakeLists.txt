@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.8)
 project(monobo CXX C)
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if (MSVC)
   add_compile_options(/W4 /WX)
