@@ -26,9 +26,9 @@ static std::ostream &operator<<(std::ostream &theStream,
                    << "\n";
 }
 
-template<typename EntityRef>
+template <typename EntityRef>
 static std::ostream &print(std::ostream &theStream,
-                                const EntityRef &theEntity) {
+                           const EntityRef &theEntity) {
   switch (theEntity.getType()) {
   case Entity::BOOL:
     return theStream << (theEntity.toBool() ? "true" : "false");
@@ -187,7 +187,9 @@ template <ssize_t L> struct CompareCharSeqs {
 #define CHECK_COUNTS(JSON, NULLS, BOOLS, DOUBLES, CHARS, STRS, ARRAYS,         \
                      ENTRIES, OBJECTS, PROPS)                                  \
   do {                                                                         \
-    constexpr const DocumentInfo aDI = Builder::computeDocInfo(JSON);          \
+    constexpr const auto aDIOrError = Builder::computeDocInfo(JSON);           \
+    static_assert(!Builder::isError(aDIOrError));                              \
+    constexpr const auto aDI = Builder::unwrap(aDIOrError);                    \
     constexpr const DocumentInfo aExpected = {                                 \
         NULLS, BOOLS, DOUBLES, CHARS, STRS, ARRAYS, ENTRIES, OBJECTS, PROPS};  \
     std::cout.setstate(std::ios_base::badbit); /* Disables cout */             \
@@ -199,7 +201,9 @@ template <ssize_t L> struct CompareCharSeqs {
 #define CHECK_COUNTS2(NULLS, BOOLS, DOUBLES, CHARS, STRS, ARRAYS, ENTRIES,     \
                       OBJECTS, PROPS, LENGTH, JSON)                            \
   do {                                                                         \
-    constexpr const auto aResult = DocumentInfo::compute<Utf8, Utf8>(JSON);    \
+    constexpr const auto aResult =                                             \
+        DocumentInfo::compute<Utf8, Utf8, typename Builder::error_handling>(   \
+            JSON);                                                             \
     constexpr const DocumentInfo aDI = aResult.first;                          \
     constexpr const DocumentInfo aExpected = {                                 \
         NULLS, BOOLS, DOUBLES, CHARS, STRS, ARRAYS, ENTRIES, OBJECTS, PROPS};  \
@@ -342,17 +346,19 @@ static void static_tests() {
 #define CHECK_DOCPARSE(JSON)                                                   \
   do {                                                                         \
     constexpr std::string_view aJsonStr{JSON};                                 \
-    constexpr DocumentInfo aDocInfo = Builder::computeDocInfo(aJsonStr);       \
+    constexpr const auto aDocInfoOrError = Builder::computeDocInfo(aJsonStr);  \
+    static_assert(!Builder::isError(aDocInfoOrError));                         \
+    constexpr const DocumentInfo aDocInfo = Builder::unwrap(aDocInfoOrError);  \
     using DocTy =                                                              \
         StaticDocument<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,           \
                        aDocInfo.itsNumStrings, aDocInfo.itsNumArrays,          \
                        aDocInfo.itsNumArrayEntries, aDocInfo.itsNumObjects,    \
                        aDocInfo.itsNumObjectProperties>;                       \
-    constexpr std::optional<DocTy> aDoc =                                      \
+    constexpr auto aDoc =                                                      \
         Builder::template parseDocument<DocTy>(aJsonStr, aDocInfo);            \
-    static_assert(aDoc);                                                       \
-    /*dump(*aDoc);*/                                                           \
-    /*std::cout << *aDoc << "\n";*/                                            \
+    static_assert(!Builder::isError(aDoc));                                    \
+    /*dump(Builder::unwrap(aDoc));*/                                           \
+    /*std::cout << Builder::unwrap(aDoc) << "\n";*/                            \
   } while (false)
   CHECK_DOCPARSE("null");
   CHECK_DOCPARSE("true");
@@ -364,66 +370,71 @@ static void static_tests() {
                  "\"Tasty\":[null]\n}  ");
 
   {
-    constexpr std::string_view aJsonStr{"[123,true,null,\"abc\",{\"def\":\"ghi\"}]"};
-    constexpr DocumentInfo aDocInfo = Builder::computeDocInfo(aJsonStr);
+    constexpr std::string_view aJsonStr{
+        "[123,true,null,\"abc\",{\"def\":\"ghi\"}]"};
+    constexpr auto aDocInfoOrError = Builder::computeDocInfo(aJsonStr);
+    static_assert(!Builder::isError(aDocInfoOrError));
+    constexpr DocumentInfo aDocInfo{Builder::unwrap(aDocInfoOrError)};
     using DocTy =
         StaticDocument<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,
                        aDocInfo.itsNumStrings, aDocInfo.itsNumArrays,
                        aDocInfo.itsNumArrayEntries, aDocInfo.itsNumObjects,
                        aDocInfo.itsNumObjectProperties>;
-    constexpr auto aDoc = Builder::template parseDocument<DocTy>(aJsonStr, aDocInfo);
-    static_assert(aDoc->getStaticRoot().toArray().size() == 5);
+    constexpr auto aDocOrError =
+        Builder::template parseDocument<DocTy>(aJsonStr, aDocInfo);
+    static_assert(!Builder::isError(aDocOrError));
+    constexpr const DocTy aDoc = Builder::unwrap(aDocOrError);
+    static_assert(aDoc.getStaticRoot().toArray().size() == 5);
 
-    // FIXME the following code is only here for temporary testing/demo'ing of toArray and operator==(EntityRef)
-    for (typename DocTy::EntityRef aEntity : aDoc->getStaticRoot().toArray()) {
-      print(std::cout, aEntity) << "\n";
-    }
-    static_assert(aDoc->getStaticRoot().toArray()[1].toBool());
-    static_assert(aDoc->getStaticRoot().toArray()[3].toString() == "abc");
-    static_assert(aDoc->getStaticRoot().toArray()[4].toObject()["def"]->toString() == "ghi");
+    static_assert(aDoc.getStaticRoot().toArray()[1].toBool());
+    static_assert(aDoc.getStaticRoot().toArray()[3].toString() == "abc");
+    static_assert(
+        aDoc.getStaticRoot().toArray()[4].toObject()["def"]->toString() ==
+        "ghi");
 
-    const auto aDynamicDoc =
-        Builder::template parseDocument<DynamicDocument>(aJsonStr, aDocInfo);
+    const auto aDynamicDoc = Builder::unwrap(
+        Builder::template parseDocument<DynamicDocument>(aJsonStr, aDocInfo));
     assert(aDynamicDoc == aDoc);
   }
 }
 
 int main() {
-  static_tests<DocumentBuilder<Utf8, Utf8, DocumentBuilder1>>();
-  static_tests<DocumentBuilder<Utf8, Utf8, DocumentBuilder2>>();
+  using ErrorHandling = ErrorWillReturnNone;
+  static_tests<DocumentBuilder<Utf8, Utf8, ErrorHandling, DocumentBuilder1>>();
+  static_tests<DocumentBuilder<Utf8, Utf8, ErrorHandling, DocumentBuilder2>>();
   static_tests();
 #define USE_JSON_STRING(theJson) constexpr std::string_view aJsonSV{theJson};
 #include "json_schema.h"
   constexpr DocumentInfo aDocInfo =
-      DocumentInfo::compute<Utf8, Utf8>(aJsonSV).first;
+      DocumentInfo::compute<Utf8, Utf8, ErrorHandling>(aJsonSV).first;
   using DocTy =
       StaticDocument<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,
                      aDocInfo.itsNumStrings, aDocInfo.itsNumArrays,
                      aDocInfo.itsNumArrayEntries, aDocInfo.itsNumObjects,
                      aDocInfo.itsNumObjectProperties>;
   { // Test DocumentBuilder1
-    using Builder = DocumentBuilder1<Utf8, Utf8>;
+    using Builder = DocumentBuilder1<Utf8, Utf8, ErrorHandling>;
     constexpr auto aDoc = Builder::parseDocument<DocTy>(aJsonSV, aDocInfo);
-    static_assert(aDoc);
-    std::cout << "\n" << *aDoc << "\n";
+    static_assert(!ErrorHandling::isError(aDoc));
+    std::cout << "\n" << ErrorHandling::unwrap(aDoc) << "\n";
   }
   { // Test DocumentBuilder2
-    using Builder = DocumentBuilder2<Utf8, Utf8>;
+    using Builder = DocumentBuilder2<Utf8, Utf8, ErrorHandling>;
     constexpr auto aDoc = Builder::parseDocument<DocTy>(aJsonSV, aDocInfo);
-    static_assert(aDoc);
-    std::cout << "\n" << *aDoc << "\n";
+    static_assert(!ErrorHandling::isError(aDoc));
+    std::cout << "\n" << ErrorHandling::unwrap(aDoc) << "\n";
   }
   { // Test default DocumentBuilder
-    using Builder = DocumentBuilder<Utf8, Utf8>;
+    using Builder = DocumentBuilder<Utf8, Utf8, ErrorHandling>;
     constexpr auto aDoc = Builder::parseDocument<DocTy>(aJsonSV, aDocInfo);
-    static_assert(aDoc);
-    std::cout << "\n" << *aDoc << "\n";
+    static_assert(!ErrorHandling::isError(aDoc));
+    std::cout << "\n" << ErrorHandling::unwrap(aDoc) << "\n";
   }
   { // Test default DocumentBuilder with DynamicDocument (parsing at runtime)
-    using Builder = DocumentBuilder<Utf8, Utf8>;
+    using Builder = DocumentBuilder<Utf8, Utf8, ErrorHandling>;
     const auto aDoc =
         Builder::parseDocument<DynamicDocument>(aJsonSV, aDocInfo);
-    assert(aDoc);
-    std::cout << "\n" << *aDoc << "\n";
+    assert(!ErrorHandling::isError(aDoc));
+    std::cout << "\n" << ErrorHandling::unwrap(aDoc) << "\n";
   }
 }

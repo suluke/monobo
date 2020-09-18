@@ -31,7 +31,8 @@ template <typename StaticDocTy> struct StaticDocumentAccessor {
   constexpr StaticDocumentAccessor(const StaticDocTy &theDoc)
       : itsDoc{&theDoc} {}
 
-  constexpr bool operator==(const StaticDocumentAccessor& theOther) const noexcept {
+  constexpr bool
+  operator==(const StaticDocumentAccessor &theOther) const noexcept {
     return itsDoc == theOther.itsDoc;
   }
 
@@ -65,11 +66,12 @@ template <typename StaticDocTy> struct StaticDocumentAccessor {
     return std::make_pair(aKey, aValue);
   }
 
-  // FIXME typesystem hack. Remove if this can be compiled with c++20's constexpr reference_wrapper
+  // FIXME typesystem hack. Remove if this can be compiled with c++20's
+  // constexpr reference_wrapper
   constexpr const StaticDocumentAccessor *operator->() const { return this; }
 
 private:
-  const StaticDocTy* itsDoc;
+  const StaticDocTy *itsDoc;
 };
 } // namespace impl
 

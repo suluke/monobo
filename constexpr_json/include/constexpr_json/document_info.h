@@ -1,8 +1,8 @@
 #ifndef CONSTEXPR_JSON_DOCUMENT_INFO_H
 #define CONSTEXPR_JSON_DOCUMENT_INFO_H
 
-#include <stdexcept>
 #include "utils/parsing.h"
+#include <stdexcept>
 
 namespace cjson {
 struct DocumentInfo {
@@ -104,7 +104,8 @@ struct DocumentInfo {
    * @return .first is the DocInfo, .second is the number of read chars (i.e.
    * bytes, not code points)
    */
-  template <typename SourceEncodingTy, typename DestEncodingTy>
+  template <typename SourceEncodingTy, typename DestEncodingTy,
+            typename ErrorHandlingTy>
   constexpr static std::pair<DocumentInfo, ssize_t>
   compute(const std::string_view theJsonString) {
     // setup
@@ -170,7 +171,9 @@ struct DocumentInfo {
           return makeDocInfoError("Failed to read array: Expected comma");
         if (aChar == ',')
           aRemaining.remove_prefix(aCharWidth);
-        const auto [aSubDoc, aLen] = compute<SourceEncodingTy, DestEncodingTy>(aRemaining);
+        const auto [aSubDoc, aLen] =
+            compute<SourceEncodingTy, DestEncodingTy, ErrorHandlingTy>(
+                aRemaining);
         if (!aSubDoc)
           return {aSubDoc, aLen}; // Propagate error
         aResult += aSubDoc;
@@ -220,7 +223,9 @@ struct DocumentInfo {
             return makeDocInfoError("Failed to read object: Expected colon");
           aRemaining.remove_prefix(aColonWidth);
         }
-        const auto [aSubDoc, aLen] = compute<SourceEncodingTy, DestEncodingTy>(aRemaining);
+        const auto [aSubDoc, aLen] =
+            compute<SourceEncodingTy, DestEncodingTy, ErrorHandlingTy>(
+                aRemaining);
         if (!aSubDoc)
           return {aSubDoc, aLen}; // Propagate error
         aResult += aSubDoc;

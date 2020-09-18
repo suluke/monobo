@@ -524,8 +524,7 @@ public:
     }
   }
 
-  constexpr static std::string_view
-  readNull(const std::string_view theString) {
+  constexpr static std::string_view readNull(const std::string_view theString) {
     constexpr const std::string_view aErrorResult = "";
     const std::string_view aCmpStr = "null";
     std::string_view aRemaining = theString;

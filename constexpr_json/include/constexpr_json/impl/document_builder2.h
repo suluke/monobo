@@ -3,10 +3,12 @@
 
 #include "constexpr_json/document.h"
 #include "constexpr_json/document_info.h"
+#include "constexpr_json/error_codes.h"
 #include "constexpr_json/utils/parsing.h"
 
 namespace cjson {
-template <typename SourceEncodingTy, typename DestEncodingTy>
+template <typename SourceEncodingTy, typename DestEncodingTy,
+          typename ErrorHandlingTy>
 struct DocumentBuilder2 {
 private:
   using p = parsing<SourceEncodingTy>;
@@ -34,15 +36,34 @@ public:
   }
 
   template <typename DocTy>
-  static constexpr std::optional<DocTy>
+  using ResultTy = typename ErrorHandlingTy::ErrorOr<DocTy>;
+
+  template <typename DocTy>
+  static constexpr auto parseDocument(
+      const std::string_view theJsonString,
+      const typename ErrorHandlingTy::ErrorOr<DocumentInfo> &theDocInfo)
+      -> std::enable_if_t<
+          !std::is_same_v<const DocumentInfo, const typename ErrorHandlingTy::
+                                                  ErrorOr<DocumentInfo>>,
+          ResultTy<DocTy>> {
+    if (ErrorHandlingTy::isError(theDocInfo))
+      return makeError<DocTy>("Using illegal DocInfo for parsing");
+    return parseDocument<DocTy>(theJsonString,
+                                ErrorHandlingTy::unwrap(theDocInfo));
+  }
+
+  template <typename DocTy>
+  static constexpr ResultTy<DocTy>
   parseDocument(const std::string_view theJsonString,
                 const DocumentInfo &theDocInfo) {
     if (!theDocInfo)
       return makeError<DocTy>("Using illegal DocInfo for parsing");
-    const auto aElementInfos = computeElementInfos<DocTy>(theJsonString, theDocInfo);
-    if (!aElementInfos)
+    const auto aElementInfosOrError =
+        computeElementInfos<DocTy>(theJsonString, theDocInfo);
+    if (ErrorHandlingTy::isError(aElementInfosOrError))
       return makeError<DocTy>("Failed to compute element infos");
-    const ElementInfo *aCurrentElm = &aElementInfos->front();
+    const auto &aElementInfos = ErrorHandlingTy::unwrap(aElementInfosOrError);
+    const ElementInfo *aCurrentElm = &aElementInfos.front();
     intptr_t aNumEntitiesAlloced = 1;
     intptr_t aNumPropsAlloced = 0;
     intptr_t aNumNumbers = 0;
@@ -78,12 +99,12 @@ public:
     // index before as its payload
     for (Entity &aEntity : aResult.itsEntities) {
       if (!aCurrentElm)
-        aCurrentElm = &(*aElementInfos)[aEntity.itsPayload];
+        aCurrentElm = &aElementInfos[aEntity.itsPayload];
       std::string_view aSubJson =
           theJsonString.substr(aCurrentElm->itsLocation);
       // if the parent is an object, consume the key first
       if (aCurrentElm->itsParentId >= 0 &&
-          (*aElementInfos)[aCurrentElm->itsParentId].itsType == Type::OBJECT) {
+          aElementInfos[aCurrentElm->itsParentId].itsType == Type::OBJECT) {
         aResult.itsObjectProps[aNumObjectProps].itsKeyPos = aNumStrings;
         ++aNumObjectProps;
         size_t aLenRead = 0;
@@ -144,7 +165,7 @@ public:
       }
       }
       if (aCurrentElm->itsNextSibling != -1) {
-        aCurrentElm = &(*aElementInfos)[aCurrentElm->itsNextSibling];
+        aCurrentElm = &aElementInfos[aCurrentElm->itsNextSibling];
       } else {
         aCurrentElm = nullptr;
       }
@@ -155,7 +176,9 @@ public:
 
 private:
   template <typename DocTy>
-  using ElementInfos = typename DocTy::Storage::Buffer<ElementInfo, DocTy::Storage::MAX_ENTITIES()>;
+  using ElementInfos =
+      typename DocTy::Storage::Buffer<ElementInfo,
+                                      DocTy::Storage::MAX_ENTITIES()>;
 
   static constexpr std::string_view
   consumeObjectKey(const std::string_view theString) {
@@ -174,7 +197,7 @@ private:
   static constexpr auto
   computeElementInfos(const std::string_view theJsonString,
                       const DocumentInfo &theDocInfo)
-      -> std::optional<ElementInfos<DocTy>> {
+      -> ResultTy<ElementInfos<DocTy>> {
     // state variables
     ElementInfos<DocTy> aEntities{
         DocTy::Storage::template createBuffer<ElementInfo,
@@ -298,15 +321,16 @@ private:
   }
 
   template <typename DocTy>
-  static constexpr auto makeElmInfoError(const char *const theMsg)
-      -> std::optional<ElementInfos<DocTy>> {
-    throw std::invalid_argument(theMsg);
-    return std::nullopt;
+  static constexpr auto makeElmInfoError(const char *const theMsg) ->
+      typename ErrorHandlingTy::ErrorOr<ElementInfos<DocTy>> {
+    return ErrorHandlingTy::template makeError<ElementInfos<DocTy>>(
+        ErrorCode::UNKNOWN, -1);
   }
   template <typename DocTy>
-  static constexpr std::optional<DocTy> makeError(const char *const theMsg) {
-    throw std::invalid_argument(theMsg);
-    return std::nullopt;
+  static constexpr auto makeError(const char *const theMsg,
+                                  const ErrorCode theCode = ErrorCode::UNKNOWN)
+      -> typename ErrorHandlingTy::ErrorOr<DocTy> {
+    return ErrorHandlingTy::template makeError<DocTy>(theCode, -1);
   }
 }; // namespace cjson
 } // namespace cjson

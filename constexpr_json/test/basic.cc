@@ -7,13 +7,15 @@
 int main() {
   using namespace cjson;
   constexpr std::string_view aJsonStr{"1234"};
-  constexpr DocumentInfo aDocInfo = DocumentBuilder<>::computeDocInfo(aJsonStr);
+  constexpr auto aDocInfo = DocumentBuilder<>::computeDocInfo(aJsonStr);
+  if (!aDocInfo)
+    return 1;
   // Static json object creation
   using StaticDocTy =
-      StaticDocument<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,
-                     aDocInfo.itsNumStrings, aDocInfo.itsNumArrays,
-                     aDocInfo.itsNumArrayEntries, aDocInfo.itsNumObjects,
-                     aDocInfo.itsNumObjectProperties>;
+      StaticDocument<aDocInfo->itsNumNumbers, aDocInfo->itsNumChars,
+                     aDocInfo->itsNumStrings, aDocInfo->itsNumArrays,
+                     aDocInfo->itsNumArrayEntries, aDocInfo->itsNumObjects,
+                     aDocInfo->itsNumObjectProperties>;
   constexpr auto aDocStatic =
       DocumentBuilder<>::parseDocument<StaticDocTy>(aJsonStr, aDocInfo);
   static_assert(aDocStatic);

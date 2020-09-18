@@ -6,7 +6,8 @@
 #include "constexpr_json/utils/parsing.h"
 
 namespace cjson {
-template <typename SourceEncodingTy, typename DestEncodingTy>
+template <typename SourceEncodingTy, typename DestEncodingTy,
+          typename ErrorHandlingTy>
 struct DocumentBuilder1 {
   template <typename DocTy>
   constexpr static DocTy createNullDocument(const DocumentInfo &theDocInfo) {
@@ -50,10 +51,14 @@ struct DocumentBuilder1 {
   }
 
   template <typename DocTy>
-  constexpr static std::optional<DocTy>
+  using ResultTy = typename ErrorHandlingTy::ErrorOr<DocTy>;
+
+  template <typename DocTy>
+  constexpr static ResultTy<DocTy>
   parseDocument(const std::string_view theJsonString,
                 const DocumentInfo &theDocInfo) {
-    const std::optional<DocTy> aErrorResult = std::nullopt;
+    const ResultTy<DocTy> aErrorResult =
+        ErrorHandlingTy::template makeError<DocTy>(ErrorCode::UNKNOWN, -1);
     using p = parsing<SourceEncodingTy>;
     using Type = typename p::Type;
     const std::string_view aWS = p::readWhitespace(theJsonString);
