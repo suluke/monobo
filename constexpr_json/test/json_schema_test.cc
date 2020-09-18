@@ -295,6 +295,14 @@ static void static_tests() {
   CHECK_PARSE(parseNumber, "-1.0e-03", 8, -0.001);
   CHECK_PARSE(parseNumber, "2]", 1, 2.);
 
+  CHECK_PARSE(parseEscape, "\\u0001", 6, 1);
+  CHECK_PARSE(parseEscape, "\\u000f", 6, 15);
+  CHECK_PARSE(parseEscape, "\\u0010", 6, 16);
+  CHECK_PARSE(parseEscape, "\\u00ff", 6, 255);
+  CHECK_PARSE(parseEscape, "\\u0100", 6, 256);
+  CHECK_PARSE(parseEscape, "\\u0fff", 6, 4095);
+  CHECK_PARSE(parseEscape, "\\u1000", 6, 4096);
+
   //   readNull
   CHECK_READ(readNull, "abcdee", "");
   CHECK_READ(readNull, "null", "null");
@@ -368,7 +376,7 @@ static void static_tests() {
   CHECK_DOCPARSE("[3,2,1, \"123\",[null,true,false]]");
   CHECK_DOCPARSE("  {\n    \"Test\": false,\n    \"Toast\":true,\n    "
                  "\"Tasty\":[null]\n}  ");
-
+  CHECK_DOCPARSE("\"\\u01ff\"");
   {
     constexpr std::string_view aJsonStr{
         "[123,true,null,\"abc\",{\"def\":\"ghi\"}]"};

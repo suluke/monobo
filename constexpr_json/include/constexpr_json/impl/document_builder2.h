@@ -84,10 +84,18 @@ public:
       const auto [aChar, aCharWidth] = SourceEncodingTy::decodeFirst(aStr);    \
       if (aCharWidth <= 0)                                                     \
         return makeError<DocTy>("Failed to decode character");                 \
-      const auto [aBytes, aBytesUsed] = DestEncodingTy::encode(aChar);         \
+      using CharT = typename SourceEncodingTy::CodePointTy;                    \
+      CharT aCodePoint = aChar;                                                \
+      if (aChar == '\\') {                                                     \
+        const auto [aEscaped, aEscWidth] = p::parseEscape(aStr);               \
+        aCodePoint = aEscaped;                                                 \
+        aStr.remove_prefix(aEscWidth);                                         \
+      } else {                                                                 \
+        aStr.remove_prefix(aCharWidth);                                        \
+      }                                                                        \
+      const auto [aBytes, aBytesUsed] = DestEncodingTy::encode(aCodePoint);    \
       if (aBytesUsed <= 0)                                                     \
         return makeError<DocTy>("Failed to encode character");                 \
-      aStr.remove_prefix(aBytesUsed);                                          \
       for (size_t i = 0; i < aBytesUsed; ++i)                                  \
         aResult.itsChars[aNumChars++] = aBytes[i];                             \
       aNumBytesInStr += aBytesUsed;                                            \

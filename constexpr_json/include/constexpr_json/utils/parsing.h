@@ -279,9 +279,9 @@ public:
       if ('0' <= aHexChar && aHexChar <= '9')
         return aHexChar - '0';
       if ('A' <= aHexChar && aHexChar <= 'F')
-        return aHexChar - 'A';
+        return aHexChar - 'A' + 10;
       if ('a' <= aHexChar && aHexChar <= 'f')
-        return aHexChar - 'a';
+        return aHexChar - 'a' + 10;
       return CharT{}; // FIXME throw or terminate
     };
     aRemaining.remove_prefix(aSecondCharWidth);
