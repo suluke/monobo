@@ -10,7 +10,7 @@
 namespace cjson {
 
 struct ErrorDetail {
-  const ErrorCode itsCode;
+  ErrorCode itsCode;
   /// (Rough) character location where the error was encountered
   ///
   /// We will NOT store this explicitly as line+offset. Errors are not expected
@@ -18,10 +18,27 @@ struct ErrorDetail {
   /// line being currently processed to when the error is being reported.
   intptr_t itsPosition;
 
-  std::pair<intptr_t, intptr_t>
-  computeLineLocation(const std::string_view theJson) {
-    // TODO
-    return {-1, -1};
+  template<typename EncodingTy>
+  constexpr std::pair<intptr_t, intptr_t>
+  computeLocation(const std::string_view theJson) const noexcept {
+    if (itsPosition < 0)
+      return {-1, -1};
+    intptr_t aLine = 0, aCol = 0;
+    std::string_view aRemaining{theJson};
+    while(theJson.size() - aRemaining.size() < static_cast<size_t>(itsPosition)) {
+      const auto [aChar, aCharWidth] = EncodingTy::decodeFirst(aRemaining);
+      aRemaining.remove_prefix(aCharWidth);
+      ++aCol;
+      if (aChar == '\n') {
+        aCol = 0;
+        ++aLine;
+      }
+    }
+    return {aLine, aCol};
+  }
+
+  constexpr const char *what() const noexcept {
+    return getErrorCodeDesc(itsCode);
   }
 
   static constexpr const char *
@@ -29,6 +46,32 @@ struct ErrorDetail {
     switch (theEC) {
     case ErrorCode::UNKNOWN:
       return "Unknown error occurred";
+    case ErrorCode::UNREACHABLE:
+      return "Unreachable code executed";
+    case ErrorCode::NULL_READ_FAILED:
+      return "Failed to read element: Expected null";
+    case ErrorCode::BOOL_READ_FAILED:
+      return "Failed to read element: Expected true or false";
+    case ErrorCode::NUMBER_READ_FAILED:
+      return "Failed to read element: Expected valid number";
+    case ErrorCode::STRING_READ_FAILED:
+      return "Failed to read element: Expected valid string";
+    case ErrorCode::ARRAY_EXPECTED_COMMA:
+      return "Failed to read array: Expected comma";
+    case ErrorCode::ARRAY_UNEXPECTED_TOKEN:
+      return "Failed to read array: Illegal first character or unexpected EOF";
+    case ErrorCode::OBJECT_EXPECTED_COLON:
+      return "Failed to read object: Expected colon";
+    case ErrorCode::OBJECT_EXPECTED_COMMA:
+      return "Failed to read object: Expected comma";
+    case ErrorCode::OBJECT_UNEXPECTED_TOKEN:
+      return "Failed to read object: Illegal first character or unexpected EOF";
+    case ErrorCode::OBJECT_KEY_READ_FAILED:
+      return "Failed to read object: Could not read property key";
+    case ErrorCode::TYPE_DEDUCTION_FAILED:
+      return "Failed to determine element type";
+    case ErrorCode::TRAILING_CONTENT:
+      return "Encountered additional characters when EOF was expected";
     }
     return nullptr;
   }
@@ -53,8 +96,10 @@ struct ErrorWillThrow {
     throw std::invalid_argument(ErrorDetail::getErrorCodeDesc(theEC));
   }
 
-  template<typename T, typename U>
-  static constexpr ErrorOr<T> convertError(const ErrorOr<U> &theError) {
+  template <typename T, typename U>
+  static constexpr ErrorOr<T>
+  convertError(const ErrorOr<U> &theError,
+               const intptr_t thePositionOffset = 0) {
     throw std::logic_error("Thrown errors do not need type conversion");
   }
 };
@@ -78,8 +123,10 @@ struct ErrorWillReturnNone {
     return std::nullopt;
   }
 
-  template<typename T, typename U>
-  static constexpr ErrorOr<T> convertError(const ErrorOr<U> &theError) {
+  template <typename T, typename U>
+  static constexpr ErrorOr<T>
+  convertError(const ErrorOr<U> &theError,
+               const intptr_t thePositionOffset = 0) {
     return std::nullopt;
   }
 };
@@ -103,9 +150,13 @@ struct ErrorWillReturnDetail {
     return ErrorDetail{theEC, thePos};
   }
 
-  template<typename T, typename U>
-  static constexpr ErrorOr<T> convertError(const ErrorOr<U> &theError) {
-    return std::get<ErrorDetail>(theError);
+  template <typename T, typename U>
+  static constexpr ErrorOr<T>
+  convertError(const ErrorOr<U> &theError,
+               const intptr_t thePositionOffset = 0) {
+    ErrorDetail aDetail = std::get<ErrorDetail>(theError);
+    aDetail.itsPosition += thePositionOffset;
+    return aDetail;
   }
 };
 } // namespace cjson

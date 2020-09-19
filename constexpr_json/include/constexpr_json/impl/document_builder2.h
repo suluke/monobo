@@ -5,6 +5,7 @@
 #include "constexpr_json/document_info.h"
 #include "constexpr_json/error_codes.h"
 #include "constexpr_json/utils/parsing.h"
+#include <cassert>
 
 namespace cjson {
 template <typename SourceEncodingTy, typename DestEncodingTy,
@@ -28,13 +29,6 @@ private:
   };
 
 public:
-  constexpr static DocumentInfo
-  computeDocInfo(const std::string_view theJsonString) {
-    return DocumentInfo::compute<SourceEncodingTy, DestEncodingTy>(
-               theJsonString)
-        .first;
-  }
-
   template <typename DocTy>
   using ResultTy = typename ErrorHandlingTy::ErrorOr<DocTy>;
 
@@ -121,8 +115,7 @@ public:
         aSubJson = p::removeLeadingWhitespace(aSubJson);
         const auto [aChar, aCharWidth] =
             SourceEncodingTy::decodeFirst(aSubJson);
-        if (aCharWidth <= 0 || aChar != ':')
-          throw std::logic_error("Expected colon");
+        assert(aCharWidth > 0 && aChar == ':' && "Expected colon");
         aSubJson.remove_prefix(aCharWidth);
         aSubJson = p::removeLeadingWhitespace(aSubJson);
       }
@@ -194,8 +187,7 @@ private:
     aRemaining.remove_prefix(p::readString(aRemaining).size());
     aRemaining = p::removeLeadingWhitespace(aRemaining);
     const auto [aChar, aCharWidth] = SourceEncodingTy::decodeFirst(aRemaining);
-    if (aCharWidth <= 0 || aChar != ':')
-      throw std::logic_error("Expected colon");
+    assert(aCharWidth > 0 && aChar == ':' && "Expected colon");
     aRemaining.remove_prefix(aCharWidth);
     aRemaining = p::removeLeadingWhitespace(aRemaining);
     return aRemaining;
@@ -236,12 +228,10 @@ private:
           aIsFirstChild = false;
           if (aCurrentParent >= 0) {
             const auto &aNewParentInfo = aEntities[aCurrentParent];
-            if (aNewParentInfo.itsType == Type::OBJECT ||
-                aNewParentInfo.itsType == Type::ARRAY)
-              aCurrentParentType = aNewParentInfo.itsType;
-            else
-              throw std::logic_error{
-                  "Parent element is neither array nor object"};
+            assert((aNewParentInfo.itsType == Type::OBJECT ||
+                    aNewParentInfo.itsType == Type::ARRAY) &&
+                   "Parent element must be array or object");
+            aCurrentParentType = aNewParentInfo.itsType;
           } else {
             aCurrentParentType = Type::NUL;
             break;
@@ -251,10 +241,9 @@ private:
         break;
       }
       // sanity check
-      if (!aIsFirstChild && aCurrentParentType == Type::NUL) {
-        throw std::logic_error{
-            "Second element in root scope. You may be using the wrong DocType"};
-      }
+      assert(
+          (aIsFirstChild || aCurrentParentType != Type::NUL) &&
+          "Second element in root scope. You may be using the wrong DocType");
       // consume comma
       if (!aIsFirstChild) {
         const auto [aChar, aCharWidth] =
