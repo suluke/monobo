@@ -7,10 +7,11 @@ namespace cjson {
 struct Utf8 {
   using CodePointTy = uint64_t;
   static constexpr std::pair<CodePointTy, size_t>
-  decodeFirst(std::string_view theString) {
+  decodeFirst(std::string_view theString) noexcept {
+    const auto aError = std::make_pair(CodePointTy{0}, size_t{0});
     if (theString.empty())
       // Cannot decode empty string"
-      return std::make_pair(CodePointTy{0}, size_t{0});
+      return aError;
     unsigned char aFirstByte = static_cast<unsigned char>(theString[0]);
     std::array<bool, 5> aInterestingBits{
         {static_cast<bool>(aFirstByte & 0x80u),
@@ -24,17 +25,17 @@ struct Utf8 {
       return std::make_pair(aCP, size_t{1});
     if (!aInterestingBits[1])
       // Error: unexpected continuation byte
-      return std::make_pair(CodePointTy{0}, size_t{0});
+      return aError;
     unsigned aNumExtraBytes =
         (!aInterestingBits[2])
             ? 1
-            : ((!aInterestingBits[3]) ? 2 : ((!aInterestingBits[3]) ? 3 : 0));
+            : ((!aInterestingBits[3]) ? 2 : ((!aInterestingBits[4]) ? 3 : 0));
     if (!aNumExtraBytes)
       // Error: Illegal first byte
-      return std::make_pair(CodePointTy{0}, size_t{0});
+      return aError;
     if (aNumExtraBytes > theString.size() - 1)
       // Error: Not enough bytes in string
-      return std::make_pair(CodePointTy{0}, size_t{0});
+      return aError;
     unsigned aNumBitsFromFirstByte = 6u - aNumExtraBytes;
     unsigned aFirstByteMask = 0xffu >> (8u - aNumBitsFromFirstByte);
     aCP &= aFirstByteMask;
@@ -42,7 +43,7 @@ struct Utf8 {
       unsigned char aByte = static_cast<unsigned char>(theString[1 + i]);
       if ((aByte & 0xc0u) != 0x80u)
         // Error: Not a continuation byte
-        return std::make_pair(CodePointTy{0}, size_t{0});
+        return aError;
       aCP <<= 6u;
       aCP |= (aByte & 0x3fu);
     }
@@ -51,7 +52,7 @@ struct Utf8 {
 
   static constexpr size_t MAX_BYTES = 4;
   static constexpr std::pair<std::array<char, MAX_BYTES>, size_t>
-  encode(CodePointTy theCodePoint) {
+  encode(CodePointTy theCodePoint) noexcept {
     constexpr std::pair<std::array<char, MAX_BYTES>, ssize_t> aErrorResult =
         std::make_pair(std::array<char, MAX_BYTES>{}, 0);
     if (theCodePoint <= 0x7fu)

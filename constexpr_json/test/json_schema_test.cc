@@ -210,8 +210,8 @@ template <ssize_t L> struct CompareCharSeqs {
     constexpr const DocumentInfo aExpected = {                                 \
         NULLS, BOOLS, DOUBLES, CHARS, STRS, ARRAYS, ENTRIES, OBJECTS, PROPS};  \
     static_assert(aResult.second == LENGTH);                                   \
-    static_assert(aDI != DocumentInfo::error());                               \
-    static_assert(aDI.assertSame(aExpected));                                  \
+    static_assert(aDI);                                                        \
+    static_assert(aDI == aExpected);                                           \
     std::cout.setstate(std::ios_base::badbit); /* Disables cout */             \
     std::cout << aDI << "vs\n" << aExpected << "\n";                           \
     std::cout.clear(); /* Re-enable cout */                                    \
@@ -225,6 +225,7 @@ static void static_tests() {
   CHECK_UTF8_DECODE("¢", 0xa2);
   CHECK_UTF8_DECODE("ह", 0x939);
   CHECK_UTF8_DECODE("€", 0x20ac);
+  CHECK_UTF8_DECODE("𐍈", 0x10348);
 
   // Test utf8 encoder
   CHECK_UTF8_ENCODE(0x24, "$");
