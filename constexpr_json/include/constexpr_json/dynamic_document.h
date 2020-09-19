@@ -10,26 +10,26 @@ namespace impl {
 struct DynamicDocumentStorage {
   template <typename T, size_t N> using Buffer = std::vector<T>;
 
-  static constexpr ssize_t MAX_NUMBERS() {
-    return std::numeric_limits<ssize_t>::max();
+  static constexpr intptr_t MAX_NUMBERS() {
+    return std::numeric_limits<intptr_t>::max();
   }
-  static constexpr ssize_t MAX_CHARS() {
-    return std::numeric_limits<ssize_t>::max();
+  static constexpr intptr_t MAX_CHARS() {
+    return std::numeric_limits<intptr_t>::max();
   }
-  static constexpr ssize_t MAX_ENTITIES() {
-    return std::numeric_limits<ssize_t>::max();
+  static constexpr intptr_t MAX_ENTITIES() {
+    return std::numeric_limits<intptr_t>::max();
   }
-  static constexpr ssize_t MAX_ARRAYS() {
-    return std::numeric_limits<ssize_t>::max();
+  static constexpr intptr_t MAX_ARRAYS() {
+    return std::numeric_limits<intptr_t>::max();
   }
-  static constexpr ssize_t MAX_OBJECTS() {
-    return std::numeric_limits<ssize_t>::max();
+  static constexpr intptr_t MAX_OBJECTS() {
+    return std::numeric_limits<intptr_t>::max();
   }
-  static constexpr ssize_t MAX_OBJECT_PROPS() {
-    return std::numeric_limits<ssize_t>::max();
+  static constexpr intptr_t MAX_OBJECT_PROPS() {
+    return std::numeric_limits<intptr_t>::max();
   }
-  static constexpr ssize_t MAX_STRINGS() {
-    return std::numeric_limits<ssize_t>::max();
+  static constexpr intptr_t MAX_STRINGS() {
+    return std::numeric_limits<intptr_t>::max();
   }
 
   template <typename T, size_t N>

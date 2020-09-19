@@ -53,7 +53,7 @@ struct Utf8 {
   static constexpr size_t MAX_BYTES = 4;
   static constexpr std::pair<std::array<char, MAX_BYTES>, size_t>
   encode(CodePointTy theCodePoint) noexcept {
-    constexpr std::pair<std::array<char, MAX_BYTES>, ssize_t> aErrorResult =
+    constexpr std::pair<std::array<char, MAX_BYTES>, intptr_t> aErrorResult =
         std::make_pair(std::array<char, MAX_BYTES>{}, 0);
     if (theCodePoint <= 0x7fu)
       return std::make_pair(std::array<char, MAX_BYTES>(

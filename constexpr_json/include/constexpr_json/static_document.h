@@ -5,21 +5,21 @@
 
 namespace cjson {
 namespace impl {
-template <ssize_t theNumNumbers, ssize_t theNumChars, ssize_t theNumStrings,
-          ssize_t theNumArrays, ssize_t theNumArrayEntries,
-          ssize_t theNumObjects, ssize_t theNumObjectProperties>
+template <intptr_t theNumNumbers, intptr_t theNumChars, intptr_t theNumStrings,
+          intptr_t theNumArrays, intptr_t theNumArrayEntries,
+          intptr_t theNumObjects, intptr_t theNumObjectProperties>
 struct StaticDocumentStorage {
   template <typename T, size_t N> using Buffer = std::array<T, N>;
 
-  static constexpr ssize_t MAX_NUMBERS() { return theNumNumbers; }
-  static constexpr ssize_t MAX_CHARS() { return theNumChars; }
-  static constexpr ssize_t MAX_ENTITIES() {
+  static constexpr intptr_t MAX_NUMBERS() { return theNumNumbers; }
+  static constexpr intptr_t MAX_CHARS() { return theNumChars; }
+  static constexpr intptr_t MAX_ENTITIES() {
     return theNumArrayEntries + theNumObjectProperties + 1;
   }
-  static constexpr ssize_t MAX_ARRAYS() { return theNumArrays; }
-  static constexpr ssize_t MAX_OBJECTS() { return theNumObjects; }
-  static constexpr ssize_t MAX_OBJECT_PROPS() { return theNumObjectProperties; }
-  static constexpr ssize_t MAX_STRINGS() { return theNumStrings; }
+  static constexpr intptr_t MAX_ARRAYS() { return theNumArrays; }
+  static constexpr intptr_t MAX_OBJECTS() { return theNumObjects; }
+  static constexpr intptr_t MAX_OBJECT_PROPS() { return theNumObjectProperties; }
+  static constexpr intptr_t MAX_STRINGS() { return theNumStrings; }
 
   template <typename T, size_t N>
   static constexpr Buffer<T, N> createBuffer(size_t theSize) {
@@ -75,9 +75,9 @@ private:
 };
 } // namespace impl
 
-template <ssize_t theNumNumbers, ssize_t theNumChars, ssize_t theNumStrings,
-          ssize_t theNumArrays, ssize_t theNumArrayEntries,
-          ssize_t theNumObjects, ssize_t theNumObjectProperties>
+template <intptr_t theNumNumbers, intptr_t theNumChars, intptr_t theNumStrings,
+          intptr_t theNumArrays, intptr_t theNumArrayEntries,
+          intptr_t theNumObjects, intptr_t theNumObjectProperties>
 struct StaticDocument
     : public DocumentBase<impl::StaticDocumentStorage<
           theNumNumbers, theNumChars, theNumStrings, theNumArrays,

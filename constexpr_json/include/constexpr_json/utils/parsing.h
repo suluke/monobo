@@ -7,8 +7,6 @@
 #include <tuple>
 
 namespace cjson {
-using ssize_t = std::make_signed_t<size_t>;
-
 template <typename EncodingTy> struct parsing {
 private:
   using CharT = typename EncodingTy::CodePointTy;
@@ -81,13 +79,13 @@ public:
       return std::make_pair(Type::NUL, aNull);
     }
     case Type::BOOL: {
-      const ssize_t aBoolLen = parseBool(aTrimmedJson).second;
+      const intptr_t aBoolLen = parseBool(aTrimmedJson).second;
       if (aBoolLen <= 0)
         return aErrorResult;
       return std::make_pair(Type::BOOL, aTrimmedJson.substr(0, aBoolLen));
     }
     case Type::NUMBER: {
-      const ssize_t aNumLen = parseNumber(aTrimmedJson).second;
+      const intptr_t aNumLen = parseNumber(aTrimmedJson).second;
       if (aNumLen <= 0)
         return aErrorResult;
       return std::make_pair(Type::NUMBER, aTrimmedJson.substr(0, aNumLen));
@@ -217,7 +215,7 @@ public:
   /// @return number of chars (bytes) required to store the string literal's
   /// contents in the target encoding
   template <typename DestEncodingTy>
-  constexpr static ssize_t
+  constexpr static intptr_t
   computeEncodedSize(const std::string_view theString) {
     std::string_view aRemaining = theString;
     size_t aNumChars = 0;
@@ -235,9 +233,9 @@ public:
     return aNumChars;
   }
 
-  constexpr static std::pair<CharT, ssize_t>
+  constexpr static std::pair<CharT, intptr_t>
   parseFirstStringChar(const std::string_view aStr) {
-    constexpr const std::pair<CharT, ssize_t> aErrorResult =
+    constexpr const std::pair<CharT, intptr_t> aErrorResult =
         std::make_pair(CharT{}, -1);
     const auto [aChar, aCharWidth] = decodeFirst(aStr);
     if (aCharWidth <= 0)
@@ -259,9 +257,9 @@ public:
    * @return .first is the escaped code point, .second is the length of the
    * escape sequence starting from the initial '\' or -1 if parsing failed.
    */
-  constexpr static std::pair<CharT, ssize_t>
+  constexpr static std::pair<CharT, intptr_t>
   parseEscape(const std::string_view theString) {
-    constexpr const std::pair<CharT, ssize_t> aErrorResult =
+    constexpr const std::pair<CharT, intptr_t> aErrorResult =
         std::make_pair(0, -1);
     const auto [aFirstChar, aFirstCharWidth] = decodeFirst(theString);
     if (aFirstCharWidth <= 0)
@@ -332,9 +330,9 @@ public:
     return {aDecoded, theString.size() - aRemaining.size()};
   }
 
-  constexpr static std::pair<bool, ssize_t>
+  constexpr static std::pair<bool, intptr_t>
   parseBool(const std::string_view theString) {
-    constexpr const std::pair<bool, ssize_t> aErrorResult =
+    constexpr const std::pair<bool, intptr_t> aErrorResult =
         std::make_pair(false, -1);
     const auto [aFirstChar, aFirstCharWidth] = decodeFirst(theString);
     if (aFirstCharWidth <= 0)
@@ -358,9 +356,9 @@ public:
     return std::make_pair(aExpectedVal, theString.size() - aRemaining.size());
   }
 
-  constexpr static std::pair<double, ssize_t>
+  constexpr static std::pair<double, intptr_t>
   parseNumber(const std::string_view theString) {
-    constexpr const std::pair<double, ssize_t> aErrorResult =
+    constexpr const std::pair<double, intptr_t> aErrorResult =
         std::make_pair(0., -1);
     // Step 1: Read int
     const auto [aInt, aIntLength] = parseInteger(theString);
@@ -415,7 +413,7 @@ public:
 
   /// Expects a leading 'e' or 'E', then parses a (signed) int where leading
   /// '0' are allowed as per the JSON spec
-  static constexpr std::pair<int, ssize_t>
+  static constexpr std::pair<int, intptr_t>
   parseExponent(const std::string_view theString) {
     if (theString.empty())
       return std::make_pair(1, 0);
@@ -470,7 +468,7 @@ public:
   /// also double)
   /// @return the parsed integer and the number of bytes consumed while
   /// parsing.
-  static constexpr std::pair<double, ssize_t>
+  static constexpr std::pair<double, intptr_t>
   parseInteger(const std::string_view theString) {
     constexpr const auto aErrorResult = std::make_pair(0., -1);
     if (theString.empty())

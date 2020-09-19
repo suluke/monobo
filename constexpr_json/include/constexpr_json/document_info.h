@@ -7,18 +7,18 @@
 
 namespace cjson {
 struct DocumentInfo {
-  ssize_t itsNumNulls = 0;
-  ssize_t itsNumBools = 0;
-  ssize_t itsNumNumbers = 0;
+  intptr_t itsNumNulls = 0;
+  intptr_t itsNumBools = 0;
+  intptr_t itsNumNumbers = 0;
   /// The number of chars (bytes) required to store all encoded string data.
   /// NOTE: '\n' e.g. takes 2 chars in the source json string but only 1 in
   /// the encoded string data.
-  ssize_t itsNumChars = 0;
-  ssize_t itsNumStrings = 0;
-  ssize_t itsNumArrays = 0;
-  ssize_t itsNumArrayEntries = 0;
-  ssize_t itsNumObjects = 0;
-  ssize_t itsNumObjectProperties = 0;
+  intptr_t itsNumChars = 0;
+  intptr_t itsNumStrings = 0;
+  intptr_t itsNumArrays = 0;
+  intptr_t itsNumArrayEntries = 0;
+  intptr_t itsNumObjects = 0;
+  intptr_t itsNumObjectProperties = 0;
 
   constexpr static DocumentInfo Invalid() {
     return {-1, -1, -1, -1, -1, -1, -1, -1, -1};
@@ -32,7 +32,7 @@ struct DocumentInfo {
   constexpr static DocumentInfo SingleNumber() {
     return {0, 0, 1, 0, 0, 0, 0, 0, 0};
   }
-  constexpr static DocumentInfo SingleString(ssize_t theNumChars) {
+  constexpr static DocumentInfo SingleString(intptr_t theNumChars) {
     return {0, 0, 0, theNumChars, 1, 0, 0, 0, 0};
   }
   constexpr static DocumentInfo EmptyArray() {
@@ -86,7 +86,7 @@ struct DocumentInfo {
            itsNumStrings == theOther.itsNumStrings;
   }
 
-  using ResultTy = std::pair<DocumentInfo, ssize_t>;
+  using ResultTy = std::pair<DocumentInfo, intptr_t>;
 
   /**
    * @return .first is the DocInfo, .second is the number of read chars (i.e.

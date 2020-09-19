@@ -43,7 +43,7 @@ parseJson(const std::string_view theJson) {
     return ErrorHandling::template convertError<ResultTy>(aDocInfoOrError);
   const auto aDocInfoAndLen = ErrorHandling::unwrap(aDocInfoOrError);
   const DocumentInfo aDocInfo = aDocInfoAndLen.first;
-  const ssize_t aDocSize = aDocInfoAndLen.second;
+  const intptr_t aDocSize = aDocInfoAndLen.second;
   assert(aDocInfo);
   using p = parsing<typename Builder::src_encoding>;
   // Only trailing whitespace is allowed behind parsing end

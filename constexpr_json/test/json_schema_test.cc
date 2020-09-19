@@ -135,7 +135,7 @@ template <typename DocTy> static void dump(const DocTy &theDoc) {
                   "UTF8: Failed to decode '" STR "'");                         \
   } while (false)
 
-template <ssize_t L> struct CompareCharSeqs {
+template <intptr_t L> struct CompareCharSeqs {
   bool value = true;
   template <typename T1, typename T2>
   constexpr CompareCharSeqs(T1 theFirst, T2 theSecond) {
@@ -144,7 +144,7 @@ template <ssize_t L> struct CompareCharSeqs {
       std::ignore = theSecond;
       return;
     } else {
-      constexpr ssize_t aIdx = L - 1;
+      constexpr intptr_t aIdx = L - 1;
       if (theFirst[aIdx] != theSecond[aIdx]) {
         value = false;
         return;
@@ -159,9 +159,9 @@ template <ssize_t L> struct CompareCharSeqs {
   do {                                                                         \
     constexpr std::string_view aExpStr{EXPECTED};                              \
     constexpr auto aResult = Utf8::encode(CODEPOINT);                          \
-    constexpr ssize_t aExpLen = static_cast<ssize_t>(aExpStr.size());          \
+    constexpr intptr_t aExpLen = static_cast<intptr_t>(aExpStr.size());          \
     static_assert(aResult.second == aExpLen);                                  \
-    constexpr ssize_t aMinLen =                                                \
+    constexpr intptr_t aMinLen =                                                \
         aResult.second < aExpLen ? aResult.second : aExpLen;                   \
     constexpr CompareCharSeqs<aMinLen> aCmp(aResult.first, aExpStr);           \
     static_assert(aCmp.value);                                                 \
@@ -178,7 +178,7 @@ template <ssize_t L> struct CompareCharSeqs {
     using namespace std::literals;                                             \
     constexpr auto aParsed = parsing<Utf8>::FN(STR##sv);                       \
     constexpr auto aElem = aParsed.first;                                      \
-    constexpr ssize_t aElemLength = aParsed.second;                            \
+    constexpr intptr_t aElemLength = aParsed.second;                            \
     constexpr auto aExpectedElm = EXPECTED_ELM;                                \
     static_assert(EXPECTED_LEN == aElemLength);                                \
     static_assert(aExpectedElm == aElem);                                      \

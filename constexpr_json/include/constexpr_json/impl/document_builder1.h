@@ -139,13 +139,13 @@ struct DocumentBuilder1 {
       default:
         return aErrorResult;
       }
-      ssize_t aNumEntities = 1;
-      ssize_t aNumNumbers = 0;
-      ssize_t aNumChars = 0;
-      ssize_t aNumStrings = 0;
-      ssize_t aNumArrays = 0;
-      ssize_t aNumObjects = 0;
-      ssize_t aNumObjectProps = 0;
+      intptr_t aNumEntities = 1;
+      intptr_t aNumNumbers = 0;
+      intptr_t aNumChars = 0;
+      intptr_t aNumStrings = 0;
+      intptr_t aNumArrays = 0;
+      intptr_t aNumObjects = 0;
+      intptr_t aNumObjectProps = 0;
       const auto getEntityKindFromParsingType =
           [](Type theType) -> Entity::KIND {
         switch (theType) {
@@ -228,7 +228,7 @@ struct DocumentBuilder1 {
                 "Expected aggregate position to start on '['/'{'"};
           aAggregateJson.remove_prefix(aBracketWidth);
           bool aNeedsElement = false;
-          ssize_t aNumChildren = 0;
+          intptr_t aNumChildren = 0;
           if (isObject) {
             aEntity.itsPayload = aNumObjects++;
             aResult.itsObjects[aEntity.itsPayload].itsKeysPos = aNumObjectProps;
