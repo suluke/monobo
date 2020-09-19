@@ -5,14 +5,14 @@ Compile-time JSON parsing for C++17 with support for different encodings and err
 CJSON currently ships with the following features:
 
 * Fully `constexpr` JSON parsing
-* Parsing non-static JSON content at runtime using the same algorithms and (even simpler) APIs
-* A CMake script to convert JSON files into easily includable C++ header files
+* Parsing non-static JSON content at runtime using the same algorithms and ([even simpler](https://github.com/suluke/monobo/blob/master/constexpr_json/include/constexpr_json/dynamic_document.h)) APIs
+* A [CMake script](https://github.com/suluke/monobo/blob/master/constexpr_json/cmake/GenerateJsonHeader.cmake) to convert JSON files into easily includable C++ header files
 * UTF-8 support for encoding/decoding, or **bring your own**!
 * Configurable strategies for error handling:
    1. `ErrorWillReturnNone` \[default\]: `std::nullopt` is returned when an error occurs
    2. `ErrorWillThrow`: `std::invalid_argument` is thrown when an error occurs
    3. `ErrorWillReturnDetail`: `std::variant<ErrorDetail, ?>` is returned when an error occurs
-   It is also possible to provide a user-defined error strategy. Look at [error_handling.h](https://github.com/suluke/monobo/blob/master/constexpr_json/include/constexpr_json/impl/error_handling.h) for reference.
+   It is also possible to provide a user-defined error strategy.
 
 Also look at the [feature wishlist](https://github.com/suluke/monobo/issues/1) to see what's in the pipeline.
 
@@ -22,7 +22,7 @@ CJSON operates in two stages to be able to achieve `constexpr` JSON parsing:
 1. SCAN: Calculate storage requirements for the parsed data structure --> [DocumentInfo](https://github.com/suluke/monobo/blob/master/constexpr_json/include/constexpr_json/document_info.h)
 2. PARSE: Populate the data structure --> [Document](https://github.com/suluke/monobo/blob/master/constexpr_json/include/constexpr_json/document.h)
 
-The central API to perform these two steps is provided by the [DocumentBuilder](https://github.com/suluke/monobo/blob/master/constexpr_json/include/constexpr_json/document_builder.h) class.
+The central APIs to perform these two steps is provided by the [DocumentBuilder](https://github.com/suluke/monobo/blob/master/constexpr_json/include/constexpr_json/document_builder.h) class.
 A full usage example would [look like this](https://github.com/suluke/monobo/blob/master/constexpr_json/test/basic.cc):
 
 ```cpp
@@ -67,16 +67,16 @@ assert(aDoc->getRoot().toNumber() == 1234.);
 ## Project Validation
 CJSON is tested against the popular [JSONTestSuite](https://github.com/nst/JSONTestSuite).
 CJSON presently passes all the y\_\* and n\_\* tests.
-Generating the test result is as simple as running the "JSONTestSuite" target from the generated build system.
+Generating the test result is as simple as running the `JSONTestSuite` target from the generated build system.
 This will automatically fetch the newest version of the JSONTestSuite, patch the runner script to become aware of cjson and execute it.
 
 
 ## Code Overview
-* static_document.h: Represents a JSON document that is known (and parsed) statically during compilation
-* dynamic_document.h: A JSON document that is parsed at runtime
-* document_builder.h: Core API aggregator of this project. Can be configured for different encodings, error handling strategies and output documents.
-* document_info.h: The first pass over the JSON document determines required buffer sizes and validates the document.
-                   Can be configured for MAX_RECURSION_DEPTH and provides the length of the parsed JSON. This is not available in DocumentBuilder
+* **static_document.h**: Represents a JSON document that is known (and parsed) statically during compilation
+* **dynamic_document.h**: A JSON document that is parsed at runtime
+* **document_builder.h**: Core API aggregator of this project. Can be configured for different encodings, error handling strategies and output documents.
+* **document_info.h**: The first pass over the JSON document determines required buffer sizes and validates the document.
+                   Can be configured for `MAX_RECURSION_DEPTH` and provides the length of the parsed JSON. This is not available in DocumentBuilder
 
 
 ## [License](https://github.com/suluke/monobo/blob/master/constexpr_json/LICENSE)
