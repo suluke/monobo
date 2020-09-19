@@ -3,8 +3,8 @@
 #include <iostream>
 #include <memory>
 
-#include "constexpr_json/document_builder.h"
 #include "constexpr_json/dynamic_document.h"
+#include "constexpr_json/ext/error_is_detail.h"
 
 static constexpr int ERROR_INVALID_JSON = 1;
 static constexpr int ERROR_WRONG_ARGC = 11;
@@ -27,38 +27,6 @@ static std::ostream &printError(std::ostream &theOS,
   return theOS;
 }
 
-template <typename Builder = cjson::DocumentBuilder<cjson::Utf8, cjson::Utf8>>
-static typename Builder::error_handling::ErrorOr<
-    std::unique_ptr<cjson::DynamicDocument>>
-parseJson(const std::string_view theJson) {
-  using namespace cjson;
-  using ErrorHandling = typename Builder::error_handling;
-  using ResultTy = std::unique_ptr<DynamicDocument>;
-  const auto aDocInfoOrError =
-      DocumentInfo::compute<typename Builder::src_encoding,
-                            typename Builder::dest_encoding,
-                            typename Builder::error_handling>(theJson);
-
-  if (ErrorHandling::isError(aDocInfoOrError))
-    return ErrorHandling::template convertError<ResultTy>(aDocInfoOrError);
-  const auto aDocInfoAndLen = ErrorHandling::unwrap(aDocInfoOrError);
-  const DocumentInfo aDocInfo = aDocInfoAndLen.first;
-  const intptr_t aDocSize = aDocInfoAndLen.second;
-  assert(aDocInfo);
-  using p = parsing<typename Builder::src_encoding>;
-  // Only trailing whitespace is allowed behind parsing end
-  if (!p::removeLeadingWhitespace(theJson.substr(aDocSize)).empty())
-    return ErrorHandling::template makeError<ResultTy>(
-        ErrorCode::TRAILING_CONTENT, aDocSize);
-  const auto aDocOrError =
-      Builder::template parseDocument<DynamicDocument>(theJson, aDocInfo);
-  if (ErrorHandling::isError(aDocOrError))
-    return ErrorHandling::template convertError<ResultTy>(aDocOrError);
-  auto aResult = std::make_unique<DynamicDocument>(aDocInfo);
-  *aResult = std::move(ErrorHandling::unwrap(aDocOrError));
-  return aResult;
-}
-
 int main(int argc, const char **argv) {
   if (argc != 2) {
     std::cout << "Usage: jsontestsuite_driver <jsonpath>\n";
@@ -76,7 +44,7 @@ int main(int argc, const char **argv) {
   using ErrorHandling = cjson::ErrorWillReturnDetail;
   using BuilderTy =
       cjson::DocumentBuilder<cjson::Utf8, cjson::Utf8, ErrorHandling>;
-  const auto aResult = parseJson<BuilderTy>(aJsonStr);
+  const auto aResult = cjson::DynamicDocument::parseJson<BuilderTy>(aJsonStr);
   if (ErrorHandling::isError(aResult)) {
     printError(std::cout, std::get<cjson::ErrorDetail>(aResult), aJsonStr)
         << "\n";

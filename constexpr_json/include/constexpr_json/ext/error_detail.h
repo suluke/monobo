@@ -1,14 +1,11 @@
-#ifndef CONSTEXPR_JSON_ERROR_HANDLING_H
-#define CONSTEXPR_JSON_ERROR_HANDLING_H
+#ifndef CONSTEXPR_JSON_ERROR_DETAIL_H
+#define CONSTEXPR_JSON_ERROR_DETAIL_H
 
 #include "constexpr_json/error_codes.h"
 
-#include <optional>
 #include <string_view>
-#include <variant>
 
 namespace cjson {
-
 struct ErrorDetail {
   ErrorCode itsCode;
   /// (Rough) character location where the error was encountered
@@ -78,88 +75,5 @@ struct ErrorDetail {
     return nullptr;
   }
 };
-
-struct ErrorWillThrow {
-  template <typename T> using ErrorOr = T;
-
-  template <typename T>
-  static constexpr bool isError(const ErrorOr<T> &) noexcept {
-    return false;
-  }
-
-  template <typename T>
-  static constexpr T &unwrap(ErrorOr<T> &theValue) noexcept {
-    return theValue;
-  }
-
-  template <typename T>
-  [[noreturn]] static constexpr ErrorOr<T> makeError(const ErrorCode theEC,
-                                                     const intptr_t thePos) {
-    throw std::invalid_argument(ErrorDetail::getErrorCodeDesc(theEC));
-  }
-
-  template <typename T, typename U>
-  static constexpr ErrorOr<T>
-  convertError(const ErrorOr<U> &theError,
-               const intptr_t thePositionOffset = 0) {
-    throw std::logic_error("Thrown errors do not need type conversion");
-  }
-};
-
-struct ErrorWillReturnNone {
-  template <typename T> using ErrorOr = std::optional<T>;
-
-  template <typename T>
-  static constexpr bool isError(const ErrorOr<T> &theValue) noexcept {
-    return !static_cast<bool>(theValue);
-  }
-
-  template <typename T>
-  static constexpr const T &unwrap(const ErrorOr<T> &theValue) noexcept {
-    return *theValue;
-  }
-
-  template <typename T>
-  static constexpr ErrorOr<T> makeError(const ErrorCode theEC,
-                                        const intptr_t thePos) {
-    return std::nullopt;
-  }
-
-  template <typename T, typename U>
-  static constexpr ErrorOr<T>
-  convertError(const ErrorOr<U> &theError,
-               const intptr_t thePositionOffset = 0) {
-    return std::nullopt;
-  }
-};
-
-struct ErrorWillReturnDetail {
-  template <typename T> using ErrorOr = std::variant<ErrorDetail, T>;
-
-  template <typename T>
-  static constexpr bool isError(const ErrorOr<T> &theValue) noexcept {
-    return !std::holds_alternative<T>(theValue);
-  }
-
-  template <typename T>
-  static constexpr const T &unwrap(const ErrorOr<T> &theValue) noexcept {
-    return std::get<T>(theValue);
-  }
-
-  template <typename T>
-  static constexpr ErrorOr<T> makeError(const ErrorCode theEC,
-                                        const intptr_t thePos) {
-    return ErrorDetail{theEC, thePos};
-  }
-
-  template <typename T, typename U>
-  static constexpr ErrorOr<T>
-  convertError(const ErrorOr<U> &theError,
-               const intptr_t thePositionOffset = 0) {
-    ErrorDetail aDetail = std::get<ErrorDetail>(theError);
-    aDetail.itsPosition += thePositionOffset;
-    return aDetail;
-  }
-};
 } // namespace cjson
-#endif // CONSTEXPR_JSON_ERROR_HANDLING_H
+#endif // CONSTEXPR_JSON_ERROR_DETAIL_H

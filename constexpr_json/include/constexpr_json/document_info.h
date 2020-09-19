@@ -2,7 +2,7 @@
 #define CONSTEXPR_JSON_DOCUMENT_INFO_H
 
 #include "constexpr_json/error_codes.h"
-#include "constexpr_json/utils/parsing.h"
+#include "constexpr_json/impl/parsing_utils.h"
 #include <stdexcept>
 
 namespace cjson {

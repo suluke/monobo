@@ -2,17 +2,24 @@
 #define CONSTEXPR_JSON_DOCUMENT_BUILDER_H
 
 #include "constexpr_json/impl/document_builder2.h"
-#include "constexpr_json/impl/error_handling.h"
-#include "constexpr_json/utils/unicode.h"
+#include "constexpr_json/ext/utf-8.h"
+#include "constexpr_json/ext/error_is_nullopt.h"
 
+#include <optional>
 #include <memory>
 
 namespace cjson {
+/// Select the default builder implementation
+///
+/// Currently DocumentBuilder2
 template <typename SourceEncodingTy, typename DestEncodingTy,
           typename ErrorHandlingTy = ErrorWillReturnNone>
 using DocumentBuilderImpl =
     DocumentBuilder2<SourceEncodingTy, DestEncodingTy, ErrorHandlingTy>;
 
+/// Core API of cjson
+///
+/// Basically only a facade in front of the builder implementation.
 template <typename SourceEncodingTy = Utf8, typename DestEncodingTy = Utf8,
           typename ErrorHandlingTy = ErrorWillReturnNone,
           template <typename SEncTy, typename DEncTy, typename ErrHandTy>
@@ -21,6 +28,7 @@ struct DocumentBuilder
     : public Impl<SourceEncodingTy, DestEncodingTy, ErrorHandlingTy> {
   using BaseClass = Impl<SourceEncodingTy, DestEncodingTy, ErrorHandlingTy>;
 
+  /// Compute a DocumentInfo object for the given JSON string
   constexpr static typename ErrorHandlingTy::ErrorOr<DocumentInfo>
   computeDocInfo(const std::string_view theJsonString) {
     const auto aDocInfoOrError =
