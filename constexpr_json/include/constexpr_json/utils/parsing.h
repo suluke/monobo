@@ -43,7 +43,7 @@ public:
       return aErrorResult;
     // Reduce digits to '0' to avoid some case labels
     const auto charZeroIfDigit = [](CharT aChar) -> CharT {
-      return isdigit(aChar) ? '0' : aChar;
+      return (isdigit(aChar) || aChar == '-') ? '0' : aChar;
     };
     switch (charZeroIfDigit(aFirstChar)) {
     case 'n':
@@ -622,21 +622,15 @@ public:
       if (aChar == '-')
         aRemaining.remove_prefix(aCharWidth);
     }
-    { // if the next code point is '0' we're done
-      const auto [aChar, aCharWidth] = decodeFirst(aRemaining);
-      if (aCharWidth <= 0)
-        // failed to decode first char
-        return "";
-      if (aChar == '0') {
-        aRemaining.remove_prefix(aCharWidth);
-        return {theString.data(), theString.size() - aRemaining.size()};
-      }
-    }
     { // read digits
       std::string_view aDigits = readDigits(aRemaining);
       // there must be a non-zero-width integer part
       if (aDigits.size() == 0)
         return "";
+      // it is illegal to have multiple digitis starting with '0'
+      const auto [aFirstChar, aFirstLen] = decodeFirst(aDigits);
+      if (aDigits.size() != 1 && aFirstChar == '0')
+        return aDigits.substr(0, aFirstLen);
       aRemaining.remove_prefix(aDigits.size());
     }
     // read fraction

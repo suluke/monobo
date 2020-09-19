@@ -21,8 +21,8 @@ static std::ostream &printError(std::ostream &theOS,
   if (theError.itsPosition >= 0) {
     const auto [aLineNo, aColNo] =
         theError.computeLocation<cjson::Utf8>(theJson);
-    theOS << " - in line " << (aLineNo + 1) << " near\n"
-          << theJson.substr(theError.itsPosition, 10);
+    theOS << " - in line " << (aLineNo + 1) << " near "
+          << "\"" << theJson.substr(theError.itsPosition, 10) << "\"";
   }
   return theOS;
 }
@@ -45,7 +45,9 @@ parseJson(const std::string_view theJson) {
   const DocumentInfo aDocInfo = aDocInfoAndLen.first;
   const ssize_t aDocSize = aDocInfoAndLen.second;
   assert(aDocInfo);
-  if (static_cast<size_t>(aDocSize) != theJson.size())
+  using p = parsing<typename Builder::src_encoding>;
+  // Only trailing whitespace is allowed behind parsing end
+  if (!p::removeLeadingWhitespace(theJson.substr(aDocSize)).empty())
     return ErrorHandling::template makeError<ResultTy>(
         ErrorCode::TRAILING_CONTENT, aDocSize);
   const auto aDocOrError =
