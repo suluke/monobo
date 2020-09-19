@@ -159,9 +159,9 @@ template <intptr_t L> struct CompareCharSeqs {
   do {                                                                         \
     constexpr std::string_view aExpStr{EXPECTED};                              \
     constexpr auto aResult = Utf8::encode(CODEPOINT);                          \
-    constexpr intptr_t aExpLen = static_cast<intptr_t>(aExpStr.size());          \
+    constexpr intptr_t aExpLen = static_cast<intptr_t>(aExpStr.size());        \
     static_assert(aResult.second == aExpLen);                                  \
-    constexpr intptr_t aMinLen =                                                \
+    constexpr intptr_t aMinLen =                                               \
         aResult.second < aExpLen ? aResult.second : aExpLen;                   \
     constexpr CompareCharSeqs<aMinLen> aCmp(aResult.first, aExpStr);           \
     static_assert(aCmp.value);                                                 \
@@ -178,7 +178,7 @@ template <intptr_t L> struct CompareCharSeqs {
     using namespace std::literals;                                             \
     constexpr auto aParsed = parsing<Utf8>::FN(STR##sv);                       \
     constexpr auto aElem = aParsed.first;                                      \
-    constexpr intptr_t aElemLength = aParsed.second;                            \
+    constexpr intptr_t aElemLength = aParsed.second;                           \
     constexpr auto aExpectedElm = EXPECTED_ELM;                                \
     static_assert(EXPECTED_LEN == aElemLength);                                \
     static_assert(aExpectedElm == aElem);                                      \
@@ -187,9 +187,10 @@ template <intptr_t L> struct CompareCharSeqs {
 #define CHECK_COUNTS(JSON, NULLS, BOOLS, DOUBLES, CHARS, STRS, ARRAYS,         \
                      ENTRIES, OBJECTS, PROPS)                                  \
   do {                                                                         \
+    using ErrorHandling = typename Builder::error_handling;                    \
     constexpr const auto aDIOrError = Builder::computeDocInfo(JSON);           \
-    static_assert(!Builder::isError(aDIOrError));                              \
-    constexpr const auto aDI = Builder::unwrap(aDIOrError);                    \
+    static_assert(!ErrorHandling::isError(aDIOrError));                        \
+    constexpr const auto aDI = ErrorHandling::unwrap(aDIOrError);              \
     constexpr const DocumentInfo aExpected = {                                 \
         NULLS, BOOLS, DOUBLES, CHARS, STRS, ARRAYS, ENTRIES, OBJECTS, PROPS};  \
     std::cout.setstate(std::ios_base::badbit); /* Disables cout */             \
@@ -356,10 +357,12 @@ static void static_tests() {
 
 #define CHECK_DOCPARSE(JSON)                                                   \
   do {                                                                         \
+    using ErrorHandling = typename Builder::error_handling;                    \
     constexpr std::string_view aJsonStr{JSON};                                 \
     constexpr const auto aDocInfoOrError = Builder::computeDocInfo(aJsonStr);  \
-    static_assert(!Builder::isError(aDocInfoOrError));                         \
-    constexpr const DocumentInfo aDocInfo = Builder::unwrap(aDocInfoOrError);  \
+    static_assert(!ErrorHandling::isError(aDocInfoOrError));                   \
+    constexpr const DocumentInfo aDocInfo =                                    \
+        ErrorHandling::unwrap(aDocInfoOrError);                                \
     using DocTy =                                                              \
         StaticDocument<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,           \
                        aDocInfo.itsNumStrings, aDocInfo.itsNumArrays,          \
@@ -367,7 +370,7 @@ static void static_tests() {
                        aDocInfo.itsNumObjectProperties>;                       \
     constexpr auto aDoc =                                                      \
         Builder::template parseDocument<DocTy>(aJsonStr, aDocInfo);            \
-    static_assert(!Builder::isError(aDoc));                                    \
+    static_assert(!ErrorHandling::isError(aDoc));                              \
     /*dump(Builder::unwrap(aDoc));*/                                           \
     /*std::cout << Builder::unwrap(aDoc) << "\n";*/                            \
   } while (false)
@@ -384,8 +387,9 @@ static void static_tests() {
     constexpr std::string_view aJsonStr{
         "[123,true,null,\"abc\",{\"def\":\"ghi\"}]"};
     constexpr auto aDocInfoOrError = Builder::computeDocInfo(aJsonStr);
-    static_assert(!Builder::isError(aDocInfoOrError));
-    constexpr DocumentInfo aDocInfo{Builder::unwrap(aDocInfoOrError)};
+    using ErrorHandling = typename Builder::error_handling;
+    static_assert(!ErrorHandling::isError(aDocInfoOrError));
+    constexpr DocumentInfo aDocInfo{ErrorHandling::unwrap(aDocInfoOrError)};
     using DocTy =
         StaticDocument<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,
                        aDocInfo.itsNumStrings, aDocInfo.itsNumArrays,
@@ -393,8 +397,8 @@ static void static_tests() {
                        aDocInfo.itsNumObjectProperties>;
     constexpr auto aDocOrError =
         Builder::template parseDocument<DocTy>(aJsonStr, aDocInfo);
-    static_assert(!Builder::isError(aDocOrError));
-    constexpr const DocTy aDoc = Builder::unwrap(aDocOrError);
+    static_assert(!ErrorHandling::isError(aDocOrError));
+    constexpr const DocTy aDoc = ErrorHandling::unwrap(aDocOrError);
     static_assert(aDoc.getStaticRoot().toArray().size() == 5);
 
     static_assert(aDoc.getStaticRoot().toArray()[1].toBool());
@@ -403,7 +407,7 @@ static void static_tests() {
         aDoc.getStaticRoot().toArray()[4].toObject()["def"]->toString() ==
         "ghi");
 
-    const auto aDynamicDoc = Builder::unwrap(
+    const auto aDynamicDoc = ErrorHandling::unwrap(
         Builder::template parseDocument<DynamicDocument>(aJsonStr, aDocInfo));
     assert(aDynamicDoc == aDoc);
   }

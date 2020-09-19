@@ -44,18 +44,6 @@ struct DocumentBuilder
   using src_encoding = SourceEncodingTy;
   using dest_encoding = DestEncodingTy;
   using error_handling = ErrorHandlingTy;
-
-  template <typename T>
-  static constexpr bool
-  isError(const typename error_handling::ErrorOr<T> &theValue) noexcept {
-    return error_handling::isError(theValue);
-  }
-
-  template <typename T>
-  static constexpr const T &
-  unwrap(const typename error_handling::ErrorOr<T> &theValue) noexcept {
-    return error_handling::unwrap(theValue);
-  }
 };
 } // namespace cjson
 #endif // CONSTEXPR_JSON_DOCUMENT_BUILDER_H

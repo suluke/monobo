@@ -16,11 +16,6 @@ CJSON currently ships with the following features:
 
 Also look at the [feature wishlist](https://github.com/suluke/monobo/issues/1) to see what's in the pipeline.
 
-## Correctness
-CJSON is tested against the popular [JSONTestSuite](https://github.com/nst/JSONTestSuite).
-Generating the test result is as simple as running the "JSONTestSuite" target from the generated build system.
-This will automatically fetch the newest version of the JSONTestSuite, patch the runner script to become aware of cjson and run the script.
-
 ## Basic usage
 CJSON operates in two stages to be able to achieve `constexpr` JSON parsing:
 
@@ -68,3 +63,21 @@ auto aDoc = DocumentBuilder<>::parseDocument<DocTy>(aJsonStr, *aDocInfo);
 assert(aDoc);
 assert(aDoc->getRoot().toNumber() == 1234.);
 ```
+
+## Project Validation
+CJSON is tested against the popular [JSONTestSuite](https://github.com/nst/JSONTestSuite).
+CJSON presently passes all the y\_\* and n\_\* tests.
+Generating the test result is as simple as running the "JSONTestSuite" target from the generated build system.
+This will automatically fetch the newest version of the JSONTestSuite, patch the runner script to become aware of cjson and execute it.
+
+
+## Code Overview
+* static_document.h: Represents a JSON document that is known (and parsed) statically during compilation
+* dynamic_document.h: A JSON document that is parsed at runtime
+* document_builder.h: Core API aggregator of this project. Can be configured for different encodings, error handling strategies and output documents.
+* document_info.h: The first pass over the JSON document determines required buffer sizes and validates the document.
+                   Can be configured for MAX_RECURSION_DEPTH and provides the length of the parsed JSON. This is not available in DocumentBuilder
+
+
+## [License](https://github.com/suluke/monobo/blob/master/constexpr_json/LICENSE)
+The code in this directory is licensed under [the MIT license](https://github.com/suluke/monobo/blob/master/constexpr_json/LICENSE)
