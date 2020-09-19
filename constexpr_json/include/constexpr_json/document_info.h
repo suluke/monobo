@@ -1,7 +1,8 @@
 #ifndef CONSTEXPR_JSON_DOCUMENT_INFO_H
 #define CONSTEXPR_JSON_DOCUMENT_INFO_H
 
-#include "utils/parsing.h"
+#include "constexpr_json/error_codes.h"
+#include "constexpr_json/utils/parsing.h"
 #include <stdexcept>
 
 namespace cjson {
@@ -106,8 +107,9 @@ struct DocumentInfo {
    */
   template <typename SourceEncodingTy, typename DestEncodingTy,
             typename ErrorHandlingTy>
-  constexpr static std::pair<DocumentInfo, ssize_t>
-  compute(const std::string_view theJsonString) {
+  constexpr static
+      typename ErrorHandlingTy::ErrorOr<std::pair<DocumentInfo, ssize_t>>
+      compute(const std::string_view theJsonString) {
     // setup
     using p = parsing<SourceEncodingTy>;
     using Type = typename p::Type;
@@ -116,30 +118,31 @@ struct DocumentInfo {
 
     const auto aTypeOpt = p::detectElementType(aRemaining);
     if (!aTypeOpt)
-      return makeDocInfoError("Failed to determine element type");
+      return makeError<ErrorHandlingTy>("Failed to determine element type");
     switch (*aTypeOpt) {
     case Type::NUL:
       if (const auto aNullLen = p::readNull(aRemaining).size(); aNullLen > 0) {
         aRemaining.remove_prefix(aNullLen);
-        return {DocumentInfo::SingleNull(),
-                theJsonString.size() - aRemaining.size()};
+        return std::make_pair(DocumentInfo::SingleNull(),
+                              theJsonString.size() - aRemaining.size());
       } else
-        return makeDocInfoError("Failed to read element: Expected null");
+        return makeError<ErrorHandlingTy>(
+            "Failed to read element: Expected null");
     case Type::BOOL:
       if (const auto [_, aBoolLen] = p::parseBool(aRemaining); aBoolLen > 0) {
         aRemaining.remove_prefix(aBoolLen);
-        return {DocumentInfo::SingleBool(),
-                theJsonString.size() - aRemaining.size()};
+        return std::make_pair(DocumentInfo::SingleBool(),
+                              theJsonString.size() - aRemaining.size());
       } else
-        return makeDocInfoError(
+        return makeError<ErrorHandlingTy>(
             "Failed to read element: Expected true or false");
     case Type::NUMBER:
       if (const auto aNumLen = p::readNumber(aRemaining).size(); aNumLen > 0) {
         aRemaining.remove_prefix(aNumLen);
-        return {DocumentInfo::SingleNumber(),
-                theJsonString.size() - aRemaining.size()};
+        return std::make_pair(DocumentInfo::SingleNumber(),
+                              theJsonString.size() - aRemaining.size());
       } else
-        return makeDocInfoError(
+        return makeError<ErrorHandlingTy>(
             "Failed to read element: Expected valid number");
     case Type::STRING: {
       const std::string_view aStr = p::readString(aRemaining);
@@ -147,10 +150,10 @@ struct DocumentInfo {
         aRemaining.remove_prefix(aStrLen);
         const auto aNumChars = p::template computeEncodedSize<DestEncodingTy>(
             p::stripQuotes(aStr));
-        return {DocumentInfo::SingleString(aNumChars),
-                theJsonString.size() - aRemaining.size()};
+        return std::make_pair(DocumentInfo::SingleString(aNumChars),
+                              theJsonString.size() - aRemaining.size());
       } else
-        return makeDocInfoError(
+        return makeError<ErrorHandlingTy>(
             "Failed to read element: Expected valid string");
     }
     case Type::ARRAY: {
@@ -161,26 +164,30 @@ struct DocumentInfo {
         const auto [aChar, aCharWidth] =
             SourceEncodingTy::decodeFirst(aRemaining);
         if (aCharWidth <= 0)
-          return makeDocInfoError("Failed to read array: Illegal first "
-                                  "character or unexpected EOF");
+          return makeError<ErrorHandlingTy>(
+              "Failed to read array: Illegal first "
+              "character or unexpected EOF");
         if (aChar == ']') {
           aRemaining.remove_prefix(aCharWidth);
-          return {aResult, theJsonString.size() - aRemaining.size()};
+          return std::make_pair(aResult,
+                                theJsonString.size() - aRemaining.size());
         }
         if (!aIsFirst && aChar != ',')
-          return makeDocInfoError("Failed to read array: Expected comma");
+          return makeError<ErrorHandlingTy>(
+              "Failed to read array: Expected comma");
         if (aChar == ',')
           aRemaining.remove_prefix(aCharWidth);
-        const auto [aSubDoc, aLen] =
+        const auto aSubDocOrError =
             compute<SourceEncodingTy, DestEncodingTy, ErrorHandlingTy>(
                 aRemaining);
-        if (!aSubDoc)
-          return {aSubDoc, aLen}; // Propagate error
+        if (ErrorHandlingTy::isError(aSubDocOrError))
+          return aSubDocOrError; // Propagate error
+        const auto [aSubDoc, aLen] = ErrorHandlingTy::unwrap(aSubDocOrError);
         aResult += aSubDoc;
         ++aResult.itsNumArrayEntries;
         aRemaining.remove_prefix(aLen);
       }
-      return makeDocInfoError("UNREACHABLE");
+      return makeError<ErrorHandlingTy>("UNREACHABLE");
     }
     case Type::OBJECT: {
       DocumentInfo aResult = DocumentInfo::EmptyObject();
@@ -191,14 +198,17 @@ struct DocumentInfo {
           const auto [aChar, aCharWidth] =
               SourceEncodingTy::decodeFirst(aRemaining);
           if (aCharWidth <= 0)
-            return makeDocInfoError("Failed to read object: Illegal first "
-                                    "character or unexpected EOF");
+            return makeError<ErrorHandlingTy>(
+                "Failed to read object: Illegal first "
+                "character or unexpected EOF");
           if (aChar == '}') {
             aRemaining.remove_prefix(aCharWidth);
-            return {aResult, theJsonString.size() - aRemaining.size()};
+            return std::make_pair(aResult,
+                                  theJsonString.size() - aRemaining.size());
           }
           if (!aIsFirst && aChar != ',')
-            return makeDocInfoError("Failed to read object: Expected comma");
+            return makeError<ErrorHandlingTy>(
+                "Failed to read object: Expected comma");
           if (aChar == ',') {
             aRemaining.remove_prefix(aCharWidth);
             // need to strip whitespace - readString expects to start on '"'
@@ -208,7 +218,7 @@ struct DocumentInfo {
         { // consume key
           const std::string_view aKey = p::readString(aRemaining);
           if (aKey.size() == 0)
-            return makeDocInfoError(
+            return makeError<ErrorHandlingTy>(
                 "Failed to read object: Could not read property key");
           ++aResult.itsNumStrings;
           aResult.itsNumChars += p::template computeEncodedSize<DestEncodingTy>(
@@ -220,28 +230,33 @@ struct DocumentInfo {
           const auto [aColon, aColonWidth] =
               SourceEncodingTy::decodeFirst(aRemaining);
           if (aColon != ':')
-            return makeDocInfoError("Failed to read object: Expected colon");
+            return makeError<ErrorHandlingTy>(
+                "Failed to read object: Expected colon");
           aRemaining.remove_prefix(aColonWidth);
         }
-        const auto [aSubDoc, aLen] =
+        const auto aSubDocOrError =
             compute<SourceEncodingTy, DestEncodingTy, ErrorHandlingTy>(
                 aRemaining);
-        if (!aSubDoc)
-          return {aSubDoc, aLen}; // Propagate error
+        if (ErrorHandlingTy::isError(aSubDocOrError))
+          return aSubDocOrError; // Propagate error
+        const auto [aSubDoc, aLen] = ErrorHandlingTy::unwrap(aSubDocOrError);
         aResult += aSubDoc;
         ++aResult.itsNumObjectProperties;
         aRemaining.remove_prefix(aLen);
       }
-      return makeDocInfoError("UNREACHABLE");
+      return makeError<ErrorHandlingTy>("UNREACHABLE");
     }
     }
-    return makeDocInfoError("UNREACHABLE");
+    return makeError<ErrorHandlingTy>("UNREACHABLE");
   }
 
 private:
-  constexpr static std::pair<DocumentInfo, ssize_t>
-  makeDocInfoError(const char *const theReason) {
-    return {DocumentInfo::error(), -1};
+  template <typename ErrorHandlingTy>
+  constexpr static
+      typename ErrorHandlingTy::ErrorOr<std::pair<DocumentInfo, ssize_t>>
+      makeError(const char *const theReason) {
+    return ErrorHandlingTy::template makeError<
+        std::pair<DocumentInfo, ssize_t>>(ErrorCode::UNKNOWN, -1);
   }
 };
 } // namespace cjson

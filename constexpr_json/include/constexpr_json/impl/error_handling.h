@@ -52,6 +52,11 @@ struct ErrorWillThrow {
                                                      const intptr_t thePos) {
     throw std::invalid_argument(ErrorDetail::getErrorCodeDesc(theEC));
   }
+
+  template<typename T, typename U>
+  static constexpr ErrorOr<T> convertError(const ErrorOr<U> &theError) {
+    throw std::logic_error("Thrown errors do not need type conversion");
+  }
 };
 
 struct ErrorWillReturnNone {
@@ -70,6 +75,11 @@ struct ErrorWillReturnNone {
   template <typename T>
   static constexpr ErrorOr<T> makeError(const ErrorCode theEC,
                                         const intptr_t thePos) {
+    return std::nullopt;
+  }
+
+  template<typename T, typename U>
+  static constexpr ErrorOr<T> convertError(const ErrorOr<U> &theError) {
     return std::nullopt;
   }
 };
@@ -91,6 +101,11 @@ struct ErrorWillReturnDetail {
   static constexpr ErrorOr<T> makeError(const ErrorCode theEC,
                                         const intptr_t thePos) {
     return ErrorDetail{theEC, thePos};
+  }
+
+  template<typename T, typename U>
+  static constexpr ErrorOr<T> convertError(const ErrorOr<U> &theError) {
+    return std::get<ErrorDetail>(theError);
   }
 };
 } // namespace cjson

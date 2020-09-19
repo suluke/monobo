@@ -16,13 +16,22 @@ template <typename Builder = cjson::DocumentBuilder<cjson::Utf8, cjson::Utf8>>
 static std::unique_ptr<cjson::DynamicDocument>
 parseJson(const std::string_view theJson) {
   using namespace cjson;
-  std::optional<DocumentInfo> aDocInfo = Builder::computeDocInfo(theJson);
-  if (!aDocInfo)
+  const auto aDocInfoOrError =
+      DocumentInfo::compute<typename Builder::src_encoding,
+                            typename Builder::dest_encoding,
+                            typename Builder::error_handling>(theJson);
+
+  if (Builder::isError(aDocInfoOrError))
+    return nullptr;
+  const auto aDocInfoAndLen = Builder::unwrap(aDocInfoOrError);
+  const DocumentInfo aDocInfo = aDocInfoAndLen.first;
+  const ssize_t aDocSize = aDocInfoAndLen.second;
+  if (!aDocInfo || static_cast<size_t>(aDocSize) != theJson.size())
     return nullptr;
   const std::optional<DynamicDocument> aDoc =
       Builder::template parseDocument<DynamicDocument>(theJson, aDocInfo);
   if (aDoc) {
-    auto aResult = std::make_unique<DynamicDocument>(*aDocInfo);
+    auto aResult = std::make_unique<DynamicDocument>(aDocInfo);
     *aResult = std::move(*aDoc);
     return aResult;
   }

@@ -23,9 +23,12 @@ struct DocumentBuilder
 
   constexpr static typename ErrorHandlingTy::ErrorOr<DocumentInfo>
   computeDocInfo(const std::string_view theJsonString) {
-    return DocumentInfo::compute<SourceEncodingTy, DestEncodingTy,
-                                 ErrorHandlingTy>(theJsonString)
-        .first;
+    const auto aDocInfoOrError =
+        DocumentInfo::compute<SourceEncodingTy, DestEncodingTy,
+                              ErrorHandlingTy>(theJsonString);
+    if (ErrorHandlingTy::isError(aDocInfoOrError))
+      return ErrorHandlingTy::template convertError<DocumentInfo>(aDocInfoOrError);
+    return ErrorHandlingTy::unwrap(aDocInfoOrError).first;
   }
 
   using BaseClass::parseDocument;

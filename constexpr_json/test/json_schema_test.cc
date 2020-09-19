@@ -201,9 +201,11 @@ template <ssize_t L> struct CompareCharSeqs {
 #define CHECK_COUNTS2(NULLS, BOOLS, DOUBLES, CHARS, STRS, ARRAYS, ENTRIES,     \
                       OBJECTS, PROPS, LENGTH, JSON)                            \
   do {                                                                         \
-    constexpr const auto aResult =                                             \
-        DocumentInfo::compute<Utf8, Utf8, typename Builder::error_handling>(   \
-            JSON);                                                             \
+    using ErrorHandling = typename Builder::error_handling;                    \
+    constexpr const auto aResultOrError =                                      \
+        DocumentInfo::compute<Utf8, Utf8, ErrorHandling>(JSON);                \
+    static_assert(!ErrorHandling::isError(aResultOrError));                    \
+    constexpr auto aResult = ErrorHandling::unwrap(aResultOrError);            \
     constexpr const DocumentInfo aDI = aResult.first;                          \
     constexpr const DocumentInfo aExpected = {                                 \
         NULLS, BOOLS, DOUBLES, CHARS, STRS, ARRAYS, ENTRIES, OBJECTS, PROPS};  \
@@ -413,8 +415,11 @@ int main() {
   static_tests();
 #define USE_JSON_STRING(theJson) constexpr std::string_view aJsonSV{theJson};
 #include "json_schema.h"
+  constexpr auto aDocInfoOrError =
+      DocumentInfo::compute<Utf8, Utf8, ErrorHandling>(aJsonSV);
+  static_assert(!ErrorHandling::isError(aDocInfoOrError));
   constexpr DocumentInfo aDocInfo =
-      DocumentInfo::compute<Utf8, Utf8, ErrorHandling>(aJsonSV).first;
+      ErrorHandling::unwrap(aDocInfoOrError).first;
   using DocTy =
       StaticDocument<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,
                      aDocInfo.itsNumStrings, aDocInfo.itsNumArrays,
