@@ -17,6 +17,7 @@ enum class ErrorCode {
   OBJECT_KEY_READ_FAILED,
   TYPE_DEDUCTION_FAILED,
   TRAILING_CONTENT,
+  MAX_DEPTH_EXCEEDED,
 };
 } // namespace cjson
 #endif // CONSTEXPR_JSON_ERROR_CODES_H

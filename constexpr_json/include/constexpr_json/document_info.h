@@ -93,15 +93,21 @@ struct DocumentInfo {
    * bytes, not code points)
    */
   template <typename SourceEncodingTy, typename DestEncodingTy,
-            typename ErrorHandlingTy>
+            typename ErrorHandlingTy, intptr_t MaxRecursionDepth = 100>
   constexpr static typename ErrorHandlingTy::ErrorOr<ResultTy>
-  compute(const std::string_view theJsonString) {
+  compute(const std::string_view theJsonString,
+          const intptr_t theRecursionDepth = 0) {
     // setup
     using p = parsing<SourceEncodingTy>;
     using Type = typename p::Type;
     std::string_view aRemaining = theJsonString;
 #define CJSON_CURRENT_POSITION theJsonString.size() - aRemaining.size()
     aRemaining = p::removeLeadingWhitespace(aRemaining);
+
+    // limit recursion
+    if (MaxRecursionDepth >= 0 && theRecursionDepth > MaxRecursionDepth)
+      return makeError<ErrorHandlingTy>(ErrorCode::MAX_DEPTH_EXCEEDED,
+                                        CJSON_CURRENT_POSITION);
 
     const auto aTypeOpt = p::detectElementType(aRemaining);
     if (!aTypeOpt)
@@ -165,7 +171,7 @@ struct DocumentInfo {
           aRemaining.remove_prefix(aCharWidth);
         const auto aSubDocOrError =
             compute<SourceEncodingTy, DestEncodingTy, ErrorHandlingTy>(
-                aRemaining);
+                aRemaining, theRecursionDepth + 1);
         if (ErrorHandlingTy::isError(aSubDocOrError))
           return ErrorHandlingTy::template convertError<ResultTy>(
               aSubDocOrError, CJSON_CURRENT_POSITION); // Propagate error
@@ -221,7 +227,7 @@ struct DocumentInfo {
         }
         const auto aSubDocOrError =
             compute<SourceEncodingTy, DestEncodingTy, ErrorHandlingTy>(
-                aRemaining);
+                aRemaining, theRecursionDepth + 1);
         if (ErrorHandlingTy::isError(aSubDocOrError))
           return ErrorHandlingTy::template convertError<ResultTy>(
               aSubDocOrError, CJSON_CURRENT_POSITION); // Propagate error

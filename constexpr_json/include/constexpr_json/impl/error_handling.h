@@ -72,6 +72,8 @@ struct ErrorDetail {
       return "Failed to determine element type";
     case ErrorCode::TRAILING_CONTENT:
       return "Encountered additional characters when EOF was expected";
+    case ErrorCode::MAX_DEPTH_EXCEEDED:
+      return "Exceeded maximum document nesting level";
     }
     return nullptr;
   }
