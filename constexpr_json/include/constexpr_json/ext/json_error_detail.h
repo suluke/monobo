@@ -3,10 +3,11 @@
 
 #include "constexpr_json/error_codes.h"
 
+#include <stdexcept>
 #include <string_view>
 
 namespace cjson {
-struct ErrorDetail {
+struct JsonErrorDetail {
   ErrorCode itsCode;
   /// (Rough) character location where the error was encountered
   ///
@@ -15,14 +16,19 @@ struct ErrorDetail {
   /// line being currently processed to when the error is being reported.
   intptr_t itsPosition;
 
-  template<typename EncodingTy>
+  [[noreturn]] void raiseError(const ErrorCode theEC, const intptr_t thePos) {
+    throw std::invalid_argument(getErrorCodeDesc(theEC));
+  }
+
+  template <typename EncodingTy>
   constexpr std::pair<intptr_t, intptr_t>
   computeLocation(const std::string_view theJson) const noexcept {
     if (itsPosition < 0)
       return {-1, -1};
     intptr_t aLine = 0, aCol = 0;
     std::string_view aRemaining{theJson};
-    while(theJson.size() - aRemaining.size() < static_cast<size_t>(itsPosition)) {
+    while (theJson.size() - aRemaining.size() <
+           static_cast<size_t>(itsPosition)) {
       const auto [aChar, aCharWidth] = EncodingTy::decodeFirst(aRemaining);
       aRemaining.remove_prefix(aCharWidth);
       ++aCol;
@@ -36,6 +42,12 @@ struct ErrorDetail {
 
   constexpr const char *what() const noexcept {
     return getErrorCodeDesc(itsCode);
+  }
+
+  constexpr JsonErrorDetail convert(intptr_t theOffsetPosition = 0) const noexcept {
+    JsonErrorDetail aDetail{*this};
+    aDetail.itsPosition += theOffsetPosition;
+    return aDetail;
   }
 
   static constexpr const char *

@@ -22,16 +22,14 @@ struct ErrorWillReturnNone {
     return *theValue;
   }
 
-  template <typename T>
-  static constexpr ErrorOr<T> makeError(const ErrorCode theEC,
-                                        const intptr_t thePos) {
+  template <typename T, typename... Args>
+  static constexpr ErrorOr<T> makeError(Args &&... theArgs) {
     return std::nullopt;
   }
 
-  template <typename T, typename U>
-  static constexpr ErrorOr<T>
-  convertError(const ErrorOr<U> &theError,
-               const intptr_t thePositionOffset = 0) {
+  template <typename T, typename U, typename... Args>
+  static constexpr ErrorOr<T> convertError(const ErrorOr<U> &theError,
+                                           Args &&... theArgs) {
     return std::nullopt;
   }
 };

@@ -1,8 +1,8 @@
 #ifndef CONSTEXPR_JSON_UTILS_PARSING_H
 #define CONSTEXPR_JSON_UTILS_PARSING_H
 
+#include <cassert>
 #include <optional>
-#include <stdexcept>
 #include <string_view>
 #include <tuple>
 
@@ -29,6 +29,10 @@ public:
   parsing &operator=(parsing &&) = delete;
 
   enum class Type { NUL, BOOL, NUMBER, STRING, ARRAY, OBJECT };
+
+  static constexpr bool isWhiteSpace(const CharT theChar) noexcept {
+    return theChar == 0x20 || theChar == 0xd || theChar == 0xa || theChar == 0x9;
+  }
 
   constexpr static std::optional<Type>
   detectElementType(const std::string_view theJsonStr) {
@@ -203,9 +207,7 @@ public:
 
   constexpr static std::string_view stripQuotes(std::string_view theStr) {
     const auto [aQuot, aQuotWidth] = decodeFirst(theStr);
-    if (aQuot != '"')
-      throw std::invalid_argument(
-          "Given string does not start with quotation mark");
+    assert(aQuot == '"' && "Given string does not start with quotation mark");
     theStr.remove_prefix(aQuotWidth);
     theStr.remove_suffix(aQuotWidth);
     return theStr;
@@ -682,7 +684,7 @@ public:
       if (aCharWidth <= 0)
         // Failed to decode a character. But we don't do error handling here
         return aWhitespace;
-      if (aChar != 0x20 && aChar != 0xd && aChar != 0xa && aChar != 0x9)
+      if (!isWhiteSpace(aChar))
         // Found a non-whitespace character
         return aWhitespace;
       if (aCharWidth > aRemaining.size())

@@ -5,6 +5,8 @@
 #include "constexpr_json/document_info.h"
 #include "constexpr_json/impl/parsing_utils.h"
 
+#include <cassert>
+
 namespace cjson {
 template <typename SourceEncodingTy, typename DestEncodingTy,
           typename ErrorHandlingTy>
@@ -51,7 +53,7 @@ struct DocumentBuilder1 {
   }
 
   template <typename DocTy>
-  using ResultTy = typename ErrorHandlingTy::ErrorOr<DocTy>;
+  using ResultTy = typename ErrorHandlingTy::template ErrorOr<DocTy>;
 
   template <typename DocTy>
   constexpr static ResultTy<DocTy>
@@ -221,11 +223,8 @@ struct DocumentBuilder1 {
               SourceEncodingTy::decodeFirst(aAggregateJson);
           using CharT = typename SourceEncodingTy::CodePointTy;
           const bool isObject = aEntity.itsKind == Entity::OBJECT;
-          const CharT aStartChar = isObject ? '{' : '[';
           const CharT aStopChar = isObject ? '}' : ']';
-          if (aBracket != aStartChar)
-            throw std::logic_error{
-                "Expected aggregate position to start on '['/'{'"};
+          assert(aBracket == (isObject ? '{' : '[') && "Expected aggregate position to start on '['/'{'");
           aAggregateJson.remove_prefix(aBracketWidth);
           bool aNeedsElement = false;
           intptr_t aNumChildren = 0;
@@ -243,9 +242,7 @@ struct DocumentBuilder1 {
                   p::readWhitespace(aAggregateJson).size());
               const auto [aChar, aCharWidth] =
                   SourceEncodingTy::decodeFirst(aAggregateJson);
-              if (aCharWidth <= 0)
-                throw std::logic_error{
-                    "Failed to decode char where one was expected"};
+              assert(aCharWidth > 0 && "Failed to decode char where one was expected");
               if (!aNeedsElement && aChar == aStopChar)
                 break;
             }
@@ -305,9 +302,7 @@ struct DocumentBuilder1 {
             {
               const auto [aChar, aCharWidth] =
                   SourceEncodingTy::decodeFirst(aAggregateJson);
-              if (aCharWidth <= 0)
-                throw std::logic_error{
-                    "Failed to decode char where one was expected"};
+              assert(aCharWidth > 0 && "Failed to decode char where one was expected");
               if (aChar == ',') {
                 aAggregateJson.remove_prefix(aCharWidth);
                 aNeedsElement = true;

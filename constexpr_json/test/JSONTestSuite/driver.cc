@@ -14,7 +14,7 @@ static constexpr int ERROR_READ_FAILED = 13;
 namespace fs = std::filesystem;
 
 static std::ostream &printError(std::ostream &theOS,
-                                const cjson::ErrorDetail &theError,
+                                const cjson::JsonErrorDetail &theError,
                                 const std::string_view theJson) {
   theOS << "ERROR: " << theError.what();
 
@@ -41,12 +41,12 @@ int main(int argc, const char **argv) {
   aIStream.seekg(0);
   if (!aIStream.read(aJsonStr.data(), aFileSize))
     return ERROR_READ_FAILED;
-  using ErrorHandling = cjson::ErrorWillReturnDetail;
+  using ErrorHandling = cjson::ErrorWillReturnDetail<cjson::JsonErrorDetail>;
   using BuilderTy =
       cjson::DocumentBuilder<cjson::Utf8, cjson::Utf8, ErrorHandling>;
   const auto aResult = cjson::DynamicDocument::parseJson<BuilderTy>(aJsonStr);
   if (ErrorHandling::isError(aResult)) {
-    printError(std::cout, std::get<cjson::ErrorDetail>(aResult), aJsonStr)
+    printError(std::cout, ErrorHandling::getError(aResult), aJsonStr)
         << "\n";
     return ERROR_INVALID_JSON;
   }

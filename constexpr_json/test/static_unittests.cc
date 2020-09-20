@@ -120,7 +120,7 @@ static void test_parseutils() {
   CHECK_PARSE(parseInteger, "", -1, 0.);
   CHECK_PARSE(parseInteger, "0123", 1, 0.);
   CHECK_PARSE(parseInteger, "-0123", 2, -0.);
-  static_assert(std::signbit(parsing<Utf8>::parseInteger("-0123").first));
+  static_assert(parsing<Utf8>::parseInteger("-0123").first == -0.);
   CHECK_PARSE(parseInteger, "1", 1, 1.);
   CHECK_PARSE(parseInteger, "-1", 2, -1.);
   CHECK_PARSE(parseInteger, "10", 2, 10.);
@@ -268,7 +268,7 @@ int main() {
   test_utf8();
   test_parseutils();
   test_docinfo<ErrorWillReturnNone>();
-  test_docinfo<ErrorWillReturnDetail>();
+  test_docinfo<ErrorWillReturnDetail<JsonErrorDetail>>();
   using ErrorHandling = ErrorWillReturnNone;
   test_parsing<DocumentBuilder<Utf8, Utf8, ErrorHandling, DocumentBuilder1>>();
   test_parsing<DocumentBuilder<Utf8, Utf8, ErrorHandling, DocumentBuilder2>>();

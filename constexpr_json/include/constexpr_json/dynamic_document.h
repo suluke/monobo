@@ -42,15 +42,18 @@ struct DynamicDocumentStorage {
 };
 } // namespace impl
 
-struct DynamicDocument : public DocumentBase<impl::DynamicDocumentStorage> {
+struct DynamicDocument : public DocumentInterfaceImpl<DocumentBase<impl::DynamicDocumentStorage>>
+{
+  using Base = DocumentInterfaceImpl<DocumentBase<impl::DynamicDocumentStorage>>;
   using Storage = impl::DynamicDocumentStorage;
 
   DynamicDocument(const DocumentInfo &theDocInfo)
-      : DocumentBase<Storage>{theDocInfo} {}
+      : Base{theDocInfo} {}
 
-  /// Parses a JSON string into a DynamicDocument using the specified Builder type
+  /// Parses a JSON string into a DynamicDocument using the specified Builder
+  /// type
   template <typename Builder = DocumentBuilder<>>
-  static typename Builder::error_handling::ErrorOr<
+  static typename Builder::error_handling::template ErrorOr<
       std::unique_ptr<cjson::DynamicDocument>>
   parseJson(const std::string_view theJson) {
     using ErrorHandling = typename Builder::error_handling;

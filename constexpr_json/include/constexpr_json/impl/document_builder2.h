@@ -30,14 +30,14 @@ private:
 
 public:
   template <typename DocTy>
-  using ResultTy = typename ErrorHandlingTy::ErrorOr<DocTy>;
+  using ResultTy = typename ErrorHandlingTy::template ErrorOr<DocTy>;
 
   template <typename DocTy>
   static constexpr auto parseDocument(
       const std::string_view theJsonString,
-      const typename ErrorHandlingTy::ErrorOr<DocumentInfo> &theDocInfo)
+      const typename ErrorHandlingTy::template ErrorOr<DocumentInfo> &theDocInfo)
       -> std::enable_if_t<
-          !std::is_same_v<const DocumentInfo, const typename ErrorHandlingTy::
+          !std::is_same_v<const DocumentInfo, const typename ErrorHandlingTy::template
                                                   ErrorOr<DocumentInfo>>,
           ResultTy<DocTy>> {
     if (ErrorHandlingTy::isError(theDocInfo))
@@ -178,7 +178,7 @@ public:
 private:
   template <typename DocTy>
   using ElementInfos =
-      typename DocTy::Storage::Buffer<ElementInfo,
+      typename DocTy::Storage::template Buffer<ElementInfo,
                                       DocTy::Storage::MAX_ENTITIES()>;
 
   static constexpr std::string_view
@@ -319,14 +319,14 @@ private:
 
   template <typename DocTy>
   static constexpr auto makeElmInfoError(const char *const theMsg) ->
-      typename ErrorHandlingTy::ErrorOr<ElementInfos<DocTy>> {
+      typename ErrorHandlingTy::template ErrorOr<ElementInfos<DocTy>> {
     return ErrorHandlingTy::template makeError<ElementInfos<DocTy>>(
         ErrorCode::UNKNOWN, -1);
   }
   template <typename DocTy>
   static constexpr auto makeError(const char *const theMsg,
                                   const ErrorCode theCode = ErrorCode::UNKNOWN)
-      -> typename ErrorHandlingTy::ErrorOr<DocTy> {
+      -> typename ErrorHandlingTy::template ErrorOr<DocTy> {
     return ErrorHandlingTy::template makeError<DocTy>(theCode, -1);
   }
 }; // namespace cjson

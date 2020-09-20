@@ -29,7 +29,7 @@ struct DocumentBuilder
   using BaseClass = Impl<SourceEncodingTy, DestEncodingTy, ErrorHandlingTy>;
 
   /// Compute a DocumentInfo object for the given JSON string
-  constexpr static typename ErrorHandlingTy::ErrorOr<DocumentInfo>
+  constexpr static typename ErrorHandlingTy::template ErrorOr<DocumentInfo>
   computeDocInfo(const std::string_view theJsonString) {
     const auto aDocInfoOrError =
         DocumentInfo::compute<SourceEncodingTy, DestEncodingTy,

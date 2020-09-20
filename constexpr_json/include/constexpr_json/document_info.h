@@ -3,7 +3,6 @@
 
 #include "constexpr_json/error_codes.h"
 #include "constexpr_json/impl/parsing_utils.h"
-#include <stdexcept>
 
 namespace cjson {
 struct DocumentInfo {
@@ -74,7 +73,7 @@ struct DocumentInfo {
   constexpr bool operator==(const DocumentInfo &theOther) const {
     // Falsy DocInfos are always considered to be equal
     if (!(*this) || !theOther)
-      return (!(this) && !theOther);
+      return (!(*this) && !theOther);
     return itsNumArrayEntries == theOther.itsNumArrayEntries &&
            itsNumArrays == theOther.itsNumArrays &&
            itsNumBools == theOther.itsNumBools &&
@@ -94,7 +93,7 @@ struct DocumentInfo {
    */
   template <typename SourceEncodingTy, typename DestEncodingTy,
             typename ErrorHandlingTy, intptr_t MaxRecursionDepth = 100>
-  constexpr static typename ErrorHandlingTy::ErrorOr<ResultTy>
+  constexpr static typename ErrorHandlingTy::template ErrorOr<ResultTy>
   compute(const std::string_view theJsonString,
           const intptr_t theRecursionDepth = 0) {
     // setup
@@ -247,7 +246,7 @@ struct DocumentInfo {
 
 private:
   template <typename ErrorHandlingTy>
-  constexpr static typename ErrorHandlingTy::ErrorOr<ResultTy>
+  constexpr static typename ErrorHandlingTy::template ErrorOr<ResultTy>
   makeError(const ErrorCode theCode, const intptr_t thePosition) {
     return ErrorHandlingTy::template makeError<ResultTy>(theCode, thePosition);
   }

@@ -1,9 +1,10 @@
 #ifndef CONSTEXPR_JSON_ERROR_IS_EXCEPT_H
 #define CONSTEXPR_JSON_ERROR_IS_EXCEPT_H
 
-#include "constexpr_json/ext/error_detail.h"
+#include "constexpr_json/ext/json_error_detail.h"
 
 namespace cjson {
+template<typename ErrorDetail=JsonErrorDetail>
 struct ErrorWillThrow {
   template <typename T> using ErrorOr = T;
 
@@ -17,16 +18,14 @@ struct ErrorWillThrow {
     return theValue;
   }
 
-  template <typename T>
-  [[noreturn]] static constexpr ErrorOr<T> makeError(const ErrorCode theEC,
-                                                     const intptr_t thePos) {
-    throw std::invalid_argument(ErrorDetail::getErrorCodeDesc(theEC));
+  template <typename T, typename... Args>
+  [[noreturn]] static constexpr ErrorOr<T> makeError(Args &&... theArgs) {
+    ErrorDetail::raiseError(std::forward<Args>(theArgs)...)
   }
 
-  template <typename T, typename U>
-  static constexpr ErrorOr<T>
-  convertError(const ErrorOr<U> &theError,
-               const intptr_t thePositionOffset = 0) {
+  template <typename T, typename U, typename... Args>
+  static constexpr ErrorOr<T> convertError(const ErrorOr<U> &theError,
+                                           Args &&... theArgs) {
     throw std::logic_error("Thrown errors do not need type conversion");
   }
 };
