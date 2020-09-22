@@ -28,7 +28,7 @@ using namespace cjson;
 
 static std::ostream &operator<<(std::ostream &theStream,
                                 const DocumentInterface::EntityRef &theEntity) {
-  return print(theStream, theEntity);
+  return Printer<>::template print(theStream, theEntity);
 }
 
 static std::ostream &operator<<(std::ostream &theStream,
