@@ -30,7 +30,8 @@ struct StaticDocumentStorage {
 };
 
 template <typename StaticDocTy> struct StaticDocumentAccessor {
-  constexpr StaticDocumentAccessor(const StaticDocTy &theDoc)
+  constexpr StaticDocumentAccessor() noexcept = default;
+  constexpr StaticDocumentAccessor(const StaticDocTy &theDoc) noexcept
       : itsDoc{&theDoc} {}
 
   constexpr bool operator==(const StaticDocumentAccessor &theOther) const
