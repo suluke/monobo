@@ -2,6 +2,7 @@
 #define CONSTEXPR_JSON_UTILS_UNICODE_H
 
 #include <array>
+#include <string_view>
 
 namespace cjson {
 struct Utf8 {

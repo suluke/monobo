@@ -18,7 +18,9 @@ struct StaticDocumentStorage {
   }
   static constexpr intptr_t MAX_ARRAYS() { return theNumArrays; }
   static constexpr intptr_t MAX_OBJECTS() { return theNumObjects; }
-  static constexpr intptr_t MAX_OBJECT_PROPS() { return theNumObjectProperties; }
+  static constexpr intptr_t MAX_OBJECT_PROPS() {
+    return theNumObjectProperties;
+  }
   static constexpr intptr_t MAX_STRINGS() { return theNumStrings; }
 
   template <typename T, size_t N>
@@ -31,8 +33,8 @@ template <typename StaticDocTy> struct StaticDocumentAccessor {
   constexpr StaticDocumentAccessor(const StaticDocTy &theDoc)
       : itsDoc{&theDoc} {}
 
-  constexpr bool
-  operator==(const StaticDocumentAccessor &theOther) const noexcept {
+  constexpr bool operator==(const StaticDocumentAccessor &theOther) const
+      noexcept {
     return itsDoc == theOther.itsDoc;
   }
 
@@ -115,5 +117,13 @@ struct StaticDocument
     return {*this, BaseClass::itsEntities[0]};
   }
 };
+
+#define CJSON_STATIC_DOCTY(theDocumentInfo)                                    \
+  StaticDocument<theDocumentInfo.itsNumNumbers, theDocumentInfo.itsNumChars,   \
+                 theDocumentInfo.itsNumStrings, theDocumentInfo.itsNumArrays,  \
+                 theDocumentInfo.itsNumArrayEntries,                           \
+                 theDocumentInfo.itsNumObjects,                                \
+                 theDocumentInfo.itsNumObjectProperties>
+
 } // namespace cjson
 #endif // CONSTEXPR_JSON_STATIC_DOCUMENT_H

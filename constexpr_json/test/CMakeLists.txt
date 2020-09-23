@@ -1,6 +1,7 @@
 add_executable(basic basic.cc)
 
 add_executable(static_unittests static_unittests.cc)
+add_executable(printer_test printer_test.cc)
 
 include(GenerateJsonHeader)
 
