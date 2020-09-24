@@ -6,6 +6,30 @@
 #include <iostream>
 
 namespace cjson {
+template <size_t BufferSize> struct StaticStream {
+  std::array<char, BufferSize> itsBuffer;
+  size_t itsSize{0};
+
+  constexpr StaticStream() noexcept : itsBuffer{} {}
+
+  constexpr StaticStream operator<<(const char theChar) const noexcept {
+    StaticStream aCopy{*this};
+    aCopy.itsBuffer[itsSize] = theChar;
+    ++aCopy.itsSize;
+    return aCopy;
+  }
+  constexpr StaticStream
+  operator<<(const std::string_view theString) const noexcept {
+    StaticStream aCopy{*this};
+    for (const char aChar : theString)
+      aCopy = (aCopy << aChar);
+    return aCopy;
+  }
+  constexpr std::string_view str() const noexcept {
+    return {&itsBuffer.front(), itsSize};
+  }
+};
+
 template <typename CRTPImpl, typename DocumentEncodingTy = Utf8,
           typename OutputEncodingTy = Utf8,
           typename StreamStateTy = std::ostream &>
@@ -95,13 +119,15 @@ struct PrinterBase {
   }
   constexpr static StreamStateTy printNumber(const StreamStateTy theStream,
                                              const double theNumber) {
-    return theStream << theNumber;
+    const auto [aBuf, aStrLen] = formatNumber(theNumber);
+    std::string_view aStr{&aBuf.front(), aStrLen};
+    return theStream << aStr;
   }
   constexpr static StreamStateTy printNull(const StreamStateTy theStream) {
     return printAsciiChars(theStream, "null");
   }
   constexpr static StreamStateTy printString(const StreamStateTy theStream,
-                                   const std::string_view theString) {
+                                             const std::string_view theString) {
     StreamStateHolder aStream{theStream};
     if constexpr (std::is_same_v<DocumentEncodingTy, OutputEncodingTy>) {
       aStream = printEncodedChar(aStream, OUT_QUOTE);
@@ -118,8 +144,9 @@ struct PrinterBase {
 protected:
   /// Takes a sequence of document-encoded characters and prints it
   /// encoded according to the OutputEncodingTy to the given stream
-  constexpr static StreamStateTy printDocChars(const StreamStateTy theStream,
-                                     const std::string_view theChars) {
+  constexpr static StreamStateTy
+  printDocChars(const StreamStateTy theStream,
+                const std::string_view theChars) {
     std::string_view aRemaining = theChars;
     StreamStateHolder aStream{theStream};
     while (!aRemaining.empty()) {
@@ -132,22 +159,75 @@ protected:
     return aStream;
   }
 
-  constexpr static StreamStateTy printAsciiChars(const StreamStateTy theStream,
-                                       const std::string_view theChars) {
+  constexpr static StreamStateTy
+  printAsciiChars(const StreamStateTy theStream,
+                  const std::string_view theChars) {
     StreamStateHolder aStream{theStream};
     for (const char aChar : theChars)
       aStream = printEncodedChar(aStream, OutputEncodingTy::encode(aChar));
     return aStream;
   }
 
-  constexpr static StreamStateTy printEncodedChar(const StreamStateTy theStream,
-                                        const EncodedCharTy &theChar) {
+  constexpr static StreamStateTy
+  printEncodedChar(const StreamStateTy theStream,
+                   const EncodedCharTy &theChar) {
     StreamStateHolder aStream{theStream};
     for (size_t aIdx = 0; aIdx < theChar.second; ++aIdx)
       aStream = (static_cast<StreamStateTy>(aStream) << theChar.first[aIdx]);
     return aStream;
   }
-};
+
+  constexpr static inline size_t DOUBLE_MAX_PRECISION =
+      std::numeric_limits<double>::max_digits10;
+  constexpr static std::pair<std::array<char, DOUBLE_MAX_PRECISION + 1>, size_t>
+  formatNumber(double theNumber) noexcept {
+    // TODO this is a naive implementation
+    StaticStream<DOUBLE_MAX_PRECISION + 1> aStream;
+    constexpr int aRadix = 10;
+    constexpr char aDecSep = '.';
+    using IntMantissaTy = size_t;
+
+    // determine highest power of 10 fitting into theNumber
+    IntMantissaTy aPowRadix = 1;
+    while (theNumber >= aPowRadix)
+      aPowRadix *= aRadix;
+    aPowRadix /= aRadix;
+    aPowRadix = (aPowRadix == 0 ? 1 : aPowRadix);
+
+    // Print integer part
+    {
+      // print at least one digit before the decimal separator
+      IntMantissaTy aCurrentPowRadix = aPowRadix;
+      IntMantissaTy aRemainder = static_cast<IntMantissaTy>(theNumber);
+      while (aCurrentPowRadix != 0) {
+        int aDigit = 0;
+        while (aRemainder >= aCurrentPowRadix) {
+          ++aDigit;
+          aRemainder -= aCurrentPowRadix;
+        }
+        aStream = (aStream << ('0' + aDigit));
+        aCurrentPowRadix /= aRadix;
+      }
+    }
+    // Print decimal part
+    {
+      double aRemainder =
+          theNumber -
+          static_cast<double>(static_cast<IntMantissaTy>(theNumber));
+      double aEpsilon = aPowRadix * std::numeric_limits<double>::epsilon();
+      if (aRemainder >= aEpsilon) {
+        aStream = (aStream << aDecSep);
+        do {
+          int aDigit = static_cast<int>(aRemainder * 10);
+          aStream = (aStream << ('0' + aDigit));
+          aRemainder = (aRemainder * 10.) - aDigit;
+          aEpsilon *= aRadix;
+        } while (aRemainder >= aEpsilon);
+      }
+    }
+    return {aStream.itsBuffer, aStream.itsSize};
+  }
+}; // namespace cjson
 
 template <typename DocumentEncodingTy = Utf8, typename OutputEncodingTy = Utf8,
           typename StreamStateTy = std::ostream &>

@@ -4,51 +4,72 @@
 
 using namespace cjson;
 
-template <size_t BufferSize> struct StaticStream {
-  std::array<char, BufferSize> itsBuffer;
+struct CharCountingStream {
+  using Self = CharCountingStream;
   size_t itsSize{0};
 
-  constexpr StaticStream() noexcept : itsBuffer{} {}
-
-  constexpr StaticStream operator<<(const char theChar) const noexcept {
-    StaticStream aCopy{*this};
-    aCopy.itsBuffer[itsSize] = theChar;
-    ++aCopy.itsSize;
-    return aCopy;
+  constexpr Self operator<<(const char theChar) const noexcept {
+    return {itsSize + 1};
   }
-  constexpr StaticStream
-  operator<<(const std::string_view theString) const noexcept {
-    StaticStream aCopy{*this};
-    for (const char aChar : theString)
-      aCopy = (aCopy << aChar);
-    return aCopy;
+  constexpr Self operator<<(const std::string_view theString) const noexcept {
+    return {itsSize + theString.size()};
   }
-  constexpr StaticStream operator<<(const double theNumber) const noexcept {
-    return (*this) << '0'; // TODO
-  }
-  constexpr std::string_view str() const noexcept {
-    return {itsBuffer.begin(), itsSize};
-  }
+  constexpr size_t size() const noexcept { return itsSize; }
 };
 
 #define TEST_IDEMPOTENT(theJson)                                               \
   do {                                                                         \
     constexpr std::string_view aJson{theJson};                                 \
+    /* 1: Parse theJson */                                                     \
     using Builder = DocumentBuilder<>;                                         \
     constexpr const DocumentInfo aDocInfo = *Builder::computeDocInfo(aJson);   \
     using DocTy = CJSON_STATIC_DOCTY(aDocInfo);                                \
     constexpr const DocTy aDoc =                                               \
         *Builder::template parseDocument<DocTy>(aJson, aDocInfo);              \
-    using StreamTy = StaticStream<aJson.size()>;                               \
+    /* 2: Compute required buffer size for printing */                         \
+    using CounterTy = Printer<Utf8, Utf8, CharCountingStream>;                 \
+    constexpr size_t aPrintedSize =                                            \
+        CounterTy::print(CharCountingStream{}, aDoc.getStaticRoot()).size();   \
+    /* 3: Print */                                                             \
+    using StreamTy = StaticStream<aPrintedSize>;                               \
     using PrinterTy = Printer<Utf8, Utf8, StreamTy>;                           \
     constexpr StreamTy aStream =                                               \
         PrinterTy::print(StreamTy{}, aDoc.getStaticRoot());                    \
-    static_assert(aDoc.getStaticRoot().getType() == Entity::OBJECT);           \
-    static_assert(aJson.size() == aStream.str().size());                       \
-    static_assert(aJson == aStream.str());                                     \
+    /* 4: Parse the printed result again */                                    \
+    constexpr const DocumentInfo aDocInfoNew =                                 \
+        *Builder::computeDocInfo(aStream.str());                               \
+    using DocTyNew = CJSON_STATIC_DOCTY(aDocInfoNew);                          \
+    constexpr const DocTyNew aDocNew =                                         \
+        *Builder::template parseDocument<DocTyNew>(aStream.str(), aDocInfo);   \
+    /* 5: Assert the re-parsed result is equal to the original document */     \
+    static_assert(aDoc.getStaticRoot() == aDocNew.getStaticRoot());            \
   } while (false)
 
+//#undef TEST_IDEMPOTENT // uncomment this for runtime debugging
+#ifndef TEST_IDEMPOTENT
+#define TEST_IDEMPOTENT(theJson)                                               \
+  do {                                                                         \
+    constexpr std::string_view aJson{theJson};                                 \
+    /* 1: Parse theJson */                                                     \
+    using Builder = DocumentBuilder<>;                                         \
+    constexpr const DocumentInfo aDocInfo = *Builder::computeDocInfo(aJson);   \
+    using DocTy = CJSON_STATIC_DOCTY(aDocInfo);                                \
+    constexpr const DocTy aDoc =                                               \
+        *Builder::template parseDocument<DocTy>(aJson, aDocInfo);              \
+    /* 2: Print */                                                             \
+    using PrinterTy = Printer<Utf8, Utf8>;                                     \
+    PrinterTy::print(std::cout, aDoc.getStaticRoot());                         \
+    std::cout << "\n";                                                         \
+  } while (false)
+#endif
+
 int main() {
-  TEST_IDEMPOTENT("{\"abc\":false,\"def\":\"test\",\"ghi\":[0],\"jkl\":null}");
+  TEST_IDEMPOTENT("100");
+  TEST_IDEMPOTENT("0.99999999999999999");
+  TEST_IDEMPOTENT("0.1");
+  TEST_IDEMPOTENT("0.3");
+  TEST_IDEMPOTENT("0.6");
+  TEST_IDEMPOTENT(
+      "{\"abc\":false,\"def\":\"test\",\"ghi\":[123.456],\"jkl\":null}");
   return 0;
 }
