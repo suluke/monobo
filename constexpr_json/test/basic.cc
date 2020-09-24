@@ -11,11 +11,7 @@ int main() {
   if (!aDocInfo)
     return 1;
   // Static json object creation
-  using StaticDocTy =
-      StaticDocument<aDocInfo->itsNumNumbers, aDocInfo->itsNumChars,
-                     aDocInfo->itsNumStrings, aDocInfo->itsNumArrays,
-                     aDocInfo->itsNumArrayEntries, aDocInfo->itsNumObjects,
-                     aDocInfo->itsNumObjectProperties>;
+  using StaticDocTy = CJSON_STATIC_DOCTY(*aDocInfo);
   constexpr auto aDocStatic =
       DocumentBuilder<>::parseDocument<StaticDocTy>(aJsonStr, aDocInfo);
   static_assert(aDocStatic);

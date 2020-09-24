@@ -37,11 +37,7 @@ int main() {
   if (!aDocInfo)
     return 1;
   // 2. PARSE-phase
-  using DocTy =
-      StaticDocument<aDocInfo->itsNumNumbers, aDocInfo->itsNumChars,
-                     aDocInfo->itsNumStrings, aDocInfo->itsNumArrays,
-                     aDocInfo->itsNumArrayEntries, aDocInfo->itsNumObjects,
-                     aDocInfo->itsNumObjectProperties>;
+  using DocTy = CJSON_STATIC_DOCTY(*aDocInfo);
   constexpr auto aDoc = DocumentBuilder<>::parseDocument<DocTy>(aJsonStr, *aDocInfo);
 
   // --- DONE! ---
@@ -63,7 +59,10 @@ auto aDoc = DocumentBuilder<>::parseDocument<DocTy>(aJsonStr, *aDocInfo);
 assert(aDoc);
 assert(aDoc->getRoot().toNumber() == 1234.);
 ```
-
+Or just use the convenience API:
+```cpp
+const auto aResult = DynamicDocument::parseJson(aJsonStr);
+```
 ## Project Validation
 CJSON is tested against the popular [JSONTestSuite](https://github.com/nst/JSONTestSuite).
 CJSON presently passes all the y\_\* and n\_\* tests.

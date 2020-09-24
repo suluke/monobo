@@ -1,7 +1,7 @@
 #include "constexpr_json/document_builder.h"
+#include "constexpr_json/ext/error_is_detail.h"
 #include "constexpr_json/impl/document_builder1.h"
 #include "constexpr_json/static_document.h"
-#include "constexpr_json/ext/error_is_detail.h"
 
 #include <cmath>
 
@@ -217,11 +217,7 @@ static void test_parsing() {
     static_assert(!ErrorHandling::isError(aDocInfoOrError));                   \
     constexpr const DocumentInfo aDocInfo =                                    \
         ErrorHandling::unwrap(aDocInfoOrError);                                \
-    using DocTy =                                                              \
-        StaticDocument<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,           \
-                       aDocInfo.itsNumStrings, aDocInfo.itsNumArrays,          \
-                       aDocInfo.itsNumArrayEntries, aDocInfo.itsNumObjects,    \
-                       aDocInfo.itsNumObjectProperties>;                       \
+    using DocTy = CJSON_STATIC_DOCTY(aDocInfo);                                \
     constexpr auto aDoc =                                                      \
         Builder::template parseDocument<DocTy>(aJsonStr, aDocInfo);            \
     static_assert(!ErrorHandling::isError(aDoc));                              \
@@ -244,11 +240,7 @@ static void test_parsing() {
     using ErrorHandling = typename Builder::error_handling;
     static_assert(!ErrorHandling::isError(aDocInfoOrError));
     constexpr DocumentInfo aDocInfo{ErrorHandling::unwrap(aDocInfoOrError)};
-    using DocTy =
-        StaticDocument<aDocInfo.itsNumNumbers, aDocInfo.itsNumChars,
-                       aDocInfo.itsNumStrings, aDocInfo.itsNumArrays,
-                       aDocInfo.itsNumArrayEntries, aDocInfo.itsNumObjects,
-                       aDocInfo.itsNumObjectProperties>;
+    using DocTy = CJSON_STATIC_DOCTY(aDocInfo);
     constexpr auto aDocOrError =
         Builder::template parseDocument<DocTy>(aJsonStr, aDocInfo);
     static_assert(!ErrorHandling::isError(aDocOrError));

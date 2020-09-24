@@ -120,11 +120,11 @@ struct StaticDocument
 };
 
 #define CJSON_STATIC_DOCTY(theDocumentInfo)                                    \
-  StaticDocument<theDocumentInfo.itsNumNumbers, theDocumentInfo.itsNumChars,   \
-                 theDocumentInfo.itsNumStrings, theDocumentInfo.itsNumArrays,  \
-                 theDocumentInfo.itsNumArrayEntries,                           \
-                 theDocumentInfo.itsNumObjects,                                \
-                 theDocumentInfo.itsNumObjectProperties>
+  StaticDocument<(theDocumentInfo).itsNumNumbers, (theDocumentInfo).itsNumChars,   \
+                 (theDocumentInfo).itsNumStrings, (theDocumentInfo).itsNumArrays,  \
+                 (theDocumentInfo).itsNumArrayEntries,                           \
+                 (theDocumentInfo).itsNumObjects,                                \
+                 (theDocumentInfo).itsNumObjectProperties>
 
 } // namespace cjson
 #endif // CONSTEXPR_JSON_STATIC_DOCUMENT_H
