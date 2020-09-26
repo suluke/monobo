@@ -70,5 +70,8 @@ int main() {
   TEST_IDEMPOTENT("0.6");
   TEST_IDEMPOTENT(
       "{\"abc\":false,\"def\":\"test\",\"ghi\":[123.456],\"jkl\":null}");
+  #define USE_JSON_STRING(theJson) constexpr std::string_view aJsonSchema{theJson};
+  #include "json_schema.h"
+  TEST_IDEMPOTENT(aJsonSchema);
   return 0;
 }
