@@ -41,6 +41,16 @@ template <typename DocumentTy> struct ArrayRefImpl {
   constexpr iterator begin() const { return {*itsDoc, itsBegin}; }
   constexpr iterator end() const { return {*itsDoc, itsBegin + size()}; }
   constexpr EntityRefImpl<DocumentTy> operator[](size_t theIdx) const;
+  template <typename OtherRefTy>
+  constexpr bool operator==(const OtherRefTy &theOther) {
+    auto aOtherIter = theOther.begin();
+    for (const EntityRefImpl aEntry : *this) {
+      if (!(aEntry == *aOtherIter))
+        return false;
+      ++aOtherIter;
+    }
+    return true;
+  }
 
   constexpr size_t size() const { return itsNumElements; }
   constexpr bool empty() const { return !size(); }
@@ -90,7 +100,8 @@ template <typename DocumentTy> struct ObjectRefImpl {
   constexpr iterator begin() const { return {*itsDoc, itsObjectIdx, 0}; }
   constexpr iterator end() const { return {*itsDoc, itsObjectIdx, size()}; }
   constexpr std::optional<EntityRef> operator[](std::string_view theKey) const;
-  constexpr bool operator==(const ObjectRefImpl &theOther) const noexcept {
+  template<typename OtherRefTy>
+  constexpr bool operator==(const OtherRefTy &theOther) const noexcept {
     for (const auto aKVPair : *this) {
       const auto aOtherVal = theOther[aKVPair.first];
       if (!aOtherVal || !(aKVPair.second == *aOtherVal))
@@ -123,27 +134,20 @@ public:
   using ArrayRef = ArrayRefImpl<DocumentTy>;
   using ObjectRef = ObjectRefImpl<DocumentTy>;
 
-  constexpr bool operator==(const EntityRefImpl &theOther) const noexcept {
+  template <typename OtherRefTy>
+  constexpr bool operator==(const OtherRefTy &theOther) const noexcept {
     if (theOther.getType() != getType())
       return false;
     switch (getType()) {
     case Entity::NUL:
       return true;
-    case Entity::ARRAY: {
-      auto aOtherIter = theOther.toArray().begin();
-      for (const EntityRefImpl aEntry : toArray()) {
-        if (!(aEntry == *aOtherIter))
-          return false;
-        ++aOtherIter;
-      }
-      return true;
-    }
+    case Entity::ARRAY:
+      return toArray() == theOther.toArray();
     case Entity::BOOL:
       return toBool() == theOther.toBool();
     case Entity::NUMBER:
       return toNumber() == theOther.toNumber();
     case Entity::OBJECT:
-      // TODO not constexpr yet - needs ObjectRef
       return toObject() == theOther.toObject();
       break;
     case Entity::STRING:

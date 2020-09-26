@@ -68,7 +68,7 @@ struct StaticDocument
                 "Negative NumObjectProperties for document is illegal");
 
   constexpr inline EntityRef getRoot() const {
-    return {*this, BaseClass::itsEntities[0]};
+    return {*this, BaseClass::getRootEntity()};
   }
 };
 

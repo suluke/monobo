@@ -109,6 +109,10 @@ template <typename Storage> struct DocumentBase {
     }
     return nullptr;
   }
+
+  constexpr const Entity &getRootEntity() const noexcept {
+    return itsEntities[0];
+  }
 };
 
 template <typename Base>
@@ -120,7 +124,7 @@ struct DocumentInterfaceImpl : public DocumentInterface, Base {
       : Base(std::forward<Args>(theArgs)...) {}
 
   EntityRef getRoot() const noexcept override {
-    return {*this, Base::itsEntities[0]};
+    return {*this, Base::getRootEntity()};
   }
   double getNumber(intptr_t theIdx) const override {
     return Base::getNumber(theIdx);
