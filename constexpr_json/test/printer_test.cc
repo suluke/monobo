@@ -29,12 +29,11 @@ struct CharCountingStream {
     /* 2: Compute required buffer size for printing */                         \
     using CounterTy = Printer<Utf8, Utf8, CharCountingStream>;                 \
     constexpr size_t aPrintedSize =                                            \
-        CounterTy::print(CharCountingStream{}, aDoc.getStaticRoot()).size();   \
+        CounterTy::print(CharCountingStream{}, aDoc.getRoot()).size();         \
     /* 3: Print */                                                             \
     using StreamTy = StaticStream<aPrintedSize>;                               \
     using PrinterTy = Printer<Utf8, Utf8, StreamTy>;                           \
-    constexpr StreamTy aStream =                                               \
-        PrinterTy::print(StreamTy{}, aDoc.getStaticRoot());                    \
+    constexpr StreamTy aStream = PrinterTy::print(StreamTy{}, aDoc.getRoot()); \
     /* 4: Parse the printed result again */                                    \
     constexpr const DocumentInfo aDocInfoNew =                                 \
         *Builder::computeDocInfo(aStream.str());                               \
@@ -42,7 +41,7 @@ struct CharCountingStream {
     constexpr const DocTyNew aDocNew =                                         \
         *Builder::template parseDocument<DocTyNew>(aStream.str(), aDocInfo);   \
     /* 5: Assert the re-parsed result is equal to the original document */     \
-    static_assert(aDoc.getStaticRoot() == aDocNew.getStaticRoot());            \
+    static_assert(aDoc.getRoot() == aDocNew.getRoot());                        \
   } while (false)
 
 //#undef TEST_IDEMPOTENT // uncomment this for runtime debugging
@@ -58,7 +57,7 @@ struct CharCountingStream {
         *Builder::template parseDocument<DocTy>(aJson, aDocInfo);              \
     /* 2: Print */                                                             \
     using PrinterTy = Printer<Utf8, Utf8>;                                     \
-    PrinterTy::print(std::cout, aDoc.getStaticRoot());                         \
+    PrinterTy::print(std::cout, aDoc.getRoot());                               \
     std::cout << "\n";                                                         \
   } while (false)
 #endif

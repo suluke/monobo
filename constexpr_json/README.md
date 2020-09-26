@@ -42,7 +42,7 @@ int main() {
 
   // --- DONE! ---
   static_assert(aDoc); // Parse successful?
-  static_assert(aDoc->getStaticRoot().toNumber() == 1234.);
+  static_assert(aDoc->getRoot().toNumber() == 1234.);
   return 0;
 }
 ```

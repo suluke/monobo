@@ -15,7 +15,7 @@ int main() {
   constexpr auto aDocStatic =
       DocumentBuilder<>::parseDocument<StaticDocTy>(aJsonStr, aDocInfo);
   static_assert(aDocStatic);
-  static_assert(aDocStatic->getStaticRoot().toNumber() == 1234.);
+  static_assert(aDocStatic->getRoot().toNumber() == 1234.);
 
   // Dynamic json object creation
   using DynamicDocTy = DynamicDocument;

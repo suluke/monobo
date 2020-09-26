@@ -245,13 +245,12 @@ static void test_parsing() {
         Builder::template parseDocument<DocTy>(aJsonStr, aDocInfo);
     static_assert(!ErrorHandling::isError(aDocOrError));
     constexpr const DocTy aDoc = ErrorHandling::unwrap(aDocOrError);
-    static_assert(aDoc.getStaticRoot().toArray().size() == 5);
+    static_assert(aDoc.getRoot().toArray().size() == 5);
 
-    static_assert(aDoc.getStaticRoot().toArray()[1].toBool());
-    static_assert(aDoc.getStaticRoot().toArray()[3].toString() == "abc");
-    static_assert(
-        aDoc.getStaticRoot().toArray()[4].toObject()["def"]->toString() ==
-        "ghi");
+    static_assert(aDoc.getRoot().toArray()[1].toBool());
+    static_assert(aDoc.getRoot().toArray()[3].toString() == "abc");
+    static_assert(aDoc.getRoot().toArray()[4].toObject()["def"]->toString() ==
+                  "ghi");
   }
 #undef CHECK_DOCPARSE
 }
