@@ -9,7 +9,11 @@ project (cis_hpp VERSION 1.0.0 LANGUAGES CXX)
 ##
 ## OPTIONS
 ##
-option(CIS_BuildTests "Build the unit tests" ON)
+if (BUILD_TESTING STREQUAL "")
+  option(CIS_BuildTests "Build the unit tests" ON)
+elseif(BUILD_TESTING)
+  set(CIS_BuildTests ON)
+endif()
 
 ##
 ## CONFIGURATION

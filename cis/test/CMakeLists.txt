@@ -4,7 +4,7 @@ add_executable(${CIS_UNITTEST_TARGET_NAME}
   main.cpp
 )
 set_target_properties(${CIS_UNITTEST_TARGET_NAME} PROPERTIES
-  CXX_STANDARD 14
+  CXX_STANDARD 17
   CXX_STANDARD_REQUIRED ON
 )
 target_link_libraries(${CIS_UNITTEST_TARGET_NAME} ${CIS_TARGET_NAME})

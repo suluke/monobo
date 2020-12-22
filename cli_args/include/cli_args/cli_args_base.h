@@ -330,6 +330,25 @@ struct CliOptBase : public CliOptConcept {
   constexpr DecayTy &operator*() { return *this->operator->(); }
   constexpr DecayTy &operator*() const { return *this->operator->(); }
 
+  template <typename T> constexpr bool operator==(const T &theT) {
+    return (**this) == theT;
+  }
+  template <typename T> constexpr bool operator!=(const T &theT) {
+    return (**this) != theT;
+  }
+  template <typename T> constexpr bool operator<(const T &theT) {
+    return (**this) < theT;
+  }
+  template <typename T> constexpr bool operator<=(const T &theT) {
+    return (**this) <= theT;
+  }
+  template <typename T> constexpr bool operator>(const T &theT) {
+    return (**this) > theT;
+  }
+  template <typename T> constexpr bool operator>=(const T &theT) {
+    return (**this) >= theT;
+  }
+
   CliOptConcept::string_span getNames() const override { return names; }
 
 protected:
@@ -340,37 +359,37 @@ protected:
   constexpr void consume() {}
 
   template <typename... args_t>
-  constexpr void consume(const CliName &name, args_t &&... args) {
+  constexpr void consume(const CliName &name, args_t &&...args) {
     names.emplace_back(name.get());
     static_cast<DerivedTy *>(this)->consume(std::forward<args_t>(args)...);
   }
 
   template <typename... args_t>
-  constexpr void consume(const CliMetaName &name, args_t &&... args) {
+  constexpr void consume(const CliMetaName &name, args_t &&...args) {
     setMeta(name.get());
     static_cast<DerivedTy *>(this)->consume(std::forward<args_t>(args)...);
   }
 
   template <typename... args_t>
-  constexpr void consume(const CliDesc &desc, args_t &&... args) {
+  constexpr void consume(const CliDesc &desc, args_t &&...args) {
     setDesc(desc.get());
     static_cast<DerivedTy *>(this)->consume(std::forward<args_t>(args)...);
   }
 
   template <typename AppTag, typename... args_t>
-  constexpr void consume(const CliAppTag<AppTag> &tag, args_t &&... args) {
+  constexpr void consume(const CliAppTag<AppTag> &tag, args_t &&...args) {
     setAppForRegistration<AppTag>();
     static_cast<DerivedTy *>(this)->consume(std::forward<args_t>(args)...);
   }
 
   template <typename... args_t>
-  constexpr void consume(const CliRequired &, args_t &&... args) {
+  constexpr void consume(const CliRequired &, args_t &&...args) {
     setRequired();
     static_cast<DerivedTy *>(this)->consume(std::forward<args_t>(args)...);
   }
 
   template <typename... args_t>
-  constexpr void consume(const CliTerminal &, args_t &&... args) {
+  constexpr void consume(const CliTerminal &, args_t &&...args) {
     setTerminal();
     static_cast<DerivedTy *>(this)->consume(std::forward<args_t>(args)...);
   }
@@ -384,7 +403,7 @@ struct CliOpt : public CliOptBase<CliOpt<ValTy, LibCfg>, ValTy, LibCfg> {
   friend base_t;
   using string_span = CliOptConcept::string_span;
 
-  template <typename... args_t> constexpr explicit CliOpt(args_t &&... args) {
+  template <typename... args_t> constexpr explicit CliOpt(args_t &&...args) {
     consume(std::forward<args_t>(args)...);
     if (!getPtr())
       value = std::make_unique<ValTy>();
@@ -449,7 +468,7 @@ private:
   }
 
   template <typename... args_t>
-  constexpr void consume(const CliStorage<ValTy> &storage, args_t &&... args) {
+  constexpr void consume(const CliStorage<ValTy> &storage, args_t &&...args) {
     if (getPtr() && !std::holds_alternative<OwnedVal>(value))
       std::abort(); // Multiple storage specifiers given
     OwnedVal prev(nullptr);
@@ -462,7 +481,7 @@ private:
   }
 
   template <typename T, typename... args_t>
-  constexpr void consume(const CliInit<T> &init, args_t &&... args) {
+  constexpr void consume(const CliInit<T> &init, args_t &&...args) {
     if (!getPtr())
       value = std::make_unique<ValTy>(static_cast<const ValTy &>(init.get()));
     else
@@ -484,7 +503,7 @@ struct CliList
   using string_span = CliOptConcept::string_span;
   using index_type = typename container_t::size_type;
 
-  template <typename... args_t> constexpr explicit CliList(args_t &&... args) {
+  template <typename... args_t> constexpr explicit CliList(args_t &&...args) {
     consume(std::forward<args_t>(args)...);
     if (!getPtr())
       list = std::make_unique<container_t>();
@@ -550,7 +569,7 @@ private:
   using base_t::consume;
 
   template <typename T, typename... args_t>
-  void consume(const CliInit<T> &init, args_t &&... args) {
+  void consume(const CliInit<T> &init, args_t &&...args) {
     if (!getPtr())
       list = std::make_unique<container_t>();
     container_t &list = *this;

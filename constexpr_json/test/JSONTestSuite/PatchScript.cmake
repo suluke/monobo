@@ -12,7 +12,7 @@ string(REPLACE
    \"C++ constexpr json\":
        {
            \"url\":\"https://github.com/suluke/monobo/tree/master/constexpr_json\",
-           \"commands\":[\"${CMAKE_CURRENT_BINARY_DIR}/jsontestsuite_driver\"]
+           \"commands\":[\"${CMAKE_CURRENT_BINARY_DIR}/../../tools/json_validate\", \"--f\"]
        },
    \"C++ nlohmann JSON"
 # Result Variable

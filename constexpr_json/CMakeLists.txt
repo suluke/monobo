@@ -6,4 +6,6 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 include_directories(include/)
 
+add_subdirectory(lib)
+add_subdirectory(tools)
 add_subdirectory(test)

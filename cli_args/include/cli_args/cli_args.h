@@ -98,7 +98,7 @@ struct ParseArgs : public api<detail::CliLibCfgStd>::ParseArgs<AppTag> {
 
 /// TODO Allow influencing display order
 template <typename AppTag = void>
-void PrintHelp(const char *tool, const char *desc, std::ostream &os) {
+inline void PrintHelp(const char *tool, const char *desc, std::ostream &os) {
   using namespace ::cli_args::detail;
   const CliOptRegistry<AppTag> &registry = CliOptRegistry<AppTag>::get();
   const auto display = [](const detail::CliOptConcept &opt, std::ostream &os) {

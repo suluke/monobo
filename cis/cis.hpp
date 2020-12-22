@@ -2,7 +2,7 @@
 #define CIS_HPP
 #pragma once
 #include <array>
-#include <experimental/string_view>
+#include <string_view>
 #include <map>
 #include <sstream>
 #include <string>
@@ -16,7 +16,7 @@ namespace cis {
 class StringCast {
   using string = std::string;
   string storage;
-  std::experimental::string_view str;
+  std::string_view str;
 
 public:
   StringCast(string str)
@@ -33,11 +33,11 @@ public:
   StringCast &operator=(const StringCast &) = default;
   StringCast &operator=(StringCast &&) = default;
 
-  operator std::experimental::string_view const &() const { return str; }
+  operator std::string_view const &() const { return str; }
 };
 
 std::ostream &operator<<(std::ostream &os, const StringCast &S) {
-  return os << static_cast<std::experimental::string_view>(S);
+  return os << static_cast<std::string_view>(S);
 }
 
 /**
@@ -46,7 +46,7 @@ std::ostream &operator<<(std::ostream &os, const StringCast &S) {
  */
 template <unsigned shard_count> class ConstexprTemplate {
   friend class TemplateLiteralParser;
-  using str_view_t = std::experimental::string_view;
+  using str_view_t = std::string_view;
   using subst_t = std::map<str_view_t, StringCast>;
   using shards_t = std::array<str_view_t, shard_count>;
   using identifiers_t = std::array<str_view_t, shard_count - 1>;
