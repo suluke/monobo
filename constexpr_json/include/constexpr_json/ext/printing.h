@@ -227,7 +227,7 @@ protected:
     }
     return {aStream.itsBuffer, aStream.itsSize};
   }
-}; // namespace cjson
+};
 
 template <typename DocumentEncodingTy = Utf8, typename OutputEncodingTy = Utf8,
           typename StreamStateTy = std::ostream &>

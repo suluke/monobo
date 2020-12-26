@@ -13,7 +13,8 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 endif()
 add_test(NAME cjson_json_schema_test COMMAND cjson_json_schema_test)
 
-add_executable(printer_test printer_test.cc "${CMAKE_CURRENT_BINARY_DIR}/json_schema.h")
-target_include_directories(printer_test PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+add_executable(cjson_printer_test printer_test.cc "${CMAKE_CURRENT_BINARY_DIR}/json_schema.h")
+target_include_directories(cjson_printer_test PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+add_test(NAME cjson_printer_test COMMAND cjson_printer_test)
 
 add_subdirectory(JSONTestSuite)
