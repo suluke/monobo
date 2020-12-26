@@ -206,10 +206,10 @@ public:
   }
 
   constexpr static std::string_view stripQuotes(std::string_view theStr) {
-    const auto [aQuot, aQuotWidth] = decodeFirst(theStr);
-    assert(aQuot == '"' && "Given string does not start with quotation mark");
-    theStr.remove_prefix(aQuotWidth);
-    theStr.remove_suffix(aQuotWidth);
+    const auto aFirstDecoded = decodeFirst(theStr);
+    assert(aFirstDecoded.first == '"' && "Given string does not start with quotation mark");
+    theStr.remove_prefix(aFirstDecoded.second);
+    theStr.remove_suffix(aFirstDecoded.second);
     return theStr;
   }
 

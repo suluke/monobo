@@ -33,12 +33,14 @@ public:
   using ResultTy = typename ErrorHandlingTy::template ErrorOr<DocTy>;
 
   template <typename DocTy>
-  static constexpr auto parseDocument(
-      const std::string_view theJsonString,
-      const typename ErrorHandlingTy::template ErrorOr<DocumentInfo> &theDocInfo)
+  static constexpr auto
+  parseDocument(const std::string_view theJsonString,
+                const typename ErrorHandlingTy::template ErrorOr<DocumentInfo>
+                    &theDocInfo)
       -> std::enable_if_t<
-          !std::is_same_v<const DocumentInfo, const typename ErrorHandlingTy::template
-                                                  ErrorOr<DocumentInfo>>,
+          !std::is_same_v<
+              const DocumentInfo,
+              const typename ErrorHandlingTy::template ErrorOr<DocumentInfo>>,
           ResultTy<DocTy>> {
     if (ErrorHandlingTy::isError(theDocInfo))
       return makeError<DocTy>("Using illegal DocInfo for parsing");
@@ -113,10 +115,10 @@ public:
         PARSE_STRING(aSubJson, aLenRead);
         aSubJson.remove_prefix(aLenRead);
         aSubJson = p::removeLeadingWhitespace(aSubJson);
-        const auto [aChar, aCharWidth] =
-            SourceEncodingTy::decodeFirst(aSubJson);
-        assert(aCharWidth > 0 && aChar == ':' && "Expected colon");
-        aSubJson.remove_prefix(aCharWidth);
+        const auto aDecoded = SourceEncodingTy::decodeFirst(aSubJson);
+        assert(aDecoded.second > 0 && aDecoded.first == ':' &&
+               "Expected colon");
+        aSubJson.remove_prefix(aDecoded.second);
         aSubJson = p::removeLeadingWhitespace(aSubJson);
       }
 
@@ -179,16 +181,16 @@ private:
   template <typename DocTy>
   using ElementInfos =
       typename DocTy::Storage::template Buffer<ElementInfo,
-                                      DocTy::Storage::MAX_ENTITIES()>;
+                                               DocTy::Storage::MAX_ENTITIES()>;
 
   static constexpr std::string_view
   consumeObjectKey(const std::string_view theString) {
     std::string_view aRemaining = theString;
     aRemaining.remove_prefix(p::readString(aRemaining).size());
     aRemaining = p::removeLeadingWhitespace(aRemaining);
-    const auto [aChar, aCharWidth] = SourceEncodingTy::decodeFirst(aRemaining);
-    assert(aCharWidth > 0 && aChar == ':' && "Expected colon");
-    aRemaining.remove_prefix(aCharWidth);
+    const auto aDecoded = SourceEncodingTy::decodeFirst(aRemaining);
+    assert(aDecoded.second > 0 && aDecoded.first == ':' && "Expected colon");
+    aRemaining.remove_prefix(aDecoded.second);
     aRemaining = p::removeLeadingWhitespace(aRemaining);
     return aRemaining;
   }

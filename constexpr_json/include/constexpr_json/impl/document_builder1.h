@@ -219,13 +219,13 @@ struct DocumentBuilder1 {
           [[fallthrough]];
         case Entity::OBJECT: {
           std::string_view aAggregateJson = aEntityStr;
-          const auto [aBracket, aBracketWidth] =
-              SourceEncodingTy::decodeFirst(aAggregateJson);
+          const auto aDecoded = SourceEncodingTy::decodeFirst(aAggregateJson);
           using CharT = typename SourceEncodingTy::CodePointTy;
           const bool isObject = aEntity.itsKind == Entity::OBJECT;
           const CharT aStopChar = isObject ? '}' : ']';
-          assert(aBracket == (isObject ? '{' : '[') && "Expected aggregate position to start on '['/'{'");
-          aAggregateJson.remove_prefix(aBracketWidth);
+          assert(aDecoded.first == (isObject ? '{' : '[') &&
+                 "Expected aggregate position to start on '['/'{'");
+          aAggregateJson.remove_prefix(aDecoded.second);
           bool aNeedsElement = false;
           intptr_t aNumChildren = 0;
           if (isObject) {
@@ -240,10 +240,11 @@ struct DocumentBuilder1 {
             {
               aAggregateJson.remove_prefix(
                   p::readWhitespace(aAggregateJson).size());
-              const auto [aChar, aCharWidth] =
+              const auto aDecoded =
                   SourceEncodingTy::decodeFirst(aAggregateJson);
-              assert(aCharWidth > 0 && "Failed to decode char where one was expected");
-              if (!aNeedsElement && aChar == aStopChar)
+              assert(aDecoded.second > 0 &&
+                     "Failed to decode char where one was expected");
+              if (!aNeedsElement && aDecoded.first == aStopChar)
                 break;
             }
             if (isObject) {
@@ -303,7 +304,8 @@ struct DocumentBuilder1 {
             {
               const auto [aChar, aCharWidth] =
                   SourceEncodingTy::decodeFirst(aAggregateJson);
-              assert(aCharWidth > 0 && "Failed to decode char where one was expected");
+              assert(aCharWidth > 0 &&
+                     "Failed to decode char where one was expected");
               if (aChar == ',') {
                 aAggregateJson.remove_prefix(aCharWidth);
                 aNeedsElement = true;
