@@ -22,4 +22,6 @@ CliLibCfgStd::parse(const std::string_view &value) {
 }
 } // namespace detail
 } // namespace cli_args
+
+#undef CLI_ARGS_FS_NS
 #endif // CLI_ARGS_DEFAULTS_PATH_H
