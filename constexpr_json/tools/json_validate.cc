@@ -42,8 +42,7 @@ static std::ostream &printError(std::ostream &theOS,
   theOS << "ERROR: " << theError.what();
 
   if (theError.itsPosition >= 0) {
-    const auto [aLineNo, aColNo] =
-        theError.computeLocation<cjson::Utf8>(theJson);
+    const auto aLineNo = theError.computeLocation<cjson::Utf8>(theJson).first;
     theOS << " - in line " << (aLineNo + 1) << " near "
           << "\"" << theJson.substr(theError.itsPosition, 10) << "\"";
   }

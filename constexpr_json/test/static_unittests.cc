@@ -249,7 +249,8 @@ static void test_parsing() {
 
     static_assert(aDoc.getRoot().toArray()[1].toBool());
     static_assert(aDoc.getRoot().toArray()[3].toString() == "abc");
-    static_assert(aDoc.getRoot().toArray()[4].toObject()["def"]->toString() ==
+    // gcc-7 does not consider optional::operator-> to be constexpr...
+    static_assert((*aDoc.getRoot().toArray()[4].toObject()["def"]).toString() ==
                   "ghi");
   }
 #undef CHECK_DOCPARSE

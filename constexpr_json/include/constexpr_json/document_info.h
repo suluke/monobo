@@ -122,7 +122,7 @@ struct DocumentInfo {
         return makeError<ErrorHandlingTy>(ErrorCode::NULL_READ_FAILED,
                                           CJSON_CURRENT_POSITION);
     case Type::BOOL:
-      if (const auto [_, aBoolLen] = p::parseBool(aRemaining); aBoolLen > 0) {
+      if (const auto aBoolLen = p::parseBool(aRemaining).second; aBoolLen > 0) {
         aRemaining.remove_prefix(aBoolLen);
         return std::make_pair(DocumentInfo::SingleBool(),
                               CJSON_CURRENT_POSITION);

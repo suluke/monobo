@@ -289,10 +289,11 @@ struct DocumentBuilder1 {
                 p::readElement(aAggregateJson);
             if (!aElmMaybe)
               return aErrorResult;
-            std::string_view aElmStr = aElmMaybe->second;
+            // It seems in gcc7 optional::operator-> is not constexpr?
+            std::string_view aElmStr = (*aElmMaybe).second;
             aAggregateJson.remove_prefix(aElmStr.size());
             aResult.itsEntities[aNumEntities] = {
-                getEntityKindFromParsingType(aElmMaybe->first),
+                getEntityKindFromParsingType((*aElmMaybe).first),
                 static_cast<intptr_t>(aRemaining.size() -
                                       aAggregateJson.size() - aElmStr.size())};
             ++aNumChildren;

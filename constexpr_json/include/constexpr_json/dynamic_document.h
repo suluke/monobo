@@ -42,13 +42,13 @@ struct DynamicDocumentStorage {
 };
 } // namespace impl
 
-struct DynamicDocument : public DocumentInterfaceImpl<DocumentBase<impl::DynamicDocumentStorage>>
-{
-  using Base = DocumentInterfaceImpl<DocumentBase<impl::DynamicDocumentStorage>>;
+struct DynamicDocument
+    : public DocumentInterfaceImpl<DocumentBase<impl::DynamicDocumentStorage>> {
+  using Base =
+      DocumentInterfaceImpl<DocumentBase<impl::DynamicDocumentStorage>>;
   using Storage = impl::DynamicDocumentStorage;
 
-  DynamicDocument(const DocumentInfo &theDocInfo)
-      : Base{theDocInfo} {}
+  DynamicDocument(const DocumentInfo &theDocInfo) : Base{theDocInfo} {}
 
   /// Parses a JSON string into a DynamicDocument using the specified Builder
   /// type
@@ -80,7 +80,7 @@ struct DynamicDocument : public DocumentInterfaceImpl<DocumentBase<impl::Dynamic
       return ErrorHandling::template convertError<ResultTy>(aDocOrError);
     auto aResult = std::make_unique<DynamicDocument>(aDocInfo);
     *aResult = std::move(ErrorHandling::unwrap(aDocOrError));
-    return aResult;
+    return {std::move(aResult)};
   }
 };
 } // namespace cjson
