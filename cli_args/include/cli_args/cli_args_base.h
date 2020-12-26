@@ -427,6 +427,9 @@ struct CliOpt : public CliOptBase<CliOpt<ValTy, LibCfg>, ValTy, LibCfg> {
         assign(true);
         return 0;
       }
+    } else {
+      // gcc7 thinks the param is unused if the branch above is not entered
+      std::ignore = isInline;
     }
     auto parsed = LibCfg::template parse<ValTy>(values.at(0));
     if (!parsed)
