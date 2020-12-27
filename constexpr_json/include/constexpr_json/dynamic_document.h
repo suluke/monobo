@@ -50,12 +50,14 @@ struct DynamicDocument
 
   DynamicDocument(const DocumentInfo &theDocInfo) : Base{theDocInfo} {}
 
+  template <typename Builder>
+  using ParseResult = typename Builder::error_handling::template ErrorOr<
+      std::unique_ptr<cjson::DynamicDocument>>;
+
   /// Parses a JSON string into a DynamicDocument using the specified Builder
   /// type
   template <typename Builder = DocumentBuilder<>>
-  static typename Builder::error_handling::template ErrorOr<
-      std::unique_ptr<cjson::DynamicDocument>>
-  parseJson(const std::string_view theJson) {
+  static ParseResult<Builder> parseJson(const std::string_view theJson) {
     using ErrorHandling = typename Builder::error_handling;
     using ResultTy = std::unique_ptr<DynamicDocument>;
     const auto aDocInfoOrError =

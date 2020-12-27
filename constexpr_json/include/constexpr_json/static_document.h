@@ -73,7 +73,7 @@ struct StaticDocument
 };
 
 #define CJSON_STATIC_DOCTY(theDocumentInfo)                                    \
-  StaticDocument<                                                              \
+  cjson::StaticDocument<                                                       \
       (theDocumentInfo).itsNumNumbers, (theDocumentInfo).itsNumChars,          \
       (theDocumentInfo).itsNumStrings, (theDocumentInfo).itsNumArrays,         \
       (theDocumentInfo).itsNumArrayEntries, (theDocumentInfo).itsNumObjects,   \
