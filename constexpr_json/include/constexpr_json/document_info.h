@@ -244,6 +244,43 @@ struct DocumentInfo {
 #undef CJSON_CURRENT_POSITION
   }
 
+  template <typename JSON>
+  static constexpr DocumentInfo read(const JSON &theJson) {
+    DocumentInfo aResult;
+    using Type = decltype(theJson.getType());
+    switch (theJson.getType()) {
+    case Type::NUL:
+      aResult.itsNumNulls += 1;
+      break;
+    case Type::BOOL:
+      aResult.itsNumBools += 1;
+      break;
+    case Type::NUMBER:
+      aResult.itsNumNumbers += 1;
+      break;
+    case Type::STRING:
+      aResult.itsNumChars += theJson.toString().size();
+      aResult.itsNumStrings += 1;
+      break;
+    case Type::ARRAY:
+      aResult.itsNumArrayEntries += theJson.toArray().size();
+      aResult.itsNumArrays += 1;
+      for (const auto &aEntry : theJson.toArray())
+        aResult += read(aEntry);
+      break;
+    case Type::OBJECT:
+      aResult.itsNumObjectProperties += theJson.toObject().size();
+      aResult.itsNumStrings += theJson.toObject().size();
+      aResult.itsNumObjects += 1;
+      for (const auto &aKVPair : theJson.toObject()) {
+        aResult.itsNumChars += aKVPair.first.size();
+        aResult += read(aKVPair.second);
+      }
+      break;
+    }
+    return aResult;
+  }
+
 private:
   template <typename ErrorHandlingTy>
   constexpr static typename ErrorHandlingTy::template ErrorOr<ResultTy>

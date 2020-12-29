@@ -99,6 +99,7 @@ int main() {
     using Builder = DocumentBuilder1<Utf8, Utf8, ErrorHandling>;
     constexpr auto aDoc = Builder::parseDocument<DocTy>(aJsonSV, aDocInfo);
     static_assert(!ErrorHandling::isError(aDoc));
+    static_assert(DocumentInfo::read(aDoc->getRoot()) == aDocInfo);
     std::cout << "\n"
               << DocumentInterfaceImpl<DocTy>{ErrorHandling::unwrap(aDoc)}
               << "\n";
@@ -107,6 +108,7 @@ int main() {
     using Builder = DocumentBuilder2<Utf8, Utf8, ErrorHandling>;
     constexpr auto aDoc = Builder::parseDocument<DocTy>(aJsonSV, aDocInfo);
     static_assert(!ErrorHandling::isError(aDoc));
+    static_assert(DocumentInfo::read(aDoc->getRoot()) == aDocInfo);
     std::cout << "\n"
               << DocumentInterfaceImpl<DocTy>{ErrorHandling::unwrap(aDoc)}
               << "\n";
@@ -115,6 +117,7 @@ int main() {
     using Builder = DocumentBuilder<Utf8, Utf8, ErrorHandling>;
     constexpr auto aDoc = Builder::parseDocument<DocTy>(aJsonSV, aDocInfo);
     static_assert(!ErrorHandling::isError(aDoc));
+    static_assert(DocumentInfo::read(aDoc->getRoot()) == aDocInfo);
     std::cout << "\n"
               << DocumentInterfaceImpl<DocTy>{ErrorHandling::unwrap(aDoc)}
               << "\n";

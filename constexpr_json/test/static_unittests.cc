@@ -221,6 +221,7 @@ static void test_parsing() {
     constexpr auto aDoc =                                                      \
         Builder::template parseDocument<DocTy>(aJsonStr, aDocInfo);            \
     static_assert(!ErrorHandling::isError(aDoc));                              \
+    static_assert(aDocInfo == DocumentInfo::read(aDoc->getRoot()));            \
     /*dump(Builder::unwrap(aDoc));*/                                           \
     /*std::cout << Builder::unwrap(aDoc) << "\n";*/                            \
   } while (false)
