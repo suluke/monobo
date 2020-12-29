@@ -4,7 +4,8 @@ set(CMAKE_CXX_STANDARD 17)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
-include_directories(include/)
+add_library(constexpr_json INTERFACE)
+target_include_directories(constexpr_json INTERFACE include)
 
 add_subdirectory(lib)
 add_subdirectory(tools)

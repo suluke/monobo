@@ -12,6 +12,7 @@ function(cli_args_add_sample TARGET_NAME)
 
   set(TARGET "${PROJECT_NAME}_${TARGET_NAME}")
   add_executable(${TARGET} ${SAMPLE_SOURCES})
+  target_link_libraries(${TARGET} PRIVATE cli_args)
   set_target_properties(${TARGET} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${SAMPLES_BINARY_DIR}"
     OUTPUT_NAME "${TARGET_NAME}"
