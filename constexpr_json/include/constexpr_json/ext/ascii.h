@@ -18,7 +18,7 @@ struct Ascii {
 
   constexpr std::pair<std::array<char, MAX_BYTES>, size_t>
   encode(CodePointTy theCodePoint) const noexcept {
-    if (theCodePoint < 0 || theCodePoint > 127)
+    if (theCodePoint < 0 /*|| static_cast<int>(theCodePoint) > 127*/)
       return std::make_pair(std::array<char, MAX_BYTES>{}, 0);
     return std::make_pair(std::array<char, MAX_BYTES>{theCodePoint}, 1);
   }
