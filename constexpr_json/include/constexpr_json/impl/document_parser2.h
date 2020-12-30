@@ -4,6 +4,7 @@
 #include "constexpr_json/document.h"
 #include "constexpr_json/document_info.h"
 #include "constexpr_json/error_codes.h"
+#include "constexpr_json/impl/document_allocator.h"
 #include "constexpr_json/impl/parsing_utils.h"
 #include <cassert>
 
@@ -65,45 +66,10 @@ public:
       return makeError<DocTy>("Failed to compute element infos");
     const auto &aElementInfos = ErrorHandlingTy::unwrap(aElementInfosOrError);
     const ElementInfo *aCurrentElm = &aElementInfos.front();
-    intptr_t aNumEntitiesAlloced = 1;
-    intptr_t aNumPropsAlloced = 0;
-    intptr_t aNumNumbers = 0;
-    intptr_t aNumChars = 0;
-    intptr_t aNumStrings = 0;
-    intptr_t aNumArrays = 0;
-    intptr_t aNumObjects = 0;
-    intptr_t aNumObjectProps = 0;
+    DocumentAllocator<DocTy, ErrorHandlingTy> aAlloc;
+    intptr_t aNextEntityIdx = 1;
+    intptr_t aNextPropIdx = 0;
     DocTy aResult{theDocInfo};
-#define PARSE_STRING(theJson, theNumRead)                                      \
-  do {                                                                         \
-    std::string_view aStr = p::readString(theJson);                            \
-    theNumRead = aStr.size();                                                  \
-    aStr = p::stripQuotes(aStr);                                               \
-    size_t aNumBytesInStr = 0;                                                 \
-    aResult.itsStrings[aNumStrings].itsPosition = aNumChars;                   \
-    while (aStr.size()) {                                                      \
-      const auto [aChar, aCharWidth] = SourceEncodingTy::decodeFirst(aStr);    \
-      if (aCharWidth <= 0)                                                     \
-        return makeError<DocTy>("Failed to decode character");                 \
-      using CharT = typename SourceEncodingTy::CodePointTy;                    \
-      CharT aCodePoint = aChar;                                                \
-      if (aChar == '\\') {                                                     \
-        const auto [aEscaped, aEscWidth] = p::parseEscape(aStr);               \
-        aCodePoint = aEscaped;                                                 \
-        aStr.remove_prefix(aEscWidth);                                         \
-      } else {                                                                 \
-        aStr.remove_prefix(aCharWidth);                                        \
-      }                                                                        \
-      const auto [aBytes, aBytesUsed] = DestEncodingTy::encode(aCodePoint);    \
-      if (aBytesUsed <= 0)                                                     \
-        return makeError<DocTy>("Failed to encode character");                 \
-      for (size_t i = 0; i < aBytesUsed; ++i)                                  \
-        aResult.itsChars[aNumChars++] = aBytes[i];                             \
-      aNumBytesInStr += aBytesUsed;                                            \
-    }                                                                          \
-    aResult.itsStrings[aNumStrings].itsSize = aNumBytesInStr;                  \
-    ++aNumStrings;                                                             \
-  } while (false)
     // Invariant: if aCurrentElm is null, aEntity has been set its ElementInfo
     // index before as its payload
     for (Entity &aEntity : aResult.itsEntities) {
@@ -114,10 +80,16 @@ public:
       // if the parent is an object, consume the key first
       if (aCurrentElm->itsParentId >= 0 &&
           aElementInfos[aCurrentElm->itsParentId].itsType == Type::OBJECT) {
-        aResult.itsObjectProps[aNumObjectProps].itsKeyPos = aNumStrings;
-        ++aNumObjectProps;
-        size_t aLenRead = 0;
-        PARSE_STRING(aSubJson, aLenRead);
+        std::string_view aStr = p::readString(aSubJson);
+        size_t aLenRead = aStr.size();
+        aStr = p::stripQuotes(aStr);
+        const auto aAllocStr =
+            aAlloc.template allocateTranscodeString<SourceEncodingTy, DestEncodingTy>(
+                aResult, aStr);
+        if (ErrorHandlingTy::isError(aAllocStr))
+          return ErrorHandlingTy::template convertError<DocTy>(aAllocStr);
+        aResult.itsObjectProps[aNextPropIdx++].itsKeyPos =
+            ErrorHandlingTy::unwrap(aAllocStr).itsPayload;
         aSubJson.remove_prefix(aLenRead);
         aSubJson = p::removeLeadingWhitespace(aSubJson);
         const auto aDecoded = SourceEncodingTy::decodeFirst(aSubJson);
@@ -136,38 +108,30 @@ public:
         aEntity = {Entity::BOOL, p::parseBool(aSubJson).first};
         break;
       case Type::NUMBER:
-        aEntity = {Entity::NUMBER, aNumNumbers};
-        aResult.itsNumbers[aNumNumbers] = p::parseNumber(aSubJson).first;
-        ++aNumNumbers;
+        aEntity =
+            aAlloc.allocateNumber(aResult, p::parseNumber(aSubJson).first);
         break;
       case Type::STRING: {
-        aEntity = {Entity::STRING, aNumStrings};
-        aResult.itsStrings[aNumStrings].itsPosition = aNumChars;
-        PARSE_STRING(aSubJson, std::ignore);
+        const auto aAllocStr =
+            aAlloc.template allocateTranscodeString<SourceEncodingTy, DestEncodingTy>(
+                aResult, p::stripQuotes(p::readString(aSubJson)));
+        if (ErrorHandlingTy::isError(aAllocStr))
+          return ErrorHandlingTy::template convertError<DocTy>(aAllocStr);
+        aEntity = ErrorHandlingTy::unwrap(aAllocStr);
         break;
       }
       case Type::ARRAY:
       case Type::OBJECT: {
         if (aCurrentElm->itsType == Type::OBJECT) {
-          aEntity = {Entity::OBJECT, aNumObjects};
-          auto &aObj = aResult.itsObjects[aNumObjects];
-          aObj.itsKeysPos = aNumPropsAlloced;
-          aObj.itsValuesPos = aNumEntitiesAlloced;
-          aObj.itsNumProperties = aCurrentElm->itsNumChildren;
-          aNumPropsAlloced += aCurrentElm->itsNumChildren;
-          ++aNumObjects;
+          aEntity = aAlloc.allocateObject(aResult, aCurrentElm->itsNumChildren);
         } else {
-          aEntity = {Entity::ARRAY, aNumArrays};
-          auto &aArr = aResult.itsArrays[aNumArrays];
-          aArr.itsPosition = aNumEntitiesAlloced;
-          aArr.itsNumElements = aCurrentElm->itsNumChildren;
-          ++aNumArrays;
+          aEntity = aAlloc.allocateArray(aResult, aCurrentElm->itsNumChildren);
         }
         // maintain invariant
         if (aCurrentElm->itsFirstChild >= 0) {
-          aResult.itsEntities[aNumEntitiesAlloced].itsPayload =
+          aResult.itsEntities[aNextEntityIdx].itsPayload =
               aCurrentElm->itsFirstChild;
-          aNumEntitiesAlloced += aCurrentElm->itsNumChildren;
+          aNextEntityIdx += aCurrentElm->itsNumChildren;
         }
         break;
       }
