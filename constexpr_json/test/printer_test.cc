@@ -29,11 +29,12 @@ struct CharCountingStream {
     /* 2: Compute required buffer size for printing */                         \
     using CounterTy = Printer<Utf8, Utf8, CharCountingStream>;                 \
     constexpr size_t aPrintedSize =                                            \
-        CounterTy::print(CharCountingStream{}, aDoc.getRoot()).size();         \
+        CounterTy{}.print(CharCountingStream{}, aDoc.getRoot()).size();        \
     /* 3: Print */                                                             \
     using StreamTy = StaticStream<aPrintedSize>;                               \
     using PrinterTy = Printer<Utf8, Utf8, StreamTy>;                           \
-    constexpr StreamTy aStream = PrinterTy::print(StreamTy{}, aDoc.getRoot()); \
+    constexpr StreamTy aStream =                                               \
+        PrinterTy{}.print(StreamTy{}, aDoc.getRoot());                         \
     /* 4: Parse the printed result again */                                    \
     constexpr const DocumentInfo aDocInfoNew =                                 \
         *Parser::computeDocInfo(aStream.str());                                \

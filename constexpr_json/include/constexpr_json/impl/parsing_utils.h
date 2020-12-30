@@ -10,8 +10,10 @@ namespace cjson {
 template <typename EncodingTy> struct parsing {
 private:
   using CharT = typename EncodingTy::CodePointTy;
-  constexpr static auto decodeFirst(std::string_view theString) {
-    return EncodingTy::decodeFirst(theString);
+  EncodingTy itsEncoding;
+
+  constexpr auto decodeFirst(std::string_view theString) const {
+    return itsEncoding.decodeFirst(theString);
   }
   constexpr static bool isdigit(CharT theChar) {
     return '0' <= theChar && theChar <= '9';
@@ -22,7 +24,8 @@ private:
   }
 
 public:
-  parsing() = delete;
+  constexpr parsing(const EncodingTy theEncoding = EncodingTy{})
+      : itsEncoding{theEncoding} {}
   parsing(const parsing &) = delete;
   parsing(parsing &&) = delete;
   parsing &operator=(const parsing &) = delete;
@@ -31,11 +34,12 @@ public:
   enum class Type { NUL, BOOL, NUMBER, STRING, ARRAY, OBJECT };
 
   static constexpr bool isWhiteSpace(const CharT theChar) noexcept {
-    return theChar == 0x20 || theChar == 0xd || theChar == 0xa || theChar == 0x9;
+    return theChar == 0x20 || theChar == 0xd || theChar == 0xa ||
+           theChar == 0x9;
   }
 
-  constexpr static std::optional<Type>
-  detectElementType(const std::string_view theJsonStr) {
+  constexpr std::optional<Type>
+  detectElementType(const std::string_view theJsonStr) const {
     constexpr const std::optional<Type> aErrorResult = std::nullopt;
     const std::string_view aPreWS = readWhitespace(theJsonStr);
     std::string_view aRemaining = theJsonStr.substr(aPreWS.size());
@@ -66,8 +70,8 @@ public:
     return aErrorResult;
   }
 
-  constexpr static std::optional<std::pair<Type, std::string_view>>
-  readElement(const std::string_view theJson) {
+  constexpr std::optional<std::pair<Type, std::string_view>>
+  readElement(const std::string_view theJson) const {
     constexpr const std::optional<std::pair<Type, std::string_view>>
         aErrorResult = std::nullopt;
     const std::string_view aTrimmedJson =
@@ -115,7 +119,7 @@ public:
     }
     return aErrorResult;
   }
-  constexpr static std::string_view readArray(const std::string_view theJson) {
+  constexpr std::string_view readArray(const std::string_view theJson) const {
     std::string_view aErrorResult{};
     const auto [aBracket, aBracketWidth] = decodeFirst(theJson);
     if (aBracketWidth <= 0 || aBracket != '[')
@@ -152,7 +156,7 @@ public:
       }
     }
   }
-  constexpr static std::string_view readObject(const std::string_view theJson) {
+  constexpr std::string_view readObject(const std::string_view theJson) const {
     std::string_view aErrorResult{};
     const auto [aBrace, aBraceWidth] = decodeFirst(theJson);
     if (aBraceWidth <= 0 || aBrace != '{')
@@ -205,9 +209,10 @@ public:
     return aErrorResult;
   }
 
-  constexpr static std::string_view stripQuotes(std::string_view theStr) {
+  constexpr std::string_view stripQuotes(std::string_view theStr) const {
     const auto aFirstDecoded = decodeFirst(theStr);
-    assert(aFirstDecoded.first == '"' && "Given string does not start with quotation mark");
+    assert(aFirstDecoded.first == '"' &&
+           "Given string does not start with quotation mark");
     theStr.remove_prefix(aFirstDecoded.second);
     theStr.remove_suffix(aFirstDecoded.second);
     return theStr;
@@ -217,8 +222,9 @@ public:
   /// @return number of chars (bytes) required to store the string literal's
   /// contents in the target encoding
   template <typename DestEncodingTy>
-  constexpr static intptr_t
-  computeEncodedSize(const std::string_view theString) {
+  constexpr intptr_t
+  computeEncodedSize(const std::string_view theString,
+                     const DestEncodingTy theDestEncoding) const {
     std::string_view aRemaining = theString;
     size_t aNumChars = 0;
     while (!aRemaining.empty()) {
@@ -226,17 +232,17 @@ public:
       if (aChar == '\\') {
         const auto [aCodepoint, aWidth] = parseEscape(aRemaining);
         aRemaining.remove_prefix(aWidth);
-        aNumChars += DestEncodingTy::encode(aCodepoint).second;
+        aNumChars += theDestEncoding.encode(aCodepoint).second;
       } else {
         aRemaining.remove_prefix(aCharWidth);
-        aNumChars += DestEncodingTy::encode(aChar).second;
+        aNumChars += theDestEncoding.encode(aChar).second;
       }
     }
     return aNumChars;
   }
 
-  constexpr static std::pair<CharT, intptr_t>
-  parseFirstStringChar(const std::string_view aStr) {
+  constexpr std::pair<CharT, intptr_t>
+  parseFirstStringChar(const std::string_view aStr) const {
     constexpr const std::pair<CharT, intptr_t> aErrorResult =
         std::make_pair(CharT{}, -1);
     const auto [aChar, aCharWidth] = decodeFirst(aStr);
@@ -259,8 +265,8 @@ public:
    * @return .first is the escaped code point, .second is the length of the
    * escape sequence starting from the initial '\' or -1 if parsing failed.
    */
-  constexpr static std::pair<CharT, intptr_t>
-  parseEscape(const std::string_view theString) {
+  constexpr std::pair<CharT, intptr_t>
+  parseEscape(const std::string_view theString) const {
     constexpr const std::pair<CharT, intptr_t> aErrorResult =
         std::make_pair(0, -1);
     const auto [aFirstChar, aFirstCharWidth] = decodeFirst(theString);
@@ -332,8 +338,8 @@ public:
     return {aDecoded, theString.size() - aRemaining.size()};
   }
 
-  constexpr static std::pair<bool, intptr_t>
-  parseBool(const std::string_view theString) {
+  constexpr std::pair<bool, intptr_t>
+  parseBool(const std::string_view theString) const {
     constexpr const std::pair<bool, intptr_t> aErrorResult =
         std::make_pair(false, -1);
     const auto [aFirstChar, aFirstCharWidth] = decodeFirst(theString);
@@ -358,8 +364,8 @@ public:
     return std::make_pair(aExpectedVal, theString.size() - aRemaining.size());
   }
 
-  constexpr static std::pair<double, intptr_t>
-  parseNumber(const std::string_view theString) {
+  constexpr std::pair<double, intptr_t>
+  parseNumber(const std::string_view theString) const {
     constexpr const std::pair<double, intptr_t> aErrorResult =
         std::make_pair(0., -1);
     // Step 1: Read int
@@ -415,8 +421,8 @@ public:
 
   /// Expects a leading 'e' or 'E', then parses a (signed) int where leading
   /// '0' are allowed as per the JSON spec
-  static constexpr std::pair<int, intptr_t>
-  parseExponent(const std::string_view theString) {
+  constexpr std::pair<int, intptr_t>
+  parseExponent(const std::string_view theString) const {
     if (theString.empty())
       return std::make_pair(1, 0);
     constexpr const auto aErrorResult = std::make_pair(0, -1);
@@ -470,8 +476,8 @@ public:
   /// also double)
   /// @return the parsed integer and the number of bytes consumed while
   /// parsing.
-  static constexpr std::pair<double, intptr_t>
-  parseInteger(const std::string_view theString) {
+  constexpr std::pair<double, intptr_t>
+  parseInteger(const std::string_view theString) const {
     constexpr const auto aErrorResult = std::make_pair(0., -1);
     if (theString.empty())
       // Cannot parse integer from empty string
@@ -524,7 +530,7 @@ public:
     }
   }
 
-  constexpr static std::string_view readNull(const std::string_view theString) {
+  constexpr std::string_view readNull(const std::string_view theString) const {
     constexpr const std::string_view aErrorResult = "";
     const std::string_view aCmpStr = "null";
     std::string_view aRemaining = theString;
@@ -540,8 +546,8 @@ public:
     return {theString.data(), theString.size() - aRemaining.size()};
   }
 
-  static constexpr std::string_view
-  readDigits(const std::string_view theString) {
+  constexpr std::string_view
+  readDigits(const std::string_view theString) const {
     std::string_view aDigits(theString.data(), 0);
     std::string_view aRemaining = theString;
     for (;;) {
@@ -560,8 +566,8 @@ public:
     }
   }
 
-  static constexpr std::string_view
-  readFraction(const std::string_view theString) {
+  constexpr std::string_view
+  readFraction(const std::string_view theString) const {
     if (theString.empty())
       return "";
     const auto [aChar, aCharWidth] = decodeFirst(theString);
@@ -578,8 +584,8 @@ public:
     return theString.substr(0, aDigits.size() + aCharWidth);
   }
 
-  static constexpr std::string_view
-  readExponent(const std::string_view theString) {
+  constexpr std::string_view
+  readExponent(const std::string_view theString) const {
     if (theString.empty())
       return "";
     std::string_view aRemaining = theString;
@@ -609,8 +615,8 @@ public:
     return {theString.data(), theString.size() - aRemaining.size()};
   }
 
-  static constexpr std::string_view
-  readNumber(const std::string_view theString) {
+  constexpr std::string_view
+  readNumber(const std::string_view theString) const {
     if (theString.empty())
       return "";
     std::string_view aRemaining = theString;
@@ -640,8 +646,8 @@ public:
     return {theString.data(), theString.size() - aRemaining.size()};
   }
 
-  constexpr static std::string_view
-  readString(const std::string_view theString) {
+  constexpr std::string_view
+  readString(const std::string_view theString) const {
     constexpr const std::string_view aErrorResult;
     const auto [aFirstChar, aFirstCharWidth] = decodeFirst(theString);
     if (aFirstCharWidth <= 0)
@@ -675,8 +681,8 @@ public:
     }
   }
 
-  static constexpr std::string_view
-  readWhitespace(const std::string_view theString) {
+  constexpr std::string_view
+  readWhitespace(const std::string_view theString) const {
     std::string_view aWhitespace(theString.data(), 0);
     std::string_view aRemaining(theString);
     for (;;) {
@@ -695,8 +701,8 @@ public:
     }
   }
 
-  static constexpr std::string_view
-  removeLeadingWhitespace(const std::string_view theString) {
+  constexpr std::string_view
+  removeLeadingWhitespace(const std::string_view theString) const {
     std::string_view aResult{theString};
     aResult.remove_prefix(readWhitespace(theString).size());
     return aResult;

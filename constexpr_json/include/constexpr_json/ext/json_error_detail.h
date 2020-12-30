@@ -22,14 +22,14 @@ struct JsonErrorDetail {
 
   template <typename EncodingTy>
   constexpr std::pair<intptr_t, intptr_t>
-  computeLocation(const std::string_view theJson) const noexcept {
+  computeLocation(const std::string_view theJson, const EncodingTy &theEncoding = {}) const noexcept {
     if (itsPosition < 0)
       return {-1, -1};
     intptr_t aLine = 0, aCol = 0;
     std::string_view aRemaining{theJson};
     while (theJson.size() - aRemaining.size() <
            static_cast<size_t>(itsPosition)) {
-      const auto [aChar, aCharWidth] = EncodingTy::decodeFirst(aRemaining);
+      const auto [aChar, aCharWidth] = theEncoding.decodeFirst(aRemaining);
       aRemaining.remove_prefix(aCharWidth);
       ++aCol;
       if (aChar == '\n') {

@@ -13,11 +13,11 @@ template <typename SourceEncodingTy, typename DestEncodingTy,
           typename ErrorHandlingTy>
 struct DocumentParser2 {
 private:
-  using p = parsing<SourceEncodingTy>;
+  using P = parsing<SourceEncodingTy>;
   using ElementId = intptr_t;
   using ParentId = intptr_t;
   using Location = intptr_t;
-  using Type = typename p::Type;
+  using Type = typename P::Type;
   struct ElementInfo {
     ElementId itsId = 0;
     Type itsType;
@@ -42,7 +42,9 @@ public:
   static constexpr auto
   parseDocument(const std::string_view theJsonString,
                 const typename ErrorHandlingTy::template ErrorOr<DocumentInfo>
-                    &theDocInfo)
+                    &theDocInfo,
+                const SourceEncodingTy theSrcEnc = {},
+                const DestEncodingTy theDestEnc = {})
       -> std::enable_if_t<
           !std::is_same_v<
               const DocumentInfo,
@@ -51,17 +53,21 @@ public:
     if (ErrorHandlingTy::isError(theDocInfo))
       return ErrorHandlingTy::template convertError<DocTy>(theDocInfo);
     return parseDocument<DocTy>(theJsonString,
-                                ErrorHandlingTy::unwrap(theDocInfo));
+                                ErrorHandlingTy::unwrap(theDocInfo), theSrcEnc,
+                                theDestEnc);
   }
 
   template <typename DocTy>
   static constexpr ResultTy<DocTy>
   parseDocument(const std::string_view theJsonString,
-                const DocumentInfo &theDocInfo) {
+                const DocumentInfo &theDocInfo,
+                const SourceEncodingTy theSrcEnc = {},
+                const DestEncodingTy theDestEnc = {}) {
     if (!theDocInfo)
       return makeError<DocTy>("Using illegal DocInfo for parsing");
+    const P p{theSrcEnc};
     const auto aElementInfosOrError =
-        computeElementInfos<DocTy>(theJsonString, theDocInfo);
+        computeElementInfos<DocTy>(theJsonString, theDocInfo, theSrcEnc);
     if (ErrorHandlingTy::isError(aElementInfosOrError))
       return makeError<DocTy>("Failed to compute element infos");
     const auto &aElementInfos = ErrorHandlingTy::unwrap(aElementInfosOrError);
@@ -80,23 +86,24 @@ public:
       // if the parent is an object, consume the key first
       if (aCurrentElm->itsParentId >= 0 &&
           aElementInfos[aCurrentElm->itsParentId].itsType == Type::OBJECT) {
-        std::string_view aStr = p::readString(aSubJson);
+        std::string_view aStr = p.readString(aSubJson);
         size_t aLenRead = aStr.size();
-        aStr = p::stripQuotes(aStr);
+        aStr = p.stripQuotes(aStr);
         const auto aAllocStr =
-            aAlloc.template allocateTranscodeString<SourceEncodingTy, DestEncodingTy>(
-                aResult, aStr);
+            aAlloc.template allocateTranscodeString<SourceEncodingTy,
+                                                    DestEncodingTy>(aResult,
+                                                                    aStr, theSrcEnc, theDestEnc);
         if (ErrorHandlingTy::isError(aAllocStr))
           return ErrorHandlingTy::template convertError<DocTy>(aAllocStr);
         aResult.itsObjectProps[aNextPropIdx++].itsKeyPos =
             ErrorHandlingTy::unwrap(aAllocStr).itsPayload;
         aSubJson.remove_prefix(aLenRead);
-        aSubJson = p::removeLeadingWhitespace(aSubJson);
-        const auto aDecoded = SourceEncodingTy::decodeFirst(aSubJson);
+        aSubJson = p.removeLeadingWhitespace(aSubJson);
+        const auto aDecoded = theSrcEnc.decodeFirst(aSubJson);
         assert(aDecoded.second > 0 && aDecoded.first == ':' &&
                "Expected colon");
         aSubJson.remove_prefix(aDecoded.second);
-        aSubJson = p::removeLeadingWhitespace(aSubJson);
+        aSubJson = p.removeLeadingWhitespace(aSubJson);
       }
 
       // now get the value
@@ -105,16 +112,16 @@ public:
         aEntity = {Entity::NUL, 0};
         break;
       case Type::BOOL:
-        aEntity = {Entity::BOOL, p::parseBool(aSubJson).first};
+        aEntity = {Entity::BOOL, p.parseBool(aSubJson).first};
         break;
       case Type::NUMBER:
-        aEntity =
-            aAlloc.allocateNumber(aResult, p::parseNumber(aSubJson).first);
+        aEntity = aAlloc.allocateNumber(aResult, p.parseNumber(aSubJson).first);
         break;
       case Type::STRING: {
         const auto aAllocStr =
-            aAlloc.template allocateTranscodeString<SourceEncodingTy, DestEncodingTy>(
-                aResult, p::stripQuotes(p::readString(aSubJson)));
+            aAlloc.template allocateTranscodeString<SourceEncodingTy,
+                                                    DestEncodingTy>(
+                aResult, p.stripQuotes(p.readString(aSubJson)), theSrcEnc, theDestEnc);
         if (ErrorHandlingTy::isError(aAllocStr))
           return ErrorHandlingTy::template convertError<DocTy>(aAllocStr);
         aEntity = ErrorHandlingTy::unwrap(aAllocStr);
@@ -153,22 +160,24 @@ private:
                                                DocTy::Storage::MAX_ENTITIES()>;
 
   static constexpr std::string_view
-  consumeObjectKey(const std::string_view theString) {
+  consumeObjectKey(const std::string_view theString, const SourceEncodingTy &theSrcEnc) {
+    const P p{theSrcEnc};
     std::string_view aRemaining = theString;
-    aRemaining.remove_prefix(p::readString(aRemaining).size());
-    aRemaining = p::removeLeadingWhitespace(aRemaining);
-    const auto aDecoded = SourceEncodingTy::decodeFirst(aRemaining);
+    aRemaining.remove_prefix(p.readString(aRemaining).size());
+    aRemaining = p.removeLeadingWhitespace(aRemaining);
+    const auto aDecoded = theSrcEnc.decodeFirst(aRemaining);
     assert(aDecoded.second > 0 && aDecoded.first == ':' && "Expected colon");
     aRemaining.remove_prefix(aDecoded.second);
-    aRemaining = p::removeLeadingWhitespace(aRemaining);
+    aRemaining = p.removeLeadingWhitespace(aRemaining);
     return aRemaining;
   }
 
   template <typename DocTy>
   static constexpr auto
   computeElementInfos(const std::string_view theJsonString,
-                      const DocumentInfo &theDocInfo)
+                      const DocumentInfo &theDocInfo, const SourceEncodingTy theSrcEnc)
       -> ResultTy<ElementInfos<DocTy>> {
+    const P p{theSrcEnc};
     // state variables
     ElementInfos<DocTy> aEntities{
         DocTy::Storage::template createBuffer<ElementInfo,
@@ -181,11 +190,11 @@ private:
     std::string_view aRemaining = theJsonString;
 
     for (size_t aElmIdx = 0; aElmIdx < aEntities.size(); ++aElmIdx) {
-      aRemaining = p::removeLeadingWhitespace(aRemaining);
+      aRemaining = p.removeLeadingWhitespace(aRemaining);
       // leave surrounding element(s)
       for (;;) {
         const auto [aChar, aCharWidth] =
-            SourceEncodingTy::decodeFirst(aRemaining);
+            theSrcEnc.decodeFirst(aRemaining);
         if (aCharWidth <= 0)
           return makeElmInfoError<DocTy>(
               "Unexpected EOF or failed to decode character");
@@ -193,7 +202,7 @@ private:
             (aCurrentParentType == Type::ARRAY && aChar == ']')) {
           // move one level up again
           aRemaining.remove_prefix(aCharWidth);
-          aRemaining = p::removeLeadingWhitespace(aRemaining);
+          aRemaining = p.removeLeadingWhitespace(aRemaining);
           const auto &aOldParentInfo = aEntities[aCurrentParent];
           aCurrentParent = aOldParentInfo.itsParentId;
           aIsFirstChild = false;
@@ -218,11 +227,11 @@ private:
       // consume comma
       if (!aIsFirstChild) {
         const auto [aChar, aCharWidth] =
-            SourceEncodingTy::decodeFirst(aRemaining);
+            theSrcEnc.decodeFirst(aRemaining);
         if (aChar != ',')
           return makeElmInfoError<DocTy>("Expected comma");
         aRemaining.remove_prefix(aCharWidth);
-        aRemaining = p::removeLeadingWhitespace(aRemaining);
+        aRemaining = p.removeLeadingWhitespace(aRemaining);
       }
 
       // location is registered before the key is consumed
@@ -230,10 +239,10 @@ private:
 
       // consume key
       if (aCurrentParentType == Type::OBJECT) {
-        aRemaining = consumeObjectKey(aRemaining);
+        aRemaining = consumeObjectKey(aRemaining, theSrcEnc);
       }
       // detect type
-      auto aTypeOpt = p::detectElementType(aRemaining);
+      auto aTypeOpt = p.detectElementType(aRemaining);
       if (!aTypeOpt) {
         return makeElmInfoError<DocTy>("Failed to detect element type");
       }
@@ -259,24 +268,24 @@ private:
       aIsFirstChild = false;
       switch (*aTypeOpt) {
       case Type::NUL:
-        aRemaining.remove_prefix(p::readNull(aRemaining).size());
+        aRemaining.remove_prefix(p.readNull(aRemaining).size());
         break;
       case Type::BOOL:
-        aRemaining.remove_prefix(p::parseBool(aRemaining).second);
+        aRemaining.remove_prefix(p.parseBool(aRemaining).second);
         break;
       case Type::NUMBER:
-        aRemaining.remove_prefix(p::readNumber(aRemaining).size());
+        aRemaining.remove_prefix(p.readNumber(aRemaining).size());
         break;
       case Type::STRING:
-        aRemaining.remove_prefix(p::readString(aRemaining).size());
+        aRemaining.remove_prefix(p.readString(aRemaining).size());
         break;
       case Type::ARRAY:
       case Type::OBJECT: {
         if (*aTypeOpt == Type::ARRAY) {
-          aRemaining.remove_prefix(SourceEncodingTy::encode('[').second);
+          aRemaining.remove_prefix(theSrcEnc.encode('[').second);
           aCurrentParentType = Type::ARRAY;
         } else {
-          aRemaining.remove_prefix(SourceEncodingTy::encode('{').second);
+          aRemaining.remove_prefix(theSrcEnc.encode('{').second);
           aCurrentParentType = Type::OBJECT;
         }
         aCurrentParent = aElmIdx;

@@ -57,13 +57,16 @@ struct DynamicDocument
   /// Parses a JSON string into a DynamicDocument using the specified Parser
   /// type
   template <typename Parser = DocumentParser<>>
-  static ParseResult<Parser> parseJson(const std::string_view theJson) {
+  static ParseResult<Parser>
+  parseJson(const std::string_view theJson,
+            const typename Parser::src_encoding theSrcEnc = {},
+            const typename Parser::dest_encoding theDestEnc = {}) {
     using ErrorHandling = typename Parser::error_handling;
     using ResultTy = std::unique_ptr<DynamicDocument>;
     const auto aDocInfoOrError =
         DocumentInfo::compute<typename Parser::src_encoding,
                               typename Parser::dest_encoding,
-                              typename Parser::error_handling>(theJson);
+                              typename Parser::error_handling>(theJson, theSrcEnc, theDestEnc);
 
     if (ErrorHandling::isError(aDocInfoOrError))
       return ErrorHandling::template convertError<ResultTy>(aDocInfoOrError);
@@ -71,13 +74,14 @@ struct DynamicDocument
     const DocumentInfo aDocInfo = aDocInfoAndLen.first;
     const intptr_t aDocSize = aDocInfoAndLen.second;
     assert(aDocInfo);
-    using p = parsing<typename Parser::src_encoding>;
+    using P = parsing<typename Parser::src_encoding>;
+    const P p{theSrcEnc};
     // Only trailing whitespace is allowed behind parsing end
-    if (!p::removeLeadingWhitespace(theJson.substr(aDocSize)).empty())
+    if (!p.removeLeadingWhitespace(theJson.substr(aDocSize)).empty())
       return ErrorHandling::template makeError<ResultTy>(
           ErrorCode::TRAILING_CONTENT, aDocSize);
     const auto aDocOrError =
-        Parser::template parseDocument<DynamicDocument>(theJson, aDocInfo);
+        Parser::template parseDocument<DynamicDocument>(theJson, aDocInfo, theSrcEnc, theDestEnc);
     if (ErrorHandling::isError(aDocOrError))
       return ErrorHandling::template convertError<ResultTy>(aDocOrError);
     auto aResult = std::make_unique<DynamicDocument>(aDocInfo);

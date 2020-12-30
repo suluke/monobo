@@ -30,10 +30,10 @@ struct DocumentParser
 
   /// Compute a DocumentInfo object for the given JSON string
   constexpr static typename ErrorHandlingTy::template ErrorOr<DocumentInfo>
-  computeDocInfo(const std::string_view theJsonString) {
+  computeDocInfo(const std::string_view theJsonString, const SourceEncodingTy theSrcEnc = {}, const DestEncodingTy theDestEnc = {}) {
     const auto aDocInfoOrError =
         DocumentInfo::compute<SourceEncodingTy, DestEncodingTy,
-                              ErrorHandlingTy>(theJsonString);
+                              ErrorHandlingTy>(theJsonString, theSrcEnc, theDestEnc);
     if (ErrorHandlingTy::isError(aDocInfoOrError))
       return ErrorHandlingTy::template convertError<DocumentInfo>(
           aDocInfoOrError);

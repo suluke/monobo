@@ -7,8 +7,8 @@
 namespace cjson {
 struct Utf8 {
   using CodePointTy = uint64_t;
-  static constexpr std::pair<CodePointTy, size_t>
-  decodeFirst(std::string_view theString) noexcept {
+  constexpr std::pair<CodePointTy, size_t>
+  decodeFirst(std::string_view theString) const noexcept {
     const auto aError = std::make_pair(CodePointTy{0}, size_t{0});
     if (theString.empty())
       // Cannot decode empty string"
@@ -52,8 +52,8 @@ struct Utf8 {
   }
 
   static constexpr size_t MAX_BYTES = 4;
-  static constexpr std::pair<std::array<char, MAX_BYTES>, size_t>
-  encode(CodePointTy theCodePoint) noexcept {
+  constexpr std::pair<std::array<char, MAX_BYTES>, size_t>
+  encode(CodePointTy theCodePoint) const noexcept {
     constexpr std::pair<std::array<char, MAX_BYTES>, intptr_t> aErrorResult =
         std::make_pair(std::array<char, MAX_BYTES>{}, 0);
     if (theCodePoint <= 0x7fu)

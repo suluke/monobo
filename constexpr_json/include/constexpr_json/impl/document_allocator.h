@@ -21,25 +21,26 @@ struct DocumentAllocator : private DocumentInfo {
 
   template <typename SourceEncodingTy, typename DestEncodingTy>
   constexpr typename ErrorHandlingTy::template ErrorOr<Entity>
-  allocateTranscodeString(DocTy &theDoc, const std::string_view &theString) {
+  allocateTranscodeString(DocTy &theDoc, const std::string_view &theString, const SourceEncodingTy &theSrcEnc, const DestEncodingTy &theDestEnc) {
     std::string_view aStr = theString;
-    using p = parsing<SourceEncodingTy>;
+    using P = parsing<SourceEncodingTy>;
+    const P p{theSrcEnc};
     size_t aNumBytesInStr = 0;
     theDoc.itsStrings[itsNumStrings].itsPosition = itsNumChars;
     while (aStr.size()) {
-      const auto [aChar, aCharWidth] = SourceEncodingTy::decodeFirst(aStr);
+      const auto [aChar, aCharWidth] = theSrcEnc.decodeFirst(aStr);
       if (aCharWidth <= 0)
         return makeError("Failed to decode character");
       using CharT = typename SourceEncodingTy::CodePointTy;
       CharT aCodePoint = aChar;
       if (aChar == '\\') {
-        const auto [aEscaped, aEscWidth] = p::parseEscape(aStr);
+        const auto [aEscaped, aEscWidth] = p.parseEscape(aStr);
         aCodePoint = aEscaped;
         aStr.remove_prefix(aEscWidth);
       } else {
         aStr.remove_prefix(aCharWidth);
       }
-      const auto [aBytes, aBytesUsed] = DestEncodingTy::encode(aCodePoint);
+      const auto [aBytes, aBytesUsed] = theDestEnc.encode(aCodePoint);
       if (aBytesUsed <= 0)
         return makeError("Failed to encode character");
       for (size_t i = 0; i < aBytesUsed; ++i)

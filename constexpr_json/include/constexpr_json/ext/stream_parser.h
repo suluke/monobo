@@ -22,7 +22,9 @@ struct StreamParser {
   using Result = std::optional<ParserParseResult>;
 
   static Result parse(std::istream &theStream,
-                      std::string *theJsonOut = nullptr) {
+                      std::string *theJsonOut = nullptr,
+                      const InputEncoding theInEnc = {},
+                      const OutputEncoding theOutEnc = {}) {
     std::stringstream aSS;
     size_t aBufSize{1024u};
     std::string aBuf(aBufSize, '\0');
@@ -37,8 +39,8 @@ struct StreamParser {
     std::string aJsonStr = aSS.str();
     if (theJsonOut)
       *theJsonOut = std::move(aJsonStr);
-    return cjson::DynamicDocument::parseJson<ParserTy>(theJsonOut ? *theJsonOut
-                                                                  : aJsonStr);
+    return cjson::DynamicDocument::parseJson<ParserTy>(
+        theJsonOut ? *theJsonOut : aJsonStr, theInEnc, theOutEnc);
   }
 };
 } // namespace cjson

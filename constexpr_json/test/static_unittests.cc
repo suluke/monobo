@@ -9,7 +9,7 @@ using namespace cjson;
 
 #define CHECK_UTF8_DECODE(STR, EXPECTED)                                       \
   do {                                                                         \
-    static_assert(Utf8::decodeFirst(STR).first == EXPECTED,                    \
+    static_assert(Utf8{}.decodeFirst(STR).first == EXPECTED,                   \
                   "UTF8: Failed to decode '" STR "'");                         \
   } while (false)
 
@@ -36,7 +36,7 @@ template <intptr_t L> struct CompareCharSeqs {
 #define CHECK_UTF8_ENCODE(CODEPOINT, EXPECTED)                                 \
   do {                                                                         \
     constexpr std::string_view aExpStr{EXPECTED};                              \
-    constexpr auto aResult = Utf8::encode(CODEPOINT);                          \
+    constexpr auto aResult = Utf8{}.encode(CODEPOINT);                         \
     constexpr intptr_t aExpLen = static_cast<intptr_t>(aExpStr.size());        \
     static_assert(aResult.second == aExpLen);                                  \
     constexpr intptr_t aMinLen =                                               \
@@ -65,14 +65,14 @@ static void test_utf8() {
 
 #define CHECK_READ(FN, STR, EXPECTED)                                          \
   do {                                                                         \
-    static_assert(parsing<Utf8>::FN(STR) == EXPECTED,                          \
+    static_assert(parsing<Utf8>{}.FN(STR) == EXPECTED,                         \
                   #FN ": Failed to read '" STR "'");                           \
   } while (false)
 
 #define CHECK_PARSE(FN, STR, EXPECTED_LEN, EXPECTED_ELM)                       \
   do {                                                                         \
     using namespace std::literals;                                             \
-    constexpr auto aParsed = parsing<Utf8>::FN(STR##sv);                       \
+    constexpr auto aParsed = parsing<Utf8>{}.FN(STR##sv);                      \
     constexpr auto aElem = aParsed.first;                                      \
     constexpr intptr_t aElemLength = aParsed.second;                           \
     constexpr auto aExpectedElm = EXPECTED_ELM;                                \
@@ -120,7 +120,7 @@ static void test_parseutils() {
   CHECK_PARSE(parseInteger, "", -1, 0.);
   CHECK_PARSE(parseInteger, "0123", 1, 0.);
   CHECK_PARSE(parseInteger, "-0123", 2, -0.);
-  static_assert(parsing<Utf8>::parseInteger("-0123").first == -0.);
+  static_assert(parsing<Utf8>{}.parseInteger("-0123").first == -0.);
   CHECK_PARSE(parseInteger, "1", 1, 1.);
   CHECK_PARSE(parseInteger, "-1", 2, -1.);
   CHECK_PARSE(parseInteger, "10", 2, 10.);
