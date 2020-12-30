@@ -2,7 +2,7 @@
 #define CONSTEXPR_JSON_DYNAMIC_DOCUMENT_H
 
 #include "constexpr_json/document.h"
-#include "constexpr_json/document_builder.h"
+#include "constexpr_json/document_parser.h"
 
 #include <limits>
 
@@ -50,20 +50,20 @@ struct DynamicDocument
 
   DynamicDocument(const DocumentInfo &theDocInfo) : Base{theDocInfo} {}
 
-  template <typename Builder>
-  using ParseResult = typename Builder::error_handling::template ErrorOr<
+  template <typename Parser>
+  using ParseResult = typename Parser::error_handling::template ErrorOr<
       std::unique_ptr<cjson::DynamicDocument>>;
 
-  /// Parses a JSON string into a DynamicDocument using the specified Builder
+  /// Parses a JSON string into a DynamicDocument using the specified Parser
   /// type
-  template <typename Builder = DocumentBuilder<>>
-  static ParseResult<Builder> parseJson(const std::string_view theJson) {
-    using ErrorHandling = typename Builder::error_handling;
+  template <typename Parser = DocumentParser<>>
+  static ParseResult<Parser> parseJson(const std::string_view theJson) {
+    using ErrorHandling = typename Parser::error_handling;
     using ResultTy = std::unique_ptr<DynamicDocument>;
     const auto aDocInfoOrError =
-        DocumentInfo::compute<typename Builder::src_encoding,
-                              typename Builder::dest_encoding,
-                              typename Builder::error_handling>(theJson);
+        DocumentInfo::compute<typename Parser::src_encoding,
+                              typename Parser::dest_encoding,
+                              typename Parser::error_handling>(theJson);
 
     if (ErrorHandling::isError(aDocInfoOrError))
       return ErrorHandling::template convertError<ResultTy>(aDocInfoOrError);
@@ -71,13 +71,13 @@ struct DynamicDocument
     const DocumentInfo aDocInfo = aDocInfoAndLen.first;
     const intptr_t aDocSize = aDocInfoAndLen.second;
     assert(aDocInfo);
-    using p = parsing<typename Builder::src_encoding>;
+    using p = parsing<typename Parser::src_encoding>;
     // Only trailing whitespace is allowed behind parsing end
     if (!p::removeLeadingWhitespace(theJson.substr(aDocSize)).empty())
       return ErrorHandling::template makeError<ResultTy>(
           ErrorCode::TRAILING_CONTENT, aDocSize);
     const auto aDocOrError =
-        Builder::template parseDocument<DynamicDocument>(theJson, aDocInfo);
+        Parser::template parseDocument<DynamicDocument>(theJson, aDocInfo);
     if (ErrorHandling::isError(aDocOrError))
       return ErrorHandling::template convertError<ResultTy>(aDocOrError);
     auto aResult = std::make_unique<DynamicDocument>(aDocInfo);

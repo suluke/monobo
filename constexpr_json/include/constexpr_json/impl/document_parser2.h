@@ -1,5 +1,5 @@
-#ifndef CONSTEXPR_JSON_DOCUMENT_BUILDER2_H
-#define CONSTEXPR_JSON_DOCUMENT_BUILDER2_H
+#ifndef CONSTEXPR_JSON_DOCUMENT_PARSER2_H
+#define CONSTEXPR_JSON_DOCUMENT_PARSER2_H
 
 #include "constexpr_json/document.h"
 #include "constexpr_json/document_info.h"
@@ -10,7 +10,7 @@
 namespace cjson {
 template <typename SourceEncodingTy, typename DestEncodingTy,
           typename ErrorHandlingTy>
-struct DocumentBuilder2 {
+struct DocumentParser2 {
 private:
   using p = parsing<SourceEncodingTy>;
   using ElementId = intptr_t;
@@ -32,6 +32,11 @@ public:
   template <typename DocTy>
   using ResultTy = typename ErrorHandlingTy::template ErrorOr<DocTy>;
 
+  /// Overload that also takes over error checking on the computeDocInfo return
+  /// value
+  ///
+  /// Using this results in shorter code because clients only need to check for
+  /// errors at the very end of the parsing process.
   template <typename DocTy>
   static constexpr auto
   parseDocument(const std::string_view theJsonString,
@@ -43,7 +48,7 @@ public:
               const typename ErrorHandlingTy::template ErrorOr<DocumentInfo>>,
           ResultTy<DocTy>> {
     if (ErrorHandlingTy::isError(theDocInfo))
-      return makeError<DocTy>("Using illegal DocInfo for parsing");
+      return ErrorHandlingTy::template convertError<DocTy>(theDocInfo);
     return parseDocument<DocTy>(theJsonString,
                                 ErrorHandlingTy::unwrap(theDocInfo));
   }
@@ -333,4 +338,4 @@ private:
   }
 }; // namespace cjson
 } // namespace cjson
-#endif // CONSTEXPR_JSON_DOCUMENT_BUILDER2_H
+#endif // CONSTEXPR_JSON_DOCUMENT_PARSER2_H

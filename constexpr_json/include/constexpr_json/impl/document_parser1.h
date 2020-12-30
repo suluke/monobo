@@ -1,5 +1,5 @@
-#ifndef CONSTEXPR_JSON_DOCUMENT_BUILDER1_H
-#define CONSTEXPR_JSON_DOCUMENT_BUILDER1_H
+#ifndef CONSTEXPR_JSON_DOCUMENT_PARSER1_H
+#define CONSTEXPR_JSON_DOCUMENT_PARSER1_H
 
 #include "constexpr_json/document.h"
 #include "constexpr_json/document_info.h"
@@ -10,7 +10,7 @@
 namespace cjson {
 template <typename SourceEncodingTy, typename DestEncodingTy,
           typename ErrorHandlingTy>
-struct DocumentBuilder1 {
+struct DocumentParser1 {
   template <typename DocTy>
   constexpr static DocTy createNullDocument(const DocumentInfo &theDocInfo) {
     DocTy aResult{theDocInfo};
@@ -332,4 +332,4 @@ struct DocumentBuilder1 {
   }
 };
 } // namespace cjson
-#endif // CONSTEXPR_JSON_DOCUMENT_BUILDER1_H
+#endif // CONSTEXPR_JSON_DOCUMENT_PARSER1_H

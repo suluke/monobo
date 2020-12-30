@@ -1,9 +1,9 @@
 
-#include "constexpr_json/document_builder.h"
+#include "constexpr_json/document_parser.h"
 #include "constexpr_json/dynamic_document.h"
 #include "constexpr_json/ext/printing.h"
-#include "constexpr_json/impl/document_builder1.h"
-#include "constexpr_json/impl/document_builder2.h"
+#include "constexpr_json/impl/document_parser1.h"
+#include "constexpr_json/impl/document_parser2.h"
 #include "constexpr_json/static_document.h"
 
 #include <cassert>
@@ -95,37 +95,36 @@ int main() {
   constexpr DocumentInfo aDocInfo =
       ErrorHandling::unwrap(aDocInfoOrError).first;
   using DocTy = CJSON_STATIC_DOCTY(aDocInfo);
-  { // Test DocumentBuilder1
-    using Builder = DocumentBuilder1<Utf8, Utf8, ErrorHandling>;
-    constexpr auto aDoc = Builder::parseDocument<DocTy>(aJsonSV, aDocInfo);
+  { // Test DocumentParser1
+    using Parser = DocumentParser1<Utf8, Utf8, ErrorHandling>;
+    constexpr auto aDoc = Parser::parseDocument<DocTy>(aJsonSV, aDocInfo);
     static_assert(!ErrorHandling::isError(aDoc));
     static_assert(DocumentInfo::read(aDoc->getRoot()) == aDocInfo);
     std::cout << "\n"
               << DocumentInterfaceImpl<DocTy>{ErrorHandling::unwrap(aDoc)}
               << "\n";
   }
-  { // Test DocumentBuilder2
-    using Builder = DocumentBuilder2<Utf8, Utf8, ErrorHandling>;
-    constexpr auto aDoc = Builder::parseDocument<DocTy>(aJsonSV, aDocInfo);
+  { // Test DocumentParser2
+    using Parser = DocumentParser2<Utf8, Utf8, ErrorHandling>;
+    constexpr auto aDoc = Parser::parseDocument<DocTy>(aJsonSV, aDocInfo);
     static_assert(!ErrorHandling::isError(aDoc));
     static_assert(DocumentInfo::read(aDoc->getRoot()) == aDocInfo);
     std::cout << "\n"
               << DocumentInterfaceImpl<DocTy>{ErrorHandling::unwrap(aDoc)}
               << "\n";
   }
-  { // Test default DocumentBuilder
-    using Builder = DocumentBuilder<Utf8, Utf8, ErrorHandling>;
-    constexpr auto aDoc = Builder::parseDocument<DocTy>(aJsonSV, aDocInfo);
+  { // Test default DocumentParser
+    using Parser = DocumentParser<Utf8, Utf8, ErrorHandling>;
+    constexpr auto aDoc = Parser::parseDocument<DocTy>(aJsonSV, aDocInfo);
     static_assert(!ErrorHandling::isError(aDoc));
     static_assert(DocumentInfo::read(aDoc->getRoot()) == aDocInfo);
     std::cout << "\n"
               << DocumentInterfaceImpl<DocTy>{ErrorHandling::unwrap(aDoc)}
               << "\n";
   }
-  { // Test default DocumentBuilder with DynamicDocument (parsing at runtime)
-    using Builder = DocumentBuilder<Utf8, Utf8, ErrorHandling>;
-    const auto aDoc =
-        Builder::parseDocument<DynamicDocument>(aJsonSV, aDocInfo);
+  { // Test default DocumentParser with DynamicDocument (parsing at runtime)
+    using Parser = DocumentParser<Utf8, Utf8, ErrorHandling>;
+    const auto aDoc = Parser::parseDocument<DynamicDocument>(aJsonSV, aDocInfo);
     assert(!ErrorHandling::isError(aDoc));
     std::cout << "\n" << ErrorHandling::unwrap(aDoc) << "\n";
   }

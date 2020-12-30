@@ -1,30 +1,30 @@
-#ifndef CONSTEXPR_JSON_DOCUMENT_BUILDER_H
-#define CONSTEXPR_JSON_DOCUMENT_BUILDER_H
+#ifndef CONSTEXPR_JSON_DOCUMENT_PARSER_H
+#define CONSTEXPR_JSON_DOCUMENT_PARSER_H
 
-#include "constexpr_json/impl/document_builder2.h"
-#include "constexpr_json/ext/utf-8.h"
 #include "constexpr_json/ext/error_is_nullopt.h"
+#include "constexpr_json/ext/utf-8.h"
+#include "constexpr_json/impl/document_parser2.h"
 
-#include <optional>
 #include <memory>
+#include <optional>
 
 namespace cjson {
-/// Select the default builder implementation
+/// Select the default parser implementation
 ///
-/// Currently DocumentBuilder2
+/// Currently DocumentParser2
 template <typename SourceEncodingTy, typename DestEncodingTy,
           typename ErrorHandlingTy = ErrorWillReturnNone>
-using DocumentBuilderImpl =
-    DocumentBuilder2<SourceEncodingTy, DestEncodingTy, ErrorHandlingTy>;
+using DocumentParserImpl =
+    DocumentParser2<SourceEncodingTy, DestEncodingTy, ErrorHandlingTy>;
 
 /// Core API of cjson
 ///
-/// Basically only a facade in front of the builder implementation.
+/// Basically only a facade in front of the parser implementation.
 template <typename SourceEncodingTy = Utf8, typename DestEncodingTy = Utf8,
           typename ErrorHandlingTy = ErrorWillReturnNone,
           template <typename SEncTy, typename DEncTy, typename ErrHandTy>
-          class Impl = DocumentBuilderImpl>
-struct DocumentBuilder
+          class Impl = DocumentParserImpl>
+struct DocumentParser
     : public Impl<SourceEncodingTy, DestEncodingTy, ErrorHandlingTy> {
   using BaseClass = Impl<SourceEncodingTy, DestEncodingTy, ErrorHandlingTy>;
 
@@ -35,7 +35,8 @@ struct DocumentBuilder
         DocumentInfo::compute<SourceEncodingTy, DestEncodingTy,
                               ErrorHandlingTy>(theJsonString);
     if (ErrorHandlingTy::isError(aDocInfoOrError))
-      return ErrorHandlingTy::template convertError<DocumentInfo>(aDocInfoOrError);
+      return ErrorHandlingTy::template convertError<DocumentInfo>(
+          aDocInfoOrError);
     return ErrorHandlingTy::unwrap(aDocInfoOrError).first;
   }
 
@@ -46,4 +47,4 @@ struct DocumentBuilder
   using error_handling = ErrorHandlingTy;
 };
 } // namespace cjson
-#endif // CONSTEXPR_JSON_DOCUMENT_BUILDER_H
+#endif // CONSTEXPR_JSON_DOCUMENT_PARSER_H

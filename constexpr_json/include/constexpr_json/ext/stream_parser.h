@@ -16,10 +16,10 @@ template <typename ErrorHandling =
           typename InputEncoding = cjson::Utf8,
           typename OutputEncoding = cjson::Utf8>
 struct StreamParser {
-  using BuilderTy =
-      cjson::DocumentBuilder<InputEncoding, OutputEncoding, ErrorHandling>;
-  using BuilderParseResult = cjson::DynamicDocument::ParseResult<BuilderTy>;
-  using Result = std::optional<BuilderParseResult>;
+  using ParserTy =
+      cjson::DocumentParser<InputEncoding, OutputEncoding, ErrorHandling>;
+  using ParserParseResult = cjson::DynamicDocument::ParseResult<ParserTy>;
+  using Result = std::optional<ParserParseResult>;
 
   static Result parse(std::istream &theStream,
                       std::string *theJsonOut = nullptr) {
@@ -37,8 +37,8 @@ struct StreamParser {
     std::string aJsonStr = aSS.str();
     if (theJsonOut)
       *theJsonOut = std::move(aJsonStr);
-    return cjson::DynamicDocument::parseJson<BuilderTy>(theJsonOut ? *theJsonOut
-                                                                   : aJsonStr);
+    return cjson::DynamicDocument::parseJson<ParserTy>(theJsonOut ? *theJsonOut
+                                                                  : aJsonStr);
   }
 };
 } // namespace cjson

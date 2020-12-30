@@ -1,6 +1,6 @@
-#include "constexpr_json/document_builder.h"
+#include "constexpr_json/document_parser.h"
 #include "constexpr_json/ext/error_is_detail.h"
-#include "constexpr_json/impl/document_builder1.h"
+#include "constexpr_json/impl/document_parser1.h"
 #include "constexpr_json/static_document.h"
 
 #include <cmath>
@@ -207,23 +207,23 @@ template <typename ErrorHandling> static void test_docinfo() {
 #undef CHECK_COUNTS
 }
 
-template <typename Builder = DocumentBuilder<Utf8, Utf8>>
+template <typename Parser = DocumentParser<Utf8, Utf8>>
 static void test_parsing() {
 #define CHECK_DOCPARSE(JSON)                                                   \
   do {                                                                         \
-    using ErrorHandling = typename Builder::error_handling;                    \
+    using ErrorHandling = typename Parser::error_handling;                     \
     constexpr std::string_view aJsonStr{JSON};                                 \
-    constexpr const auto aDocInfoOrError = Builder::computeDocInfo(aJsonStr);  \
+    constexpr const auto aDocInfoOrError = Parser::computeDocInfo(aJsonStr);   \
     static_assert(!ErrorHandling::isError(aDocInfoOrError));                   \
     constexpr const DocumentInfo aDocInfo =                                    \
         ErrorHandling::unwrap(aDocInfoOrError);                                \
     using DocTy = CJSON_STATIC_DOCTY(aDocInfo);                                \
     constexpr auto aDoc =                                                      \
-        Builder::template parseDocument<DocTy>(aJsonStr, aDocInfo);            \
+        Parser::template parseDocument<DocTy>(aJsonStr, aDocInfo);             \
     static_assert(!ErrorHandling::isError(aDoc));                              \
     static_assert(aDocInfo == DocumentInfo::read(aDoc->getRoot()));            \
-    /*dump(Builder::unwrap(aDoc));*/                                           \
-    /*std::cout << Builder::unwrap(aDoc) << "\n";*/                            \
+    /*dump(Parser::unwrap(aDoc));*/                                            \
+    /*std::cout << Parser::unwrap(aDoc) << "\n";*/                             \
   } while (false)
   CHECK_DOCPARSE("null");
   CHECK_DOCPARSE("true");
@@ -237,13 +237,13 @@ static void test_parsing() {
   {
     constexpr std::string_view aJsonStr{
         "[123,true,null,\"abc\",{\"def\":\"ghi\"}]"};
-    constexpr auto aDocInfoOrError = Builder::computeDocInfo(aJsonStr);
-    using ErrorHandling = typename Builder::error_handling;
+    constexpr auto aDocInfoOrError = Parser::computeDocInfo(aJsonStr);
+    using ErrorHandling = typename Parser::error_handling;
     static_assert(!ErrorHandling::isError(aDocInfoOrError));
     constexpr DocumentInfo aDocInfo{ErrorHandling::unwrap(aDocInfoOrError)};
     using DocTy = CJSON_STATIC_DOCTY(aDocInfo);
     constexpr auto aDocOrError =
-        Builder::template parseDocument<DocTy>(aJsonStr, aDocInfo);
+        Parser::template parseDocument<DocTy>(aJsonStr, aDocInfo);
     static_assert(!ErrorHandling::isError(aDocOrError));
     constexpr const DocTy aDoc = ErrorHandling::unwrap(aDocOrError);
     static_assert(aDoc.getRoot().toArray().size() == 5);
@@ -263,8 +263,8 @@ int main() {
   test_docinfo<ErrorWillReturnNone>();
   test_docinfo<ErrorWillReturnDetail<JsonErrorDetail>>();
   using ErrorHandling = ErrorWillReturnNone;
-  test_parsing<DocumentBuilder<Utf8, Utf8, ErrorHandling, DocumentBuilder1>>();
-  test_parsing<DocumentBuilder<Utf8, Utf8, ErrorHandling, DocumentBuilder2>>();
+  test_parsing<DocumentParser<Utf8, Utf8, ErrorHandling, DocumentParser1>>();
+  test_parsing<DocumentParser<Utf8, Utf8, ErrorHandling, DocumentParser2>>();
   test_parsing();
   return 0;
 }

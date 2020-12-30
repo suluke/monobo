@@ -22,23 +22,23 @@ CJSON operates in two stages to be able to achieve `constexpr` JSON parsing:
 1. SCAN: Calculate storage requirements for the parsed data structure --> [DocumentInfo](https://github.com/suluke/monobo/blob/master/constexpr_json/include/constexpr_json/document_info.h)
 2. PARSE: Populate the data structure --> [Document](https://github.com/suluke/monobo/blob/master/constexpr_json/include/constexpr_json/document.h)
 
-The central APIs to perform these two steps is provided by the [DocumentBuilder](https://github.com/suluke/monobo/blob/master/constexpr_json/include/constexpr_json/document_builder.h) class.
+The central APIs to perform these two steps is provided by the [DocumentParser](https://github.com/suluke/monobo/blob/master/constexpr_json/include/constexpr_json/document_parser.h) class.
 A full usage example would [look like this](https://github.com/suluke/monobo/blob/master/constexpr_json/test/basic.cc):
 
 ```cpp
-#include "constexpr_json/document_builder.h"
+#include "constexpr_json/document_parser.h"
 #include "constexpr_json/static_document.h"
 
 int main() {
   using namespace cjson;
   constexpr std::string_view aJsonStr{"1234"};
   // 1. SCAN-phase
-  constexpr auto aDocInfo = DocumentBuilder<>::computeDocInfo(aJsonStr);
+  constexpr auto aDocInfo = DocumentParser<>::computeDocInfo(aJsonStr);
   if (!aDocInfo)
     return 1;
   // 2. PARSE-phase
   using DocTy = CJSON_STATIC_DOCTY(*aDocInfo);
-  constexpr auto aDoc = DocumentBuilder<>::parseDocument<DocTy>(aJsonStr, *aDocInfo);
+  constexpr auto aDoc = DocumentParser<>::parseDocument<DocTy>(aJsonStr, *aDocInfo);
 
   // --- DONE! ---
   static_assert(aDoc); // Parse successful?
@@ -53,9 +53,9 @@ Only the doctype changes to `DynamicDocument`.
 ```cpp
 #include "constexpr_json/dynamic_document.h"
 // ...
-constexpr auto aDocInfo = DocumentBuilder<>::computeDocInfo(aJsonStr);
+constexpr auto aDocInfo = DocumentParser<>::computeDocInfo(aJsonStr);
 using DocTy = DynamicDocument;
-auto aDoc = DocumentBuilder<>::parseDocument<DocTy>(aJsonStr, *aDocInfo);
+auto aDoc = DocumentParser<>::parseDocument<DocTy>(aJsonStr, *aDocInfo);
 assert(aDoc);
 assert(aDoc->getRoot().toNumber() == 1234.);
 ```
@@ -73,9 +73,9 @@ This will automatically fetch the newest version of the JSONTestSuite, patch the
 ## Code Overview
 * **static_document.h**: Represents a JSON document that is known (and parsed) statically during compilation
 * **dynamic_document.h**: A JSON document that is parsed at runtime
-* **document_builder.h**: Core API aggregator of this project. Can be configured for different encodings, error handling strategies and output documents.
+* **document_parser.h**: Core API aggregator of this project. Can be configured for different encodings, error handling strategies and output documents.
 * **document_info.h**: The first pass over the JSON document determines required buffer sizes and validates the document.
-                   Can be configured for `MAX_RECURSION_DEPTH` and provides the length of the parsed JSON. This is not available in DocumentBuilder
+                   Can be configured for `MAX_RECURSION_DEPTH` and provides the length of the parsed JSON. This is not available in DocumentParser
 
 
 ## [License](https://github.com/suluke/monobo/blob/master/constexpr_json/LICENSE)
