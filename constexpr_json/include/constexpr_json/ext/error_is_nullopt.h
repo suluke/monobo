@@ -10,6 +10,7 @@ namespace cjson {
 ///
 /// Will return optional<Result> or nullopt on error
 struct ErrorWillReturnNone {
+  using ErrorDetail = bool;
   template <typename T> using ErrorOr = std::optional<T>;
 
   template <typename T>
@@ -19,6 +20,10 @@ struct ErrorWillReturnNone {
 
   template <typename T>
   static constexpr const T &unwrap(const ErrorOr<T> &theValue) noexcept {
+    return *theValue;
+  }
+  template <typename T>
+  static constexpr T &unwrap(ErrorOr<T> &theValue) noexcept {
     return *theValue;
   }
 
@@ -31,6 +36,11 @@ struct ErrorWillReturnNone {
   static constexpr ErrorOr<T> convertError(const ErrorOr<U> &theError,
                                            Args &&... theArgs) {
     return std::nullopt;
+  }
+
+  template <typename T>
+  static constexpr ErrorDetail getError(const ErrorOr<T> &theError) {
+    return theError;
   }
 };
 } // namespace cjson

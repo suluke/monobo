@@ -4,8 +4,8 @@
 #include "constexpr_json/ext/json_error_detail.h"
 
 namespace cjson {
-template<typename ErrorDetail=JsonErrorDetail>
 struct ErrorWillThrow {
+  using ErrorDetail = void;
   template <typename T> using ErrorOr = T;
 
   template <typename T>
@@ -19,14 +19,21 @@ struct ErrorWillThrow {
   }
 
   template <typename T, typename... Args>
-  [[noreturn]] static constexpr ErrorOr<T> makeError(Args &&... theArgs) {
-    ErrorDetail::raiseError(std::forward<Args>(theArgs)...)
+  [[noreturn]] static constexpr ErrorOr<T> makeError(Args &&...theArgs) {
+    throw std::logic_error(std::forward<Args>(theArgs)...);
   }
 
   template <typename T, typename U, typename... Args>
   static constexpr ErrorOr<T> convertError(const ErrorOr<U> &theError,
-                                           Args &&... theArgs) {
+                                           Args &&...theArgs) {
     throw std::logic_error("Thrown errors do not need type conversion");
+  }
+
+  template <typename T>
+  static constexpr ErrorDetail getError(const ErrorOr<T> &theError) {
+    static_assert(!std::is_same_v<ErrorOr<T>, T>,
+                  "Exception-based error handling does not permit "
+                  "return-value-based error introspection");
   }
 };
 } // namespace cjson

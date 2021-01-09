@@ -21,7 +21,9 @@ struct DocumentAllocator : private DocumentInfo {
 
   template <typename SourceEncodingTy, typename DestEncodingTy>
   constexpr typename ErrorHandlingTy::template ErrorOr<Entity>
-  allocateTranscodeString(DocTy &theDoc, const std::string_view &theString, const SourceEncodingTy &theSrcEnc, const DestEncodingTy &theDestEnc) {
+  allocateTranscodeString(DocTy &theDoc, const std::string_view &theString,
+                          const SourceEncodingTy &theSrcEnc,
+                          const DestEncodingTy &theDestEnc) {
     std::string_view aStr = theString;
     using P = parsing<SourceEncodingTy>;
     const P p{theSrcEnc};

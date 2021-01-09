@@ -6,8 +6,9 @@
 #include <variant>
 
 namespace cjson {
-template<typename ErrorDetail=JsonErrorDetail>
+template<typename _ErrorDetail=JsonErrorDetail>
 struct ErrorWillReturnDetail {
+  using ErrorDetail = _ErrorDetail;
   template <typename T> using ErrorOr = std::variant<ErrorDetail, T>;
 
   template <typename T>
