@@ -17,6 +17,10 @@ struct ErrorWillThrow {
   static constexpr T &unwrap(ErrorOr<T> &theValue) noexcept {
     return theValue;
   }
+  template <typename T>
+  static constexpr const T &unwrap(const ErrorOr<T> &theValue) noexcept {
+    return theValue;
+  }
 
   template <typename T, typename... Args>
   [[noreturn]] static constexpr ErrorOr<T> makeError(Args &&...theArgs) {

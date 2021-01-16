@@ -207,6 +207,14 @@ template <typename ErrorHandling> static void test_docinfo() {
 #undef CHECK_COUNTS
 }
 
+template<size_t SIZE, typename STR>
+constexpr std::array<char, SIZE> extractString(const STR &theStr) {
+  std::array<char, SIZE> aResult{};
+  for (size_t i = 0; i < SIZE; ++i)
+    aResult[i] = theStr[i];
+  return aResult;
+}
+
 template <typename Parser = DocumentParser<Utf8, Utf8>>
 static void test_parsing() {
 #define CHECK_DOCPARSE(JSON)                                                   \
@@ -253,6 +261,10 @@ static void test_parsing() {
     // gcc-7 does not consider optional::operator-> to be constexpr...
     static_assert((*aDoc.getRoot().toArray()[4].toObject()["def"]).toString() ==
                   "ghi");
+    constexpr size_t aDefSize = (*aDoc.getRoot().toArray()[4].toObject()["def"]).toString().size();
+    constexpr auto aDefBuf = extractString<aDefSize>((*aDoc.getRoot().toArray()[4].toObject()["def"]).toString());
+    constexpr bool aIsDef = std::string_view{aDefBuf.data(), aDefSize} == "ghi";
+    static_assert(aIsDef);
   }
 #undef CHECK_DOCPARSE
 }

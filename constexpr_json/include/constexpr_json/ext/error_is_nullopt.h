@@ -40,7 +40,7 @@ struct ErrorWillReturnNone {
 
   template <typename T>
   static constexpr ErrorDetail getError(const ErrorOr<T> &theError) {
-    return theError;
+    return static_cast<bool>(theError);
   }
 };
 } // namespace cjson

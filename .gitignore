@@ -4,4 +4,6 @@
 .settings/
 .vscode/
 build/
+build_*/
+build-*/
 cmake-build-*/
