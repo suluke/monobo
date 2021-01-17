@@ -3,6 +3,8 @@
 
 #include <iostream>
 
+#include "json_schema/model/core/core.h"
+
 namespace json_schema {
 
 struct SchemaPrinterBase {
@@ -20,7 +22,7 @@ public:
   SchemaPrinter(const Schema &theSchema, const Context &theContext)
       : itsSchema(theSchema), itsContext(theContext) {}
   void print(std::ostream &theOS) const override {
-    const auto &aCore = itsContext.getSchemaObject(itsSchema).getCore();
+    const auto &aCore = itsContext.getSchemaObject(itsSchema).template getSection<SchemaCore>();
     theOS << itsContext.getString(aCore.itsId.toString()) << "\n";
   }
 

@@ -56,6 +56,19 @@ public:
     return itsSchemaAlloc.allocateString(itsContext, theStr);
   }
 
+  template <typename T> using Buffer = typename Storage::template Buffer<T>;
+
+  template <typename T>
+  constexpr Buffer<T> allocateBuffer(const size_t theSize) {
+    return itsSchemaAlloc.allocateBuffer(itsContext, theSize, type_tag<T>{});
+  }
+
+  template <typename T>
+  constexpr void setBufferItem(Buffer<T> &theBuf, ptrdiff_t theIdx,
+                               const T &theVal) {
+    itsContext.setBufferItem(theBuf, theIdx, theVal);
+  }
+
   template <typename KeyT, typename ValT>
   using Map = typename Storage::template Map<KeyT, ValT>;
 
@@ -98,6 +111,40 @@ public:
     }
     return ErrorHandling::template makeError<SchemaRef>(
         "Schema is neither of type bool nor object");
+  }
+
+  template <typename JSON>
+  constexpr auto readSchemaBuffer(const JSON &theJson) ->
+      typename ErrorHandling::template ErrorOr<
+          typename Storage::template Buffer<SchemaRef>> {
+    auto aSchemaBuf = allocateBuffer<SchemaRef>(theJson.toArray().size());
+    using BufferTy = std::decay_t<decltype(aSchemaBuf)>;
+    ptrdiff_t aIdx{0};
+    for (const auto &aJsonItem : theJson.toArray()) {
+      const auto aSchema = readSchema(aJsonItem);
+      if (ErrorHandling::isError(aSchema))
+        return ErrorHandling::template convertError<BufferTy>(aSchema);
+      setBufferItem(aSchemaBuf, aIdx++, ErrorHandling::unwrap(aSchema));
+    }
+    return aSchemaBuf;
+  }
+
+  template <typename JSON>
+  constexpr auto readSchemaDict(const JSON &theJson) ->
+      typename ErrorHandling::template ErrorOr<
+          typename Storage::template Map<typename Storage::String, SchemaRef>> {
+    auto aSchemaDict = allocateMap<typename Storage::String, SchemaRef>(
+        theJson.toObject().size());
+    using MapTy = std::decay_t<decltype(aSchemaDict)>;
+    ptrdiff_t aIdx{0};
+    for (const auto &[aKey, aValue] : theJson.toObject()) {
+      const auto aStr = allocateString(aKey);
+      const auto aSchema = readSchema(aValue);
+      if (ErrorHandling::isError(aSchema))
+        return ErrorHandling::template convertError<MapTy>(aSchema);
+      setMapEntry(aSchemaDict, aIdx++, aStr, ErrorHandling::unwrap(aSchema));
+    }
+    return aSchemaDict;
   }
 
 private:

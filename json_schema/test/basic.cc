@@ -13,25 +13,16 @@
 using namespace json_schema;
 
 std::ostream &operator<<(std::ostream &theOS, const SchemaInfo &aSchemaInfo) {
-  return theOS
-         << "Number of Schemas:            " << aSchemaInfo.NUM_SCHEMAS << "\n"
-         << "Number of vocabulary entries: " << aSchemaInfo.NUM_VOCAB_ENTRIES
-         << "\n"
-         << "Number of defs entries:       " << aSchemaInfo.NUM_DEFS_ENTRIES
-         << "\n"
-         << "Number of examples:           " << aSchemaInfo.NUM_EXAMPLES_ENTRIES
-         << "\n"
-         << "Number of enums:              " << aSchemaInfo.NUM_ENUM_ENTRIES
-         << "\n"
-         << "Number of types:              " << aSchemaInfo.NUM_TYPE_ENTRIES
-         << "\n"
-         << "Number of required props:     " << aSchemaInfo.NUM_REQUIRED_ENTRIES
-         << "\n"
-         << "Number of depRequired lists:  "
-         << aSchemaInfo.NUM_DEP_REQUIRED_LISTS << "\n"
-         << "Number of depRequired props:  "
-         << aSchemaInfo.NUM_DEP_REQUIRED_LIST_ENTRIES << "\n"
-         << "Number of chars in strings:   " << aSchemaInfo.NUM_CHARS << "\n";
+  return theOS << "Number of Schemas:                    "
+               << aSchemaInfo.NUM_SCHEMAS << "\n"
+               << "Number of chars in strings:           "
+               << aSchemaInfo.NUM_CHARS << "\n"
+               << "Number of vocabulary entries:         "
+               << aSchemaInfo.NUM_VOCAB_ENTRIES << "\n"
+               << "Number of string->schema map entries: "
+               << aSchemaInfo.NUM_SCHEMA_DICT_ENTRIES << "\n"
+               << "Number of schema buffer items:        "
+               << aSchemaInfo.NUM_SCHEMA_BUFFER_ITEMS << "\n";
 }
 
 int main() {

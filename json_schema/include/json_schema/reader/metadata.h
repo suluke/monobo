@@ -17,7 +17,7 @@ public:
       using JSON = typename Reader::JSON;
       using ErrorHandling = typename Reader::ErrorHandling;
       const auto makeError = [](const char *theMsg) {
-        return ErrorHandling::template makeError<InfoMaybe>();
+        return ErrorHandling::template makeError<InfoMaybe>(theMsg);
       };
       SchemaInfo aResult;
       using TypeEnum = decltype(std::declval<JSON>().getType());
@@ -51,7 +51,7 @@ public:
         if (aType != TypeEnum::ARRAY)
           return makeError(
               "examples must be of type array (2019-09/Validation:9.5.)");
-        aResult.NUM_EXAMPLES_ENTRIES += theValue.toArray().size();
+        // aResult.NUM_EXAMPLES_ENTRIES += theValue.toArray().size();
         for (const auto &aExample : theValue.toArray())
           aResult.JSON_INFO += cjson::DocumentInfo::read(aExample);
       } else {

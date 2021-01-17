@@ -17,7 +17,7 @@ public:
       using JSON = typename Reader::JSON;
       using ErrorHandling = typename Reader::ErrorHandling;
       const auto makeError = [](const char *theMsg) {
-        return ErrorHandling::template makeError<InfoMaybe>();
+        return ErrorHandling::template makeError<InfoMaybe>(theMsg);
       };
       SchemaInfo aResult;
       using TypeEnum = decltype(std::declval<JSON>().getType());

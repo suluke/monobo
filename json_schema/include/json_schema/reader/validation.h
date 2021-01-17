@@ -17,7 +17,7 @@ public:
       using JSON = typename Reader::JSON;
       using ErrorHandling = typename Reader::ErrorHandling;
       const auto makeError = [](const char *theMsg) {
-        return ErrorHandling::template makeError<InfoMaybe>();
+        return ErrorHandling::template makeError<InfoMaybe>(theMsg);
       };
       SchemaInfo aResult;
       using TypeEnum = decltype(std::declval<JSON>().getType());
@@ -92,14 +92,14 @@ public:
           if (aElm.getType() != TypeEnum::STRING)
             return makeError("required entries MUST be of type string "
                              "(2019-09/Validation:6.5.3.");
-          aResult.NUM_REQUIRED_ENTRIES += 1;
+          // aResult.NUM_REQUIRED_ENTRIES += 1;
           aResult.NUM_CHARS += aElm.toString().size();
         }
       } else if (theKey == "dependentRequired") {
         if (aType != TypeEnum::OBJECT)
           return makeError("dependentRequired MUST be of type object "
                            "(2019-09/Validation:6.5.4.)");
-        aResult.NUM_DEP_REQUIRED_LISTS += theValue.toObject().size();
+        // aResult.NUM_DEP_REQUIRED_LISTS += theValue.toObject().size();
         for (const auto &aKVPair : theValue.toObject()) {
           aResult.NUM_CHARS += aKVPair.first.size();
           const auto &aDeps = aKVPair.second;
@@ -107,7 +107,7 @@ public:
             return makeError(
                 "dependentRequired properties MUST be of type array "
                 "(2019-09/Validation:6.5.4.)");
-          aResult.NUM_DEP_REQUIRED_LIST_ENTRIES += aDeps.toArray().size();
+          // aResult.NUM_DEP_REQUIRED_LIST_ENTRIES += aDeps.toArray().size();
           for (const auto &aDepProp : aDeps.toArray()) {
             if (aDepProp.getType() != TypeEnum::STRING)
               return makeError(
@@ -125,17 +125,17 @@ public:
               "enum MUST be of type array (2019-09/Validation:6.1.3.");
         for (const auto &aElm : theValue.toArray()) {
           aResult.JSON_INFO += cjson::DocumentInfo::read(aElm);
-          aResult.NUM_ENUM_ENTRIES += 1;
+          // aResult.NUM_ENUM_ENTRIES += 1;
         }
       } else if (theKey == "type") {
         if (aType == TypeEnum::STRING) {
-          aResult.NUM_TYPE_ENTRIES += 1;
+          // aResult.NUM_TYPE_ENTRIES += 1;
         } else if (aType == TypeEnum::ARRAY) {
           for (const auto &aElm : theValue.toArray()) {
             if (aElm.getType() != TypeEnum::STRING)
               return makeError("type array entry MUST be of type string "
                                "(2019-09/Validation:6.1.1.");
-            aResult.NUM_TYPE_ENTRIES += 1;
+            // aResult.NUM_TYPE_ENTRIES += 1;
           }
         } else {
           return makeError("type MUST be of type array or string "

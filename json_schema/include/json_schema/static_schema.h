@@ -7,15 +7,15 @@
 #include "json_schema/util.h"
 
 namespace json_schema {
-template <size_t MAX_SCHEMAS, size_t MAX_VOCAB_ENTRIES, size_t MAX_DEFS_ENTRIES,
+template <size_t MAX_SCHEMAS, size_t MAX_VOCAB_ENTRIES,
+          size_t MAX_SCHEMA_DICT_ENTRIES, size_t MAX_SCHEMA_BUFFER_ITEMS,
           size_t MAX_CHARS, size_t MAX_JSON_NUMEBRS, size_t MAX_JSON_CHARS,
           size_t MAX_JSON_STRINGS, size_t MAX_JSON_ARRAYS,
           size_t MAX_JSON_ARRAY_ENTRIES, size_t MAX_JSON_OBJECTS,
           size_t MAX_JSON_OBJECT_PROPS>
 class StaticSchemaContext {
 public:
-  constexpr StaticSchemaContext()
-      : itsSchemaObjects{}, itsVocabEntries{}, itsChars{} {};
+  constexpr StaticSchemaContext() = default;
   constexpr StaticSchemaContext(const StaticSchemaContext &) = default;
   constexpr StaticSchemaContext(StaticSchemaContext &&) = default;
   StaticSchemaContext &operator=(const StaticSchemaContext &) = default;
@@ -31,8 +31,8 @@ public:
 
   struct Storage {
     template <typename T> struct Buffer {
-      size_t itsPos;
-      size_t itsSize;
+      size_t itsPos{0};
+      size_t itsSize{0};
     };
 
     template <typename Key, typename Value>
@@ -42,11 +42,11 @@ public:
     using Map = Buffer<MapEntry<Key, Value>>;
 
     struct String {
-      size_t itsPos;
-      size_t itsSize;
+      size_t itsPos{0};
+      size_t itsSize{0};
     };
     struct Schema {
-      ptrdiff_t itsPos;
+      ptrdiff_t itsPos{0};
     };
 
     using Json = typename JsonStorage::EntityRef;
@@ -57,6 +57,7 @@ public:
 
   struct Allocator : SchemaInfo {
     using String = typename Storage::String;
+    template <typename T> using Buffer = typename Storage::template Buffer<T>;
     template <typename KeyT, typename ValT>
     using Map = typename Storage::template Map<KeyT, ValT>;
 
@@ -76,6 +77,15 @@ public:
       return aStr;
     }
 
+    constexpr Buffer<SchemaRef> allocateBuffer(StaticSchemaContext &theContext,
+                                               const size_t theSize,
+                                               const type_tag<SchemaRef>) {
+      Buffer<SchemaRef> aResult{NUM_SCHEMA_BUFFER_ITEMS, theSize};
+      NUM_SCHEMA_BUFFER_ITEMS += theSize;
+      if (NUM_SCHEMA_BUFFER_ITEMS > MAX_SCHEMA_BUFFER_ITEMS)
+        throw "Over-allocating schema buffers";
+      return aResult;
+    }
     constexpr Map<String, bool> allocateMap(StaticSchemaContext &theContext,
                                             const size_t theSize,
                                             const type_tag<String, bool>) {
@@ -86,8 +96,8 @@ public:
     constexpr Map<String, SchemaRef>
     allocateMap(StaticSchemaContext &theContext, const size_t theSize,
                 const type_tag<String, SchemaRef>) {
-      Map<String, SchemaRef> aMap{NUM_SCHEMAS, theSize};
-      NUM_SCHEMAS += theSize;
+      Map<String, SchemaRef> aMap{NUM_SCHEMA_DICT_ENTRIES, theSize};
+      NUM_SCHEMA_DICT_ENTRIES += theSize;
       return aMap;
     }
   };
@@ -98,20 +108,26 @@ public:
   }
 
   using StringRef = typename Storage::String;
+  template <typename T> using BufferRef = typename Storage::template Buffer<T>;
   template <typename KeyT, typename ValT>
   using MapRef = typename Storage::template Map<KeyT, ValT>;
 
+  constexpr void setBufferItem(BufferRef<SchemaRef> &theBuffer,
+                               const ptrdiff_t theIdx,
+                               const SchemaRef &theValue) {
+    itsSchemaBuffers[theBuffer.itsPos + theIdx] = theValue;
+  }
   constexpr void setMapEntry(MapRef<StringRef, bool> &theMap,
                              const ptrdiff_t theIdx, const StringRef &theKey,
                              const bool &theVal) {
-    itsVocabEntries[theIdx].first = theKey;
-    itsVocabEntries[theIdx].second = theVal;
+    itsVocabEntries[theMap.itsPos + theIdx].first = theKey;
+    itsVocabEntries[theMap.itsPos + theIdx].second = theVal;
   }
   constexpr void setMapEntry(MapRef<StringRef, SchemaRef> &theMap,
                              const ptrdiff_t theIdx, const StringRef &theKey,
                              const SchemaRef &theVal) {
-    itsDefsEntries[theIdx].first = theKey;
-    itsDefsEntries[theIdx].second = theVal;
+    itsStringSchemaMaps[theMap.itsPos + theIdx].first = theKey;
+    itsStringSchemaMaps[theMap.itsPos + theIdx].second = theVal;
   }
 
   constexpr std::string_view getString(const StringRef &theStr) const {
@@ -122,11 +138,13 @@ private:
   friend struct Allocator;
   friend SchemaRef;
 
-  Buffer<SchemaObject, MAX_SCHEMAS> itsSchemaObjects;
+  Buffer<SchemaObject, MAX_SCHEMAS> itsSchemaObjects{};
   Buffer<typename Vocabulary<Storage>::Entry, MAX_VOCAB_ENTRIES>
-      itsVocabEntries;
-  Buffer<typename Defs<Storage>::Entry, MAX_DEFS_ENTRIES> itsDefsEntries;
-  Buffer<char, MAX_CHARS> itsChars;
+      itsVocabEntries{};
+  Buffer<typename Defs<Storage>::Entry, MAX_SCHEMA_DICT_ENTRIES>
+      itsStringSchemaMaps{};
+  Buffer<SchemaRef, MAX_SCHEMA_BUFFER_ITEMS> itsSchemaBuffers{};
+  Buffer<char, MAX_CHARS> itsChars{};
   JsonStorage itsJSONs{cjson::DocumentInfo{
       0, 0, MAX_JSON_NUMEBRS, MAX_JSON_CHARS, MAX_JSON_STRINGS, MAX_JSON_ARRAYS,
       MAX_JSON_ARRAY_ENTRIES, MAX_JSON_OBJECTS, MAX_JSON_OBJECT_PROPS}};
@@ -135,9 +153,10 @@ private:
 #define JSON_SCHEMA_STATIC_CONTEXT_TYPE(theInfo)                               \
   json_schema::StaticSchemaContext<                                            \
       (theInfo).NUM_SCHEMAS, (theInfo).NUM_VOCAB_ENTRIES,                      \
-      (theInfo).NUM_DEFS_ENTRIES, (theInfo).NUM_CHARS,                         \
-      (theInfo).JSON_INFO.itsNumNumbers, (theInfo).JSON_INFO.itsNumChars,      \
-      (theInfo).JSON_INFO.itsNumStrings, (theInfo).JSON_INFO.itsNumArrays,     \
+      (theInfo).NUM_SCHEMA_DICT_ENTRIES, (theInfo).NUM_SCHEMA_BUFFER_ITEMS,    \
+      (theInfo).NUM_CHARS, (theInfo).JSON_INFO.itsNumNumbers,                  \
+      (theInfo).JSON_INFO.itsNumChars, (theInfo).JSON_INFO.itsNumStrings,      \
+      (theInfo).JSON_INFO.itsNumArrays,                                        \
       (theInfo).JSON_INFO.itsNumArrayEntries,                                  \
       (theInfo).JSON_INFO.itsNumObjects,                                       \
       (theInfo).JSON_INFO.itsNumObjectProperties>

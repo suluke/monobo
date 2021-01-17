@@ -28,6 +28,7 @@ public:
     switch (theJson.getType()) {
     case TypeEnum::BOOL:
       // Nothing to do at all
+      // TODO or do we event want NUM_SCHEMAS=1 in this case?
       break;
     case TypeEnum::OBJECT: {
       const auto aObj = theJson.toObject();

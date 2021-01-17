@@ -26,11 +26,13 @@ public:
   constexpr SchemaObject &operator=(const SchemaObject &) = default;
   constexpr SchemaObject &operator=(SchemaObject &&) = default;
 
-  constexpr SchemaCore &getCore() noexcept {
-    return static_cast<SchemaCore &>(*this);
+  template<template<typename> typename Section>
+  constexpr Section<Storage> &getSection() noexcept {
+    return static_cast<Section<Storage> &>(*this);
   }
-  constexpr const SchemaCore &getCore() const noexcept {
-    return static_cast<const SchemaCore &>(*this);
+  template<template<typename> typename Section>
+  constexpr const Section<Storage> &getSection() const noexcept {
+    return static_cast<const Section<Storage> &>(*this);
   }
 };
 } // namespace json_schema

@@ -1,6 +1,7 @@
 #ifndef JSON_SCHEMA_READER_CORE_H
 #define JSON_SCHEMA_READER_CORE_H
 
+#include "json_schema/model/core/core.h"
 #include "json_schema/model/format/uri_reference.h"
 #include "json_schema/schema_info.h"
 #include <string_view>
@@ -18,7 +19,7 @@ public:
       using JSON = typename Reader::JSON;
       using ErrorHandling = typename Reader::ErrorHandling;
       const auto makeError = [](const char *theMsg) {
-        return ErrorHandling::template makeError<InfoMaybe>();
+        return ErrorHandling::template makeError<InfoMaybe>(theMsg);
       };
       SchemaInfo aResult;
       using TypeEnum = decltype(std::declval<JSON>().getType());
@@ -76,7 +77,7 @@ public:
         typename Reader::ErrorHandling::template ErrorOr<SchemaInfo>
         computeVocabulary(const typename Reader::JSON &theJson) {
       const auto makeError = [](const char *theMsg) {
-        return Reader::ErrorHandling::template makeError<SchemaInfo>();
+        return Reader::ErrorHandling::template makeError<SchemaInfo>(theMsg);
       };
       SchemaInfo aResult;
       using TypeEnum = decltype(theJson.getType());
@@ -97,7 +98,7 @@ public:
         typename Reader::ErrorHandling::template ErrorOr<SchemaInfo>
         computeDefs(const typename Reader::JSON &theJson) {
       const auto makeError = [](const char *theMsg) {
-        return Reader::ErrorHandling::template makeError<SchemaInfo>();
+        return Reader::ErrorHandling::template makeError<SchemaInfo>(theMsg);
       };
       SchemaInfo aResult;
       using TypeEnum = decltype(theJson.getType());
@@ -109,7 +110,7 @@ public:
         if (Reader::ErrorHandling::isError(aSubInfo))
           return aSubInfo;
         aResult.NUM_CHARS += aDefKVPair.first.size();
-        aResult.NUM_DEFS_ENTRIES += 1;
+        aResult.NUM_SCHEMA_DICT_ENTRIES += 1;
         aResult += Reader::ErrorHandling::unwrap(aSubInfo);
       }
       return aResult;
@@ -120,7 +121,7 @@ public:
     static constexpr typename Reader::ErrorOrConsumed
     readSchema(Reader &theReader, typename Reader::SchemaObject &theSchema,
                const std::string_view &theKey, const JSON &theValue) {
-      auto &aCore = theSchema.getCore();
+      auto &aCore = theSchema.template getSection<SchemaCore>();
       if (theKey == "$id") {
         aCore.itsId = theReader.allocateString(theValue.toString());
       } else if (theKey == "$schema") {
@@ -149,21 +150,10 @@ public:
       } else if (theKey == "$comment") {
         aCore.itsComment = theReader.allocateString(theValue.toString());
       } else if (theKey == "$defs") {
-        const size_t aDefsSize = theValue.toObject().size();
-        auto aDefsObj =
-            theReader.template allocateMap<typename Reader::Storage::String,
-                                           typename Reader::Storage::Schema>(
-                aDefsSize);
-        ptrdiff_t aIdx{0};
-        for (const auto &aKVPair : theValue.toObject()) {
-          const auto aStr = theReader.allocateString(aKVPair.first);
-          const auto aSchema = theReader.readSchema(theValue);
-          if (Reader::ErrorHandling::isError(aSchema))
-            return Reader::ErrorHandling::template convertError<bool>(aSchema);
-          theReader.setMapEntry(aDefsObj, aIdx++, aStr,
-                                Reader::ErrorHandling::unwrap(aSchema));
-        }
-        aCore.itsDefs = std::move(aDefsObj);
+        auto aDefsObj = theReader.readSchemaDict(theValue);
+        if (Reader::ErrorHandling::isError(aDefsObj))
+          return Reader::ErrorHandling::template convertError<bool>(aDefsObj);
+        aCore.itsDefs = std::move(Reader::ErrorHandling::unwrap(aDefsObj));
       } else {
         return false;
       }

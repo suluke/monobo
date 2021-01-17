@@ -15,7 +15,7 @@ public:
   constexpr SchemaApplicator& operator=(const SchemaApplicator &) = default;
   constexpr SchemaApplicator& operator=(SchemaApplicator &&) = default;
 
-private:
+// private:
   SchemaRef itsAdditionalItems{};
   SchemaRef itsUnevaluatedItems{};
   SchemaBuffer itsItems{};
