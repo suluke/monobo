@@ -35,7 +35,7 @@ public:
       };
       const auto aSumSchemaArray = [](const JSON &theJson) -> ResultTy {
         SchemaInfo aSubSchemaInfos{};
-        aSubSchemaInfos.NUM_SCHEMA_BUFFER_ITEMS = theJson.toArray().size();
+        aSubSchemaInfos.NUM_SCHEMA_LIST_ITEMS = theJson.toArray().size();
         for (const auto &aSubJson : theJson.toArray()) {
           const auto aInfoOrError = Reader::read(aSubJson);
           if (ErrorHandling::isError(aInfoOrError))
@@ -63,7 +63,7 @@ public:
             return ErrorHandling::template convertError<InfoMaybe>(
                 aInfoOrError);
           SchemaInfo aResult = ErrorHandling::unwrap(aInfoOrError);
-          aResult.NUM_SCHEMA_BUFFER_ITEMS += 1;
+          aResult.NUM_SCHEMA_LIST_ITEMS += 1;
           return aResult;
         }
       } else if (theKey == "properties" || theKey == "patternProperties" ||
@@ -176,32 +176,32 @@ public:
         using TypeEnum = decltype(std::declval<JSON>().getType());
         if (theValue.getType() != TypeEnum::ARRAY) {
           auto aSchemaBuf =
-              theReader.template allocateBuffer<typename Reader::SchemaRef>(1);
+              theReader.template allocateList<typename Reader::SchemaRef>(1);
           const auto aSchema = theReader.readSchema(theValue);
           if (Reader::ErrorHandling::isError(aSchema))
             return Reader::ErrorHandling::template convertError<bool>(aSchema);
-          theReader.setBufferItem(aSchemaBuf, 0,
+          theReader.setListItem(aSchemaBuf, 0,
                                   Reader::ErrorHandling::unwrap(aSchema));
           aApplicator.itsItems = aSchemaBuf;
         } else {
-          auto aSchemaBuf = theReader.readSchemaBuffer(theValue);
+          auto aSchemaBuf = theReader.readSchemaList(theValue);
           if (Reader::ErrorHandling::isError(aSchemaBuf))
             return Reader::ErrorHandling::template convertError<bool>(
                 aSchemaBuf);
           aApplicator.itsItems = Reader::ErrorHandling::unwrap(aSchemaBuf);
         }
       } else if (theKey == "allOf") {
-        auto aSchemaBuf = theReader.readSchemaBuffer(theValue);
+        auto aSchemaBuf = theReader.readSchemaList(theValue);
         if (Reader::ErrorHandling::isError(aSchemaBuf))
           return Reader::ErrorHandling::template convertError<bool>(aSchemaBuf);
         aApplicator.itsAllOf = Reader::ErrorHandling::unwrap(aSchemaBuf);
       } else if (theKey == "anyOf") {
-        auto aSchemaBuf = theReader.readSchemaBuffer(theValue);
+        auto aSchemaBuf = theReader.readSchemaList(theValue);
         if (Reader::ErrorHandling::isError(aSchemaBuf))
           return Reader::ErrorHandling::template convertError<bool>(aSchemaBuf);
         aApplicator.itsAnyOf = Reader::ErrorHandling::unwrap(aSchemaBuf);
       } else if (theKey == "oneOf") {
-        auto aSchemaBuf = theReader.readSchemaBuffer(theValue);
+        auto aSchemaBuf = theReader.readSchemaList(theValue);
         if (Reader::ErrorHandling::isError(aSchemaBuf))
           return Reader::ErrorHandling::template convertError<bool>(aSchemaBuf);
         aApplicator.itsOneOf = Reader::ErrorHandling::unwrap(aSchemaBuf);

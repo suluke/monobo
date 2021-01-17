@@ -5,33 +5,33 @@ namespace json_schema {
 template <typename Storage> class SchemaApplicator {
 public:
   using SchemaRef = typename Storage::Schema;
-  using SchemaBuffer = typename Storage::template Buffer<SchemaRef>;
-  using SchemaMap =
+  using SchemaList = typename Storage::template Buffer<SchemaRef>;
+  using SchemaDict =
       typename Storage::template Map<typename Storage::String, SchemaRef>;
 
   constexpr SchemaApplicator() = default;
   constexpr SchemaApplicator(const SchemaApplicator &) = default;
   constexpr SchemaApplicator(SchemaApplicator &&) = default;
-  constexpr SchemaApplicator& operator=(const SchemaApplicator &) = default;
-  constexpr SchemaApplicator& operator=(SchemaApplicator &&) = default;
+  constexpr SchemaApplicator &operator=(const SchemaApplicator &) = default;
+  constexpr SchemaApplicator &operator=(SchemaApplicator &&) = default;
 
-// private:
+  // private:
   SchemaRef itsAdditionalItems{};
   SchemaRef itsUnevaluatedItems{};
-  SchemaBuffer itsItems{};
+  SchemaList itsItems{};
   SchemaRef itsContains{};
   SchemaRef itsAdditionalProperties{};
   SchemaRef itsUnevaluatedProperties{};
-  SchemaMap itsProperties{};
-  SchemaMap itsPatternProperties{};
-  SchemaMap itsDependentSchemas{};
+  SchemaDict itsProperties{};
+  SchemaDict itsPatternProperties{};
+  SchemaDict itsDependentSchemas{};
   SchemaRef itsPropertyNames{};
   SchemaRef itsIf{};
   SchemaRef itsThen{};
   SchemaRef itsElse{};
-  SchemaBuffer itsAllOf{};
-  SchemaBuffer itsAnyOf{};
-  SchemaBuffer itsOneOf{};
+  SchemaList itsAllOf{};
+  SchemaList itsAnyOf{};
+  SchemaList itsOneOf{};
   SchemaRef itsNot{};
 };
 } // namespace json_schema

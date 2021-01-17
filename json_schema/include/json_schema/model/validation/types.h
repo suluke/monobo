@@ -6,7 +6,7 @@ enum class Types {
   ARRAY,
   BOOLEAN,
   INTEGER,
-  NULL,
+  NUL,
   NUMBER,
   OBJECT,
   STRING,

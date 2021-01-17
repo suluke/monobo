@@ -21,8 +21,8 @@ std::ostream &operator<<(std::ostream &theOS, const SchemaInfo &aSchemaInfo) {
                << aSchemaInfo.NUM_VOCAB_ENTRIES << "\n"
                << "Number of string->schema map entries: "
                << aSchemaInfo.NUM_SCHEMA_DICT_ENTRIES << "\n"
-               << "Number of schema buffer items:        "
-               << aSchemaInfo.NUM_SCHEMA_BUFFER_ITEMS << "\n";
+               << "Number of schema list items:        "
+               << aSchemaInfo.NUM_SCHEMA_LIST_ITEMS << "\n";
 }
 
 int main() {

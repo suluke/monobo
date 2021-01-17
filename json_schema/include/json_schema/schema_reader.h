@@ -24,6 +24,12 @@ public:
   using SchemaRef = typename Storage::Schema;
   using SchemaObject = typename SchemaContext::SchemaObject;
   using ErrorOrConsumed = typename ErrorHandling::template ErrorOr<bool>;
+  using SchemaAllocator =
+      typename SchemaContext::template Allocator<ErrorHandling>;
+
+  template <typename T> using List = typename Storage::template Buffer<T>;
+  template <typename KeyT, typename ValT>
+  using Map = typename Storage::template Map<KeyT, ValT>;
 
   template <typename... JSONs> struct ReadResult {
     SchemaContext itsContext;
@@ -46,31 +52,25 @@ public:
                                           ErrorHandling::unwrap(aErrorMaybe)};
   }
 
-  using SchemaAllocator = typename SchemaContext::Allocator;
-  using JsonAllocator =
-      cjson::DocumentAllocator<typename SchemaContext::JsonStorage,
-                               ErrorHandling>;
-
   constexpr typename Storage::String
   allocateString(const std::string_view &theStr) {
     return itsSchemaAlloc.allocateString(itsContext, theStr);
   }
 
-  template <typename T> using Buffer = typename Storage::template Buffer<T>;
+  template <typename JSON>
+  constexpr typename Storage::Json allocateJson(const JSON &theJson) {
+    return itsSchemaAlloc.allocateJson(itsContext, theJson);
+  }
 
-  template <typename T>
-  constexpr Buffer<T> allocateBuffer(const size_t theSize) {
+  template <typename T> constexpr List<T> allocateList(const size_t theSize) {
     return itsSchemaAlloc.allocateBuffer(itsContext, theSize, type_tag<T>{});
   }
 
   template <typename T>
-  constexpr void setBufferItem(Buffer<T> &theBuf, ptrdiff_t theIdx,
-                               const T &theVal) {
+  constexpr void setListItem(List<T> &theBuf, ptrdiff_t theIdx,
+                             const T &theVal) {
     itsContext.setBufferItem(theBuf, theIdx, theVal);
   }
-
-  template <typename KeyT, typename ValT>
-  using Map = typename Storage::template Map<KeyT, ValT>;
 
   template <typename KeyT, typename ValT>
   constexpr Map<KeyT, ValT> allocateMap(const size_t theSize) {
@@ -103,9 +103,9 @@ public:
         if (ErrorHandling::isError(aErrorOrConsumed))
           return ErrorHandling::template convertError<SchemaRef>(
               aErrorOrConsumed);
-        // if (!ErrorHandling::unwrap(aErrorOrConsumed))
-        //   return ErrorHandling::template makeError<SchemaRef>(
-        //       "Encountered unknown entity in schema");
+        if (!ErrorHandling::unwrap(aErrorOrConsumed))
+          return ErrorHandling::template makeError<SchemaRef>(
+              "Encountered unknown entity in schema");
       }
       return itsSchemaAlloc.allocateSchema(aSchema, itsContext);
     }
@@ -114,17 +114,16 @@ public:
   }
 
   template <typename JSON>
-  constexpr auto readSchemaBuffer(const JSON &theJson) ->
-      typename ErrorHandling::template ErrorOr<
-          typename Storage::template Buffer<SchemaRef>> {
-    auto aSchemaBuf = allocateBuffer<SchemaRef>(theJson.toArray().size());
-    using BufferTy = std::decay_t<decltype(aSchemaBuf)>;
+  constexpr auto readSchemaList(const JSON &theJson) ->
+      typename ErrorHandling::template ErrorOr<List<SchemaRef>> {
+    auto aSchemaBuf = allocateList<SchemaRef>(theJson.toArray().size());
+    using ListTy = std::decay_t<decltype(aSchemaBuf)>;
     ptrdiff_t aIdx{0};
     for (const auto &aJsonItem : theJson.toArray()) {
       const auto aSchema = readSchema(aJsonItem);
       if (ErrorHandling::isError(aSchema))
-        return ErrorHandling::template convertError<BufferTy>(aSchema);
-      setBufferItem(aSchemaBuf, aIdx++, ErrorHandling::unwrap(aSchema));
+        return ErrorHandling::template convertError<ListTy>(aSchema);
+      setListItem(aSchemaBuf, aIdx++, ErrorHandling::unwrap(aSchema));
     }
     return aSchemaBuf;
   }
@@ -145,6 +144,17 @@ public:
       setMapEntry(aSchemaDict, aIdx++, aStr, ErrorHandling::unwrap(aSchema));
     }
     return aSchemaDict;
+  }
+
+  template <typename JSON>
+  constexpr auto readStringList(const JSON &theJson) ->
+      typename ErrorHandling::template ErrorOr<List<typename Storage::String>> {
+    auto aStringBuf =
+        allocateList<typename Storage::String>(theJson.toArray().size());
+    ptrdiff_t aIdx{0};
+    for (const auto &aJsonItem : theJson.toArray())
+      setListItem(aStringBuf, aIdx++, allocateString(aJsonItem.toString()));
+    return aStringBuf;
   }
 
 private:
@@ -196,7 +206,6 @@ private:
 
   SchemaContext itsContext;
   SchemaAllocator itsSchemaAlloc;
-  JsonAllocator itsJsonAlloc;
 };
 
 template <typename SchemaContext, typename ErrorHandling>

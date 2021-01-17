@@ -12,8 +12,6 @@ struct DocumentAllocator : private DocumentInfo {
   using ObjectRef = typename EntityRef::ObjectRef;
   using ArrayRef = typename EntityRef::ArrayRef;
 
-  using DocumentInfo::itsNumObjectProperties;
-
   constexpr Entity allocateNumber(DocTy &theDoc, const double theNumber) {
     theDoc.itsNumbers[itsNumNumbers] = theNumber;
     return {Entity::NUMBER, itsNumNumbers++};
@@ -53,6 +51,16 @@ struct DocumentAllocator : private DocumentInfo {
     return Entity{Entity::STRING, itsNumStrings++};
   }
 
+  constexpr Entity allocateRawString(DocTy &theDoc,
+                                     const std::string_view theString) {
+    for (size_t aCharIdx = 0; aCharIdx < theString.size(); ++aCharIdx)
+      theDoc.itsChars[itsNumChars + aCharIdx] = theString[aCharIdx];
+    theDoc.itsStrings[itsNumStrings].itsPosition = itsNumChars;
+    itsNumChars += theString.size();
+    theDoc.itsStrings[itsNumStrings].itsSize = theString.size();
+    return Entity{Entity::STRING, itsNumStrings++};
+  }
+
   constexpr Entity allocateArray(DocTy &theDoc, size_t theSize) {
     auto &aArr = theDoc.itsArrays[itsNumArrays];
     aArr.itsPosition = 1 + itsNumArrayEntries + itsNumObjectProperties;
@@ -68,7 +76,41 @@ struct DocumentAllocator : private DocumentInfo {
     itsNumObjectProperties += theSize;
     return Entity{Entity::OBJECT, itsNumObjects++};
   }
-  // constexpr Object allocateObject(DocTy &theDoc, size_t theSize) {}
+  template<typename JSON>
+  constexpr Entity allocateJson(DocTy &theDoc, const JSON &theJson) {
+    switch (theJson.getType()) {
+    case Entity::ARRAY: {
+      ptrdiff_t aIdx{0};
+      const Entity aEntity = allocateArray(theDoc, theJson.toArray().size());
+      const Array &aArray = theDoc.itsArrays[aEntity.itsPayload];
+      for (const auto &aElement : theJson.toArray()) {
+        theDoc.itsEntities[aArray.itsPosition + aIdx] = allocateJson(theDoc, aElement);
+      }
+      return aEntity;
+    }
+    case Entity::OBJECT: {
+      ptrdiff_t aIdx{0};
+      const Entity aEntity = allocateObject(theDoc, theJson.toObject().size());
+      const Object &aObj = theDoc.itsObjects[aEntity.itsPayload];
+      for (const auto &aKVPair : theJson.toObject()) {
+        Property &aProp = theDoc.itsObjectProps[aObj.itsKeysPos + aIdx];
+        aProp.itsKeyPos = allocateRawString(theDoc, aKVPair.first).itsPayload;
+        theDoc.itsEntities[aObj.itsValuesPos + aIdx] =
+            allocateJson(theDoc, aKVPair.second);
+        ++aIdx;
+      }
+      return aEntity;
+    }
+    case Entity::NUL:
+      return Entity{Entity::NUL, 0};
+    case Entity::BOOL:
+      return Entity{Entity::NUL, theJson.toBool()};
+    case Entity::NUMBER:
+      return allocateNumber(theDoc, theJson.toNumber());
+    case Entity::STRING:
+      return allocateRawString(theDoc, theJson.toString());
+    }
+  }
 
   static constexpr auto makeError(const char *const theMsg,
                                   const ErrorCode theCode = ErrorCode::UNKNOWN)

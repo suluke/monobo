@@ -1,6 +1,7 @@
 #ifndef JSON_SCHEMA_READER_VALIDATION_H
 #define JSON_SCHEMA_READER_VALIDATION_H
 
+#include "json_schema/model/validation/validation.h"
 #include "json_schema/schema_info.h"
 #include <string_view>
 
@@ -92,14 +93,13 @@ public:
           if (aElm.getType() != TypeEnum::STRING)
             return makeError("required entries MUST be of type string "
                              "(2019-09/Validation:6.5.3.");
-          // aResult.NUM_REQUIRED_ENTRIES += 1;
           aResult.NUM_CHARS += aElm.toString().size();
+          aResult.NUM_STRING_LIST_ITEMS += 1;
         }
       } else if (theKey == "dependentRequired") {
         if (aType != TypeEnum::OBJECT)
           return makeError("dependentRequired MUST be of type object "
                            "(2019-09/Validation:6.5.4.)");
-        // aResult.NUM_DEP_REQUIRED_LISTS += theValue.toObject().size();
         for (const auto &aKVPair : theValue.toObject()) {
           aResult.NUM_CHARS += aKVPair.first.size();
           const auto &aDeps = aKVPair.second;
@@ -107,7 +107,7 @@ public:
             return makeError(
                 "dependentRequired properties MUST be of type array "
                 "(2019-09/Validation:6.5.4.)");
-          // aResult.NUM_DEP_REQUIRED_LIST_ENTRIES += aDeps.toArray().size();
+          aResult.NUM_STRINGLIST_DICT_ENTRIES += 1;
           for (const auto &aDepProp : aDeps.toArray()) {
             if (aDepProp.getType() != TypeEnum::STRING)
               return makeError(
@@ -115,27 +115,30 @@ public:
                   "be of type string "
                   "(2019-09/Validation:6.5.4.)");
             aResult.NUM_CHARS += aDepProp.toString().size();
+            aResult.NUM_STRING_LIST_ITEMS += 1;
           }
         }
       } else if (theKey == "const") {
         aResult.JSON_INFO += cjson::DocumentInfo::read(theValue);
+        aResult.NUM_JSON_REFS += 1;
       } else if (theKey == "enum") {
         if (aType != TypeEnum::ARRAY)
           return makeError(
               "enum MUST be of type array (2019-09/Validation:6.1.3.");
         for (const auto &aElm : theValue.toArray()) {
           aResult.JSON_INFO += cjson::DocumentInfo::read(aElm);
-          // aResult.NUM_ENUM_ENTRIES += 1;
+          aResult.NUM_JSON_LIST_ITEMS += 1;
+          aResult.NUM_JSON_REFS += 1;
         }
       } else if (theKey == "type") {
         if (aType == TypeEnum::STRING) {
-          // aResult.NUM_TYPE_ENTRIES += 1;
+          aResult.NUM_TYPES_LIST_ITEMS += 1;
         } else if (aType == TypeEnum::ARRAY) {
           for (const auto &aElm : theValue.toArray()) {
             if (aElm.getType() != TypeEnum::STRING)
               return makeError("type array entry MUST be of type string "
                                "(2019-09/Validation:6.1.1.");
-            // aResult.NUM_TYPE_ENTRIES += 1;
+            aResult.NUM_TYPES_LIST_ITEMS += 1;
           }
         } else {
           return makeError("type MUST be of type array or string "
@@ -153,26 +156,114 @@ public:
     static constexpr typename Reader::ErrorOrConsumed
     readSchema(Reader &theReader, typename Reader::SchemaObject &theSchema,
                const std::string_view &theKey, const JSON &theValue) {
+      auto &aValidation = theSchema.template getSection<SchemaValidation>();
       if (theKey == "multipleOf") {
+        aValidation.itsMultipleOf = theValue.toNumber();
       } else if (theKey == "maximum") {
+        aValidation.itsMaximum = theValue.toNumber();
       } else if (theKey == "exclusiveMaximum") {
+        aValidation.itsExclusiveMinimum = theValue.toNumber();
       } else if (theKey == "minimum") {
+        aValidation.itsMinimum = theValue.toNumber();
       } else if (theKey == "exclusiveMinimum") {
+        aValidation.itsExclusiveMinimum = theValue.toNumber();
       } else if (theKey == "maxLength") {
+        aValidation.itsMaxLength = static_cast<size_t>(theValue.toNumber());
       } else if (theKey == "minLength") {
+        aValidation.itsMinLength = static_cast<size_t>(theValue.toNumber());
       } else if (theKey == "pattern") {
+        aValidation.itsPattern = theReader.allocateString(theValue.toString());
       } else if (theKey == "maxItems") {
+        aValidation.itsMaxItems = static_cast<size_t>(theValue.toNumber());
       } else if (theKey == "minItems") {
+        aValidation.itsMinItems = static_cast<size_t>(theValue.toNumber());
       } else if (theKey == "uniqueItems") {
+        aValidation.itsUniqueItems = theValue.toBool();
       } else if (theKey == "maxContains") {
+        aValidation.itsMaxContains = static_cast<size_t>(theValue.toNumber());
       } else if (theKey == "minContains") {
+        aValidation.itsMinContains = static_cast<size_t>(theValue.toNumber());
       } else if (theKey == "maxProperties") {
+        aValidation.itsMaxProperties = static_cast<size_t>(theValue.toNumber());
       } else if (theKey == "minProperties") {
+        aValidation.itsMinProperties = static_cast<size_t>(theValue.toNumber());
       } else if (theKey == "required") {
+        const auto aStringBuf = theReader.readStringList(theValue);
+        if (Reader::ErrorHandling::isError(aStringBuf))
+          return Reader::ErrorHandling::template convertError<bool>(aStringBuf);
+        aValidation.itsRequired = Reader::ErrorHandling::unwrap(aStringBuf);
       } else if (theKey == "dependentRequired") {
+        using StringRef = typename Reader::Storage::String;
+        using StringList = typename Reader::template List<StringRef>;
+        auto aDict = theReader.template allocateMap<StringRef, StringList>(
+            theValue.toObject().size());
+        ptrdiff_t aIdx{0};
+        for (const auto &aKVPair : theValue.toObject()) {
+          const auto aKey = theReader.allocateString(aKVPair.first);
+          const auto aStringsOrError = theReader.readStringList(aKVPair.second);
+          if (Reader::ErrorHandling::isError(aStringsOrError))
+            return Reader::ErrorHandling::template convertError<bool>(
+                aStringsOrError);
+          theReader.setMapEntry(aDict, aIdx++, aKey,
+                                Reader::ErrorHandling::unwrap(aStringsOrError));
+        }
+        aValidation.itsDependentRequired = aDict;
       } else if (theKey == "const") {
+        aValidation.itsConst = theReader.allocateJson(theValue);
       } else if (theKey == "enum") {
+        auto aJsons =
+            theReader.template allocateList<typename Reader::Storage::Json>(
+                theValue.toArray().size());
+        ptrdiff_t aIdx{0};
+        for (const auto aElm : theValue.toArray()) {
+          theReader.setListItem(aJsons, aIdx++, theReader.allocateJson(aElm));
+        }
+        aValidation.itsEnum = aJsons;
       } else if (theKey == "type") {
+        using TypeEnum = decltype(std::declval<JSON>().getType());
+        const auto aStringToType =
+            [](const std::string_view theString) -> std::optional<Types> {
+          if (theString == "array")
+            return Types::ARRAY;
+          else if (theString == "boolean")
+            return Types::BOOLEAN;
+          else if (theString == "integer")
+            return Types::INTEGER;
+          else if (theString == "null")
+            return Types::NUL;
+          else if (theString == "number")
+            return Types::NUMBER;
+          else if (theString == "object")
+            return Types::OBJECT;
+          else if (theString == "string")
+            return Types::STRING;
+          else
+            return std::nullopt;
+        };
+        if (theValue.getType() == TypeEnum::STRING) {
+          auto aTypesList = theReader.template allocateList<Types>(1u);
+          const auto aTypeMaybe = aStringToType(theValue.toString());
+          if (!aTypeMaybe)
+            return Reader::ErrorHandling::template makeError<bool>(
+                "Encountered unknown type");
+          theReader.setListItem(aTypesList, 0, *aTypeMaybe);
+          aValidation.itsType = aTypesList;
+        } else if (theValue.getType() == TypeEnum::ARRAY) {
+          auto aTypesList =
+              theReader.template allocateList<Types>(theValue.toArray().size());
+          ptrdiff_t aIdx{0};
+          for (const auto &aJsonItem : theValue.toArray()) {
+            const auto aTypeMaybe = aStringToType(aJsonItem.toString());
+            if (!aTypeMaybe)
+              return Reader::ErrorHandling::template makeError<bool>(
+                  "Encountered unknown type");
+            theReader.setListItem(aTypesList, aIdx++, *aTypeMaybe);
+          }
+          aValidation.itsType = aTypesList;
+        } else {
+          return Reader::ErrorHandling::template makeError<bool>(
+              "`type` property is neither string nor list");
+        }
       } else {
         return false;
       }
