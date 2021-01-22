@@ -18,6 +18,21 @@ public:
   using Uri = json_schema::Uri<Storage>;
   using UriReference = json_schema::UriReference<Storage>;
 
+  template <typename Context> class Accessor {
+  public:
+    using UriRefAccessor = typename UriReference::template Accessor<Context>;
+
+    constexpr Accessor(const Context &theContext, const SchemaCore &theCore)
+        : itsContext(&theContext), itsCore(&theCore) {}
+    constexpr const UriRefAccessor getId() const {
+      return UriRefAccessor{*itsContext, itsCore->itsId};
+    }
+
+  private:
+    const Context *itsContext;
+    const SchemaCore *itsCore;
+  };
+
   UriReference itsId{};
   Uri itsSchema{};
   typename Storage::String itsAnchor{};

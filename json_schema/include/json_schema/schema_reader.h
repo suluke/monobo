@@ -13,12 +13,12 @@
 #include "json_schema/schema_info.h"
 #include "json_schema/util.h"
 
+#include <variant>
+
 namespace json_schema {
 template <typename SchemaContext, typename ErrorHandling_, typename... Sections>
 class SchemaReaderBase {
 public:
-  using Self = SchemaReaderBase;
-
   using ErrorHandling = ErrorHandling_;
   using Storage = typename SchemaContext::Storage;
   using SchemaRef = typename Storage::Schema;
@@ -32,8 +32,16 @@ public:
   using Map = typename Storage::template Map<KeyT, ValT>;
 
   template <typename... JSONs> struct ReadResult {
+    using SchemaObject = SchemaObjectAccessor<SchemaContext>;
     SchemaContext itsContext;
     std::array<SchemaRef, sizeof...(JSONs)> itsSchemas;
+
+    constexpr std::variant<bool, const SchemaObject>
+    operator[](const ptrdiff_t theIdx) const {
+      if (itsContext.getTrueSchemaRef() == itsSchemas[theIdx])
+        return true;
+      return SchemaObject{itsContext, itsSchemas[theIdx]};
+    }
   };
   template <typename... JSONs>
   using ReadResultOrError =

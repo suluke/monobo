@@ -8,7 +8,7 @@
 namespace json_schema {
 class SchemaInfo {
 public:
-  size_t NUM_SCHEMAS{0};
+  size_t NUM_SCHEMA_OBJECTS{0};
   size_t NUM_CHARS{0};
   size_t NUM_VOCAB_ENTRIES{0};
   size_t NUM_SCHEMA_LIST_ITEMS{0};
@@ -27,7 +27,7 @@ public:
   constexpr SchemaInfo &operator=(SchemaInfo &&) noexcept = default;
 
   constexpr SchemaInfo &operator+=(const SchemaInfo &theOther) {
-    NUM_SCHEMAS += theOther.NUM_SCHEMAS;
+    NUM_SCHEMA_OBJECTS += theOther.NUM_SCHEMA_OBJECTS;
     NUM_CHARS += theOther.NUM_CHARS;
     NUM_VOCAB_ENTRIES += theOther.NUM_VOCAB_ENTRIES;
     NUM_STRING_LIST_ITEMS += theOther.NUM_STRING_LIST_ITEMS;

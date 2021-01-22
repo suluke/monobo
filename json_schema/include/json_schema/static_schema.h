@@ -36,6 +36,8 @@ public:
     template <typename T> struct Buffer {
       size_t itsPos{0};
       size_t itsSize{0};
+
+      constexpr size_t size() const noexcept { return itsSize; }
     };
 
     template <typename Key, typename Value>
@@ -47,9 +49,18 @@ public:
     struct String {
       size_t itsPos{0};
       size_t itsSize{0};
+
+      constexpr size_t size() const noexcept { return itsSize; }
     };
     struct Schema {
       ptrdiff_t itsPos{0};
+
+      constexpr bool operator==(const Schema &theOther) const {
+        return itsPos == theOther.itsPos;
+      }
+      constexpr bool operator!=(const Schema &theOther) const {
+        return itsPos != theOther.itsPos;
+      }
     };
 
     struct Json {
@@ -76,12 +87,12 @@ public:
     template <typename KeyT, typename ValT>
     using Map = typename Storage::template Map<KeyT, ValT>;
 
-    constexpr Allocator() { NUM_SCHEMAS = 1; }
+    constexpr Allocator() = default;
 
     constexpr SchemaRef allocateSchema(const SchemaObject &theSchema,
                                        StaticSchemaContext &theContext) {
-      theContext.itsSchemaObjects[NUM_SCHEMAS] = theSchema;
-      return SchemaRef{static_cast<ptrdiff_t>(NUM_SCHEMAS++)};
+      theContext.itsSchemaObjects[NUM_SCHEMA_OBJECTS] = theSchema;
+      return SchemaRef{static_cast<ptrdiff_t>(NUM_SCHEMA_OBJECTS++)};
     }
     constexpr String allocateString(StaticSchemaContext &theContext,
                                     const std::string_view &theStr) {
@@ -235,7 +246,7 @@ private:
 
 #define JSON_SCHEMA_STATIC_CONTEXT_TYPE(theInfo)                               \
   json_schema::StaticSchemaContext<                                            \
-      (theInfo).NUM_SCHEMAS, (theInfo).NUM_VOCAB_ENTRIES,                      \
+      (theInfo).NUM_SCHEMA_OBJECTS, (theInfo).NUM_VOCAB_ENTRIES,               \
       (theInfo).NUM_SCHEMA_DICT_ENTRIES,                                       \
       (theInfo).NUM_STRINGLIST_DICT_ENTRIES, (theInfo).NUM_SCHEMA_LIST_ITEMS,  \
       (theInfo).NUM_TYPES_LIST_ITEMS, (theInfo).NUM_STRING_LIST_ITEMS,         \

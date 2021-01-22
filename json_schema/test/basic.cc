@@ -13,8 +13,8 @@
 using namespace json_schema;
 
 std::ostream &operator<<(std::ostream &theOS, const SchemaInfo &aSchemaInfo) {
-  return theOS << "Number of Schemas:                    "
-               << aSchemaInfo.NUM_SCHEMAS << "\n"
+  return theOS << "Number of Schema Objects:             "
+               << aSchemaInfo.NUM_SCHEMA_OBJECTS << "\n"
                << "Number of chars in strings:           "
                << aSchemaInfo.NUM_CHARS << "\n"
                << "Number of vocabulary entries:         "
@@ -80,7 +80,18 @@ int main() {
           aFormatDoc->getRoot(), aContentDoc->getRoot());
   static_assert(!ErrorHandling::isError(aReadResultOrError),
                 "Failed to read schemas");
+
+  // Finally start doing some stuff on the read schema
   constexpr auto aReadResult = ErrorHandling::unwrap(aReadResultOrError);
+  using SchemaObject = std::decay_t<decltype(aReadResult)>::SchemaObject;
+  static_assert(aReadResult.itsSchemas.size() == 7u,
+                "Number of schemas read does not "
+                "match number of input schemas");
+  static_assert(std::get<const SchemaObject>(aReadResult[0])
+                    .getSection<SchemaCore>()
+                    .getId()
+                    .toString() ==
+                "https://json-schema.org/draft/2019-09/schema");
 
   constexpr SchemaValidator aSchemaValidator(aReadResult.itsSchemas[0],
                                              aReadResult.itsContext);

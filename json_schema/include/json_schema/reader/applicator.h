@@ -81,7 +81,6 @@ public:
           aResult.NUM_CHARS += aKVPair.first.size();
         }
         aResult.NUM_SCHEMA_DICT_ENTRIES += theValue.toObject().size();
-        aResult.NUM_SCHEMAS += theValue.toObject().size();
         return aResult;
       } else if (theKey == "allOf" || theKey == "anyOf" || theKey == "oneOf") {
         // key => array[schema]

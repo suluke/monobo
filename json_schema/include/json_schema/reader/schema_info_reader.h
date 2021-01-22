@@ -23,14 +23,13 @@ public:
   static constexpr typename ErrorHandling::template ErrorOr<SchemaInfo>
   read(const JSON &theJson) {
     SchemaInfo aResult;
-    aResult.NUM_SCHEMAS = 1;
     using TypeEnum = decltype(std::declval<JSON>().getType());
     switch (theJson.getType()) {
     case TypeEnum::BOOL:
       // Nothing to do at all
-      // TODO or do we event want NUM_SCHEMAS=1 in this case?
       break;
     case TypeEnum::OBJECT: {
+      aResult.NUM_SCHEMA_OBJECTS = 1;
       const auto aObj = theJson.toObject();
       for (const auto &aKVPair : aObj) {
         const auto aReadResOrError =
