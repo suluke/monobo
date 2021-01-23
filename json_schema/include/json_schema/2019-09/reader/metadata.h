@@ -1,6 +1,7 @@
 #ifndef JSON_SCHEMA_2019_09_READER_METADATA_H
 #define JSON_SCHEMA_2019_09_READER_METADATA_H
 
+#include "json_schema/2019-09/model/metadata.h"
 #include "json_schema/schema_info.h"
 #include <string_view>
 

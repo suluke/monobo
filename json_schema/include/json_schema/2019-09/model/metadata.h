@@ -1,5 +1,5 @@
-#ifndef JSON_SCHEMA_2019_09_METADATA_H
-#define JSON_SCHEMA_2019_09_METADATA_H
+#ifndef JSON_SCHEMA_2019_09_MODEL_METADATA_H
+#define JSON_SCHEMA_2019_09_MODEL_METADATA_H
 
 namespace json_schema {
 template <typename Storage> class SchemaMetadata {
@@ -12,4 +12,4 @@ public:
 private:
 };
 } // namespace json_schema
-#endif // JSON_SCHEMA_2019_09_METADATA_H
+#endif // JSON_SCHEMA_2019_09_MODEL_METADATA_H

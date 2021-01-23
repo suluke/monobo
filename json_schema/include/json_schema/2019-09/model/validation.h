@@ -1,7 +1,7 @@
-#ifndef JSON_SCHEMA_2019_09_VALIDATION_H
-#define JSON_SCHEMA_2019_09_VALIDATION_H
+#ifndef JSON_SCHEMA_2019_09_MODEL_VALIDATION_H
+#define JSON_SCHEMA_2019_09_MODEL_VALIDATION_H
 
-#include "json_schema/2019-09/types.h"
+#include "json_schema/2019-09/model/types.h"
 
 namespace json_schema {
 template <typename Storage> class SchemaValidation {
@@ -42,4 +42,4 @@ public:
   JsonList itsEnum{};
 };
 } // namespace json_schema
-#endif // JSON_SCHEMA_2019_09_VALIDATION_H
+#endif // JSON_SCHEMA_2019_09_MODEL_VALIDATION_H

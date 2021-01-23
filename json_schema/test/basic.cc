@@ -2,10 +2,9 @@
 #include "constexpr_json/ext/error_is_nullopt.h"
 #include "constexpr_json/ext/stream_parser.h"
 #include "constexpr_json/static_document.h"
+#include "json_schema/2019-09/schema_printer.h"
 #include "json_schema/2019-09/schema_standard.h"
-#include "json_schema/schema_printer.h"
-#include "json_schema/schema_reader.h"
-#include "json_schema/schema_validator.h"
+#include "json_schema/2019-09/schema_validator.h"
 #include "json_schema/static_schema.h"
 
 #include <iostream>
@@ -21,7 +20,7 @@ std::ostream &operator<<(std::ostream &theOS, const SchemaInfo &aSchemaInfo) {
                << aSchemaInfo.NUM_VOCAB_ENTRIES << "\n"
                << "Number of string->schema map entries: "
                << aSchemaInfo.NUM_SCHEMA_DICT_ENTRIES << "\n"
-               << "Number of schema list items:        "
+               << "Number of schema list items:          "
                << aSchemaInfo.NUM_SCHEMA_LIST_ITEMS << "\n";
 }
 
@@ -75,7 +74,6 @@ int main() {
   constexpr auto aSchemaInfo = *aRootInfo + *aCoreInfo + *aApplicatorInfo +
                                *aValidationInfo + *aMetadataInfo +
                                *aFormatInfo + *aContentInfo;
-  std::cout << aSchemaInfo;
   using ContextTy =
       JSON_SCHEMA_STATIC_CONTEXT_TYPE(Standard_2019_09, aSchemaInfo);
   using ErrorHandling = cjson::ErrorWillReturnNone;
@@ -105,7 +103,7 @@ int main() {
                                              aReadResult.itsContext);
   constexpr auto aValidateRes = aSchemaValidator.validate(aValidationJson);
   std::cout << aSchemaInfo
-            << SchemaPrinter(aReadResult.itsSchemas[0], aReadResult.itsContext)
+            << SchemaPrinter(std::get<const SchemaObject>(aReadResult[0]))
             << "(" << (aValidateRes ? "invalid" : "valid") << ")"
             << "\n";
   return 0;

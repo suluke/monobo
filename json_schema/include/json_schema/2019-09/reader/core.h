@@ -1,8 +1,8 @@
 #ifndef JSON_SCHEMA_2019_09_READER_CORE_H
 #define JSON_SCHEMA_2019_09_READER_CORE_H
 
-#include "json_schema/2019-09/core.h"
-#include "json_schema/2019-09/uri_reference.h"
+#include "json_schema/2019-09/model/core.h"
+#include "json_schema/2019-09/model/uri_reference.h"
 #include "json_schema/schema_info.h"
 #include <string_view>
 

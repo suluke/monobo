@@ -1,7 +1,7 @@
 #ifndef JSON_SCHEMA_2019_09_READER_APPLICATOR_H
 #define JSON_SCHEMA_2019_09_READER_APPLICATOR_H
 
-#include "json_schema/2019-09/applicator.h"
+#include "json_schema/2019-09/model/applicator.h"
 #include "json_schema/schema_info.h"
 #include <string_view>
 
@@ -180,7 +180,7 @@ public:
           if (Reader::ErrorHandling::isError(aSchema))
             return Reader::ErrorHandling::template convertError<bool>(aSchema);
           theReader.setListItem(aSchemaBuf, 0,
-                                  Reader::ErrorHandling::unwrap(aSchema));
+                                Reader::ErrorHandling::unwrap(aSchema));
           aApplicator.itsItems = aSchemaBuf;
         } else {
           auto aSchemaBuf = theReader.readSchemaList(theValue);

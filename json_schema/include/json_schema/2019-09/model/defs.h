@@ -1,5 +1,5 @@
-#ifndef JSON_SCHEMA_2019_09_DEFS_H
-#define JSON_SCHEMA_2019_09_DEFS_H
+#ifndef JSON_SCHEMA_2019_09_MODEL_DEFS_H
+#define JSON_SCHEMA_2019_09_MODEL_DEFS_H
 
 namespace json_schema {
 template <typename Storage> class Defs {
@@ -23,4 +23,4 @@ private:
   EntryMap itsEntries;
 };
 } // namespace json_schema
-#endif // JSON_SCHEMA_2019_09_DEFS_H
+#endif // JSON_SCHEMA_2019_09_MODEL_DEFS_H

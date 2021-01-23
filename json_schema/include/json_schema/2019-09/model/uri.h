@@ -15,9 +15,21 @@ public:
     return *this;
   }
 
-  constexpr typename Storage::String toString() const {
-    return itsUri;
-  }
+  constexpr typename Storage::String toString() const { return itsUri; }
+
+  template <typename Context> class Accessor {
+  public:
+    constexpr Accessor(const Context &theContext, const Uri &theUri)
+        : itsContext(&theContext), itsUri(theUri) {}
+
+    constexpr std::string_view toString() const {
+      return itsContext->getString(itsUri.toString());
+    }
+
+  private:
+    const Context *itsContext{};
+    Uri itsUri;
+  };
 
 private:
   typename Storage::String itsUri{};

@@ -1,5 +1,5 @@
-#ifndef JSON_SCHEMA_2019_09_URI_REFERENCE_H
-#define JSON_SCHEMA_2019_09_URI_REFERENCE_H
+#ifndef JSON_SCHEMA_2019_09_MODEL_URI_REFERENCE_H
+#define JSON_SCHEMA_2019_09_MODEL_URI_REFERENCE_H
 
 #include <string_view>
 
@@ -37,4 +37,4 @@ private:
   typename Storage::String itsUriRef{};
 };
 } // namespace json_schema
-#endif // JSON_SCHEMA_2019_09_URI_REFERENCE_H
+#endif // JSON_SCHEMA_2019_09_MODEL_URI_REFERENCE_H

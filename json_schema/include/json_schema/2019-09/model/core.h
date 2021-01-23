@@ -1,10 +1,10 @@
-#ifndef JSON_SCHEMA_2019_09_CORE_H
-#define JSON_SCHEMA_2019_09_CORE_H
+#ifndef JSON_SCHEMA_2019_09_MODEL_CORE_H
+#define JSON_SCHEMA_2019_09_MODEL_CORE_H
 
-#include "json_schema/2019-09/defs.h"
-#include "json_schema/2019-09/vocabulary.h"
-#include "json_schema/2019-09/uri.h"
-#include "json_schema/2019-09/uri_reference.h"
+#include "json_schema/2019-09/model/defs.h"
+#include "json_schema/2019-09/model/uri.h"
+#include "json_schema/2019-09/model/uri_reference.h"
+#include "json_schema/2019-09/model/vocabulary.h"
 
 namespace json_schema {
 template <typename Storage> class SchemaCore {
@@ -21,11 +21,20 @@ public:
   template <typename Context> class Accessor {
   public:
     using UriRefAccessor = typename UriReference::template Accessor<Context>;
+    using UriAccessor = typename Uri::template Accessor<Context>;
+    using VocabularyAccessor =
+        typename Vocabulary<Storage>::template Accessor<Context>;
 
     constexpr Accessor(const Context &theContext, const SchemaCore &theCore)
         : itsContext(&theContext), itsCore(&theCore) {}
     constexpr const UriRefAccessor getId() const {
       return UriRefAccessor{*itsContext, itsCore->itsId};
+    }
+    constexpr const UriAccessor getSchema() const {
+      return UriAccessor{*itsContext, itsCore->itsSchema};
+    }
+    constexpr const VocabularyAccessor getVocabulary() const {
+      return VocabularyAccessor{*itsContext, itsCore->itsVocabulary};
     }
 
   private:
@@ -47,4 +56,4 @@ public:
   Defs<Storage> itsDefs{};
 };
 } // namespace json_schema
-#endif // JSON_SCHEMA_2019_09_CORE_H
+#endif // JSON_SCHEMA_2019_09_MODEL_CORE_H
