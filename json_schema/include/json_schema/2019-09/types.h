@@ -1,5 +1,5 @@
-#ifndef JSON_SCHEMA_MODEL_VALIDATION_TYPES_H
-#define JSON_SCHEMA_MODEL_VALIDATION_TYPES_H
+#ifndef JSON_SCHEMA_2019_09_TYPES_H
+#define JSON_SCHEMA_2019_09_TYPES_H
 
 namespace json_schema {
 enum class Types {
@@ -12,4 +12,4 @@ enum class Types {
   STRING,
 };
 } // namespace json_schema
-#endif // JSON_SCHEMA_MODEL_VALIDATION_TYPES_H
+#endif // JSON_SCHEMA_2019_09_TYPES_H

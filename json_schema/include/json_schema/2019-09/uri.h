@@ -1,7 +1,5 @@
-#ifndef JSON_SCHEMA_MODEL_FORMAT_URI_H
-#define JSON_SCHEMA_MODEL_FORMAT_URI_H
-
-#include <string>
+#ifndef JSON_SCHEMA_2019_09_URI_H
+#define JSON_SCHEMA_2019_09_URI_H
 
 namespace json_schema {
 template <typename Storage> class Uri {
@@ -25,4 +23,4 @@ private:
   typename Storage::String itsUri{};
 };
 } // namespace json_schema
-#endif // JSON_SCHEMA_MODEL_FORMAT_URI_H
+#endif // JSON_SCHEMA_2019_09_URI_H

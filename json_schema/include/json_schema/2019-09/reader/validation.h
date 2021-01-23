@@ -1,7 +1,7 @@
-#ifndef JSON_SCHEMA_READER_VALIDATION_H
-#define JSON_SCHEMA_READER_VALIDATION_H
+#ifndef JSON_SCHEMA_2019_09_READER_VALIDATION_H
+#define JSON_SCHEMA_2019_09_READER_VALIDATION_H
 
-#include "json_schema/model/validation/validation.h"
+#include "json_schema/2019-09/validation.h"
 #include "json_schema/schema_info.h"
 #include <string_view>
 
@@ -274,4 +274,4 @@ public:
 private:
 };
 } // namespace json_schema
-#endif // JSON_SCHEMA_READER_VALIDATION_H
+#endif // JSON_SCHEMA_2019_09_READER_VALIDATION_H

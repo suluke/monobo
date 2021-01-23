@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-#include "json_schema/model/core/core.h"
+#include "json_schema/2019-09/core.h"
 
 namespace json_schema {
 

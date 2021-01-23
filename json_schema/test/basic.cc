@@ -2,7 +2,7 @@
 #include "constexpr_json/ext/error_is_nullopt.h"
 #include "constexpr_json/ext/stream_parser.h"
 #include "constexpr_json/static_document.h"
-#include "json_schema/reader/schema_info_reader.h"
+#include "json_schema/2019-09/schema_standard.h"
 #include "json_schema/schema_printer.h"
 #include "json_schema/schema_reader.h"
 #include "json_schema/schema_validator.h"
@@ -32,36 +32,43 @@ int main() {
  */
 // === Core ===
 #define NAME Core
+#define JSON_SCHEMA_STD Standard_2019_09
 #define HEADER "meta/core.json.h"
 #include "schema_loading_helper.h"
 
 // === Applicator ===
 #define NAME Applicator
+#define JSON_SCHEMA_STD Standard_2019_09
 #define HEADER "meta/applicator.json.h"
 #include "schema_loading_helper.h"
 
 // === Validation ===
 #define NAME Validation
+#define JSON_SCHEMA_STD Standard_2019_09
 #define HEADER "meta/validation.json.h"
 #include "schema_loading_helper.h"
 
 // === Meta-Data ===
 #define NAME Metadata
+#define JSON_SCHEMA_STD Standard_2019_09
 #define HEADER "meta/meta-data.json.h"
 #include "schema_loading_helper.h"
 
 // === Format ===
 #define NAME Format
+#define JSON_SCHEMA_STD Standard_2019_09
 #define HEADER "meta/format.json.h"
 #include "schema_loading_helper.h"
 
 // === Content ===
 #define NAME Content
+#define JSON_SCHEMA_STD Standard_2019_09
 #define HEADER "meta/content.json.h"
 #include "schema_loading_helper.h"
 
 // === Root ===
 #define NAME Root
+#define JSON_SCHEMA_STD Standard_2019_09
 #define HEADER "schema.json.h"
 #include "schema_loading_helper.h"
 
@@ -69,12 +76,13 @@ int main() {
                                *aValidationInfo + *aMetadataInfo +
                                *aFormatInfo + *aContentInfo;
   std::cout << aSchemaInfo;
-  using ContextTy = JSON_SCHEMA_STATIC_CONTEXT_TYPE(aSchemaInfo);
+  using ContextTy =
+      JSON_SCHEMA_STATIC_CONTEXT_TYPE(Standard_2019_09, aSchemaInfo);
   using ErrorHandling = cjson::ErrorWillReturnNone;
   // using ErrorHandling = cjson::ErrorWillThrow;
 
   constexpr auto aReadResultOrError =
-      SchemaReader<ContextTy, ErrorHandling>::read(
+      Standard_2019_09::SchemaReader<ContextTy, ErrorHandling>::read(
           aRootDoc->getRoot(), aCoreDoc->getRoot(), aApplicatorDoc->getRoot(),
           aValidationDoc->getRoot(), aMetadataDoc->getRoot(),
           aFormatDoc->getRoot(), aContentDoc->getRoot());

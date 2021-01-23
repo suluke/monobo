@@ -1,5 +1,5 @@
-#ifndef JSON_SCHEMA_MODEL_APPLICATOR_APPLICATOR_H
-#define JSON_SCHEMA_MODEL_APPLICATOR_APPLICATOR_H
+#ifndef JSON_SCHEMA_2019_09_APPLICATOR_H
+#define JSON_SCHEMA_2019_09_APPLICATOR_H
 
 namespace json_schema {
 template <typename Storage> class SchemaApplicator {
@@ -35,4 +35,4 @@ public:
   SchemaRef itsNot{};
 };
 } // namespace json_schema
-#endif // JSON_SCHEMA_MODEL_APPLICATOR_APPLICATOR_H
+#endif // JSON_SCHEMA_2019_09_APPLICATOR_H

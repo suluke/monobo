@@ -1,6 +1,9 @@
 #if !defined(NAME) || !defined(HEADER)
 #error schema_loading_helper expects arguments NAME and HEADER as definitions
 #endif
+#ifndef JSON_SCHEMA_STD
+#define JSON_SCHEMA_STD Standard_2019_09
+#endif
 
 #define LOAD_STATIC_JSON(theOutput, theJsonStr, theDesc)                       \
   _LOAD_STATIC_JSON(theOutput, theJsonStr, theDesc)
@@ -32,10 +35,9 @@
 #include HEADER
 LOAD_STATIC_JSON(DOCNAME(NAME), JSONNAME(NAME),
                  STRINGIFY(NAME) " schema JSON definition");
-constexpr auto INFONAME(NAME) =
-    SchemaInfoReader<std::decay_t<decltype(DOCNAME(NAME)->getRoot())>,
-                     cjson::ErrorWillReturnNone>::read(DOCNAME(NAME)
-                                                           ->getRoot());
+constexpr auto INFONAME(NAME) = JSON_SCHEMA_STD::SchemaInfoReader<
+    std::decay_t<decltype(DOCNAME(NAME)->getRoot())>,
+    cjson::ErrorWillReturnNone>::read(DOCNAME(NAME)->getRoot());
 static_assert(INFONAME(NAME),
               STRINGIFY(NAME) " SchemaInfo computation unsuccessful");
 
@@ -51,4 +53,5 @@ static_assert(INFONAME(NAME),
 #undef LOAD_STATIC_JSON
 
 #undef HEADER
+#undef JSON_SCHEMA_STD
 #undef NAME

@@ -1,5 +1,5 @@
-#ifndef JSON_SCHEMA_READER_COMPAT_H
-#define JSON_SCHEMA_READER_COMPAT_H
+#ifndef JSON_SCHEMA_2019_09_READER_COMPAT_H
+#define JSON_SCHEMA_2019_09_READER_COMPAT_H
 
 #include "json_schema/schema_info.h"
 #include <string_view>
@@ -36,4 +36,4 @@ public:
 private:
 };
 } // namespace json_schema
-#endif // JSON_SCHEMA_READER_COMPAT_H
+#endif // JSON_SCHEMA_2019_09_READER_COMPAT_H

@@ -2,16 +2,16 @@
 #define JSON_SCHEMA_STATIC_SCHEMA_H
 
 #include "constexpr_json/static_document.h"
-#include "json_schema/model/schema_object.h"
 #include "json_schema/schema_info.h"
+#include "json_schema/schema_object.h"
 #include "json_schema/util.h"
 
 namespace json_schema {
-template <size_t MAX_SCHEMAS, size_t MAX_VOCAB_ENTRIES,
-          size_t MAX_SCHEMA_DICT_ENTRIES, size_t MAX_STRINGLIST_DICT_ENTRIES,
-          size_t MAX_SCHEMA_LIST_ITEMS, size_t MAX_TYPES_LIST_ITEMS,
-          size_t MAX_STRING_LIST_ITEMS, size_t MAX_CHARS,
-          size_t MAX_JSON_LIST_ITEMS, size_t MAX_JSON_REFS,
+template <typename Standard, size_t MAX_SCHEMAS,
+          size_t MAX_VOCAB_ENTRIES, size_t MAX_SCHEMA_DICT_ENTRIES,
+          size_t MAX_STRINGLIST_DICT_ENTRIES, size_t MAX_SCHEMA_LIST_ITEMS,
+          size_t MAX_TYPES_LIST_ITEMS, size_t MAX_STRING_LIST_ITEMS,
+          size_t MAX_CHARS, size_t MAX_JSON_LIST_ITEMS, size_t MAX_JSON_REFS,
           size_t MAX_JSON_NUMEBRS, size_t MAX_JSON_CHARS,
           size_t MAX_JSON_STRINGS, size_t MAX_JSON_ARRAYS,
           size_t MAX_JSON_ARRAY_ENTRIES, size_t MAX_JSON_OBJECTS,
@@ -69,7 +69,7 @@ public:
   };
 
   using SchemaRef = typename Storage::Schema;
-  using SchemaObject = json_schema::SchemaObject<Storage>;
+  using SchemaObject = typename Standard::template SchemaObject<Storage>;
   using JsonRef = typename Storage::Json;
   using StringRef = typename Storage::String;
   template <typename T> using BufferRef = typename Storage::template Buffer<T>;
@@ -244,9 +244,9 @@ private:
       MAX_JSON_OBJECTS, MAX_JSON_OBJECT_PROPS}};
 };
 
-#define JSON_SCHEMA_STATIC_CONTEXT_TYPE(theInfo)                               \
+#define JSON_SCHEMA_STATIC_CONTEXT_TYPE(theStandard, theInfo)                  \
   json_schema::StaticSchemaContext<                                            \
-      (theInfo).NUM_SCHEMA_OBJECTS, (theInfo).NUM_VOCAB_ENTRIES,               \
+      theStandard, (theInfo).NUM_SCHEMA_OBJECTS, (theInfo).NUM_VOCAB_ENTRIES,  \
       (theInfo).NUM_SCHEMA_DICT_ENTRIES,                                       \
       (theInfo).NUM_STRINGLIST_DICT_ENTRIES, (theInfo).NUM_SCHEMA_LIST_ITEMS,  \
       (theInfo).NUM_TYPES_LIST_ITEMS, (theInfo).NUM_STRING_LIST_ITEMS,         \

@@ -1,7 +1,7 @@
-#ifndef JSON_SCHEMA_READER_APPLICATOR_H
-#define JSON_SCHEMA_READER_APPLICATOR_H
+#ifndef JSON_SCHEMA_2019_09_READER_APPLICATOR_H
+#define JSON_SCHEMA_2019_09_READER_APPLICATOR_H
 
-#include "json_schema/model/applicator/applicator.h"
+#include "json_schema/2019-09/applicator.h"
 #include "json_schema/schema_info.h"
 #include <string_view>
 
@@ -214,4 +214,4 @@ public:
 private:
 };
 } // namespace json_schema
-#endif // JSON_SCHEMA_READER_APPLICATOR_H
+#endif // JSON_SCHEMA_2019_09_READER_APPLICATOR_H

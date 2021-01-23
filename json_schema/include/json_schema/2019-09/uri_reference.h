@@ -1,7 +1,7 @@
-#ifndef JSON_SCHEMA_MODEL_FORMAT_URI_REFERENCE_H
-#define JSON_SCHEMA_MODEL_FORMAT_URI_REFERENCE_H
+#ifndef JSON_SCHEMA_2019_09_URI_REFERENCE_H
+#define JSON_SCHEMA_2019_09_URI_REFERENCE_H
 
-#include <string>
+#include <string_view>
 
 namespace json_schema {
 template <typename Storage> class UriReference {
@@ -37,4 +37,4 @@ private:
   typename Storage::String itsUriRef{};
 };
 } // namespace json_schema
-#endif // JSON_SCHEMA_MODEL_FORMAT_URI_REFERENCE_H
+#endif // JSON_SCHEMA_2019_09_URI_REFERENCE_H

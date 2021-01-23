@@ -1,13 +1,6 @@
-#ifndef JSON_SCHEMA_READER_SCHEMA_INFO_READER_H
-#define JSON_SCHEMA_READER_SCHEMA_INFO_READER_H
+#ifndef JSON_SCHEMA_SCHEMA_INFO_READER_H
+#define JSON_SCHEMA_SCHEMA_INFO_READER_H
 
-#include "json_schema/reader/applicator.h"
-#include "json_schema/reader/compat.h"
-#include "json_schema/reader/content.h"
-#include "json_schema/reader/core.h"
-#include "json_schema/reader/format.h"
-#include "json_schema/reader/metadata.h"
-#include "json_schema/reader/validation.h"
 #include "json_schema/schema_info.h"
 
 namespace json_schema {
@@ -84,14 +77,5 @@ private:
     return makeError("Unknown schema entity encountered");
   }
 };
-
-template <typename JSON, typename ErrorHandling>
-using SchemaInfoReader =
-    SchemaInfoReaderBase<JSON, ErrorHandling, ReaderApplicator::InfoReader,
-                         ReaderCore::InfoReader, ReaderFormat::InfoReader,
-                         ReaderMetadata::InfoReader,
-                         ReaderValidation::InfoReader,
-                         ReaderContent::InfoReader, ReaderCompat::InfoReader>;
-
 } // namespace json_schema
-#endif // JSON_SCHEMA_READER_SCHEMA_INFO_READER_H
+#endif // JSON_SCHEMA_SCHEMA_INFO_READER_H

@@ -1,8 +1,8 @@
-#ifndef JSON_SCHEMA_READER_CORE_H
-#define JSON_SCHEMA_READER_CORE_H
+#ifndef JSON_SCHEMA_2019_09_READER_CORE_H
+#define JSON_SCHEMA_2019_09_READER_CORE_H
 
-#include "json_schema/model/core/core.h"
-#include "json_schema/model/format/uri_reference.h"
+#include "json_schema/2019-09/core.h"
+#include "json_schema/2019-09/uri_reference.h"
 #include "json_schema/schema_info.h"
 #include <string_view>
 
@@ -164,4 +164,4 @@ public:
 private:
 };
 } // namespace json_schema
-#endif // JSON_SCHEMA_READER_CORE_H
+#endif // JSON_SCHEMA_2019_09_READER_CORE_H

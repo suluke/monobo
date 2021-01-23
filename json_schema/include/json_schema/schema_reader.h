@@ -2,15 +2,6 @@
 #define JSON_SCHEMA_SCHEMA_READER_H
 
 #include "constexpr_json/impl/document_allocator.h"
-#include "json_schema/model/schema_object.h"
-#include "json_schema/reader/applicator.h"
-#include "json_schema/reader/compat.h"
-#include "json_schema/reader/content.h"
-#include "json_schema/reader/core.h"
-#include "json_schema/reader/format.h"
-#include "json_schema/reader/metadata.h"
-#include "json_schema/reader/validation.h"
-#include "json_schema/schema_info.h"
 #include "json_schema/util.h"
 
 #include <variant>
@@ -215,14 +206,5 @@ private:
   SchemaContext itsContext;
   SchemaAllocator itsSchemaAlloc;
 };
-
-template <typename SchemaContext, typename ErrorHandling>
-using SchemaReader =
-    SchemaReaderBase<SchemaContext, ErrorHandling,
-                     ReaderApplicator::SchemaReader, ReaderCore::SchemaReader,
-                     ReaderFormat::SchemaReader, ReaderMetadata::SchemaReader,
-                     ReaderValidation::SchemaReader,
-                     ReaderContent::SchemaReader, ReaderCompat::SchemaReader>;
-
 } // namespace json_schema
 #endif // JSON_SCHEMA_SCHEMA_READER_H

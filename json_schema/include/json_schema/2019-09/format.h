@@ -1,5 +1,5 @@
-#ifndef JSON_SCHEMA_MODEL_FORMAT_FORMAT_H
-#define JSON_SCHEMA_MODEL_FORMAT_FORMAT_H
+#ifndef JSON_SCHEMA_2019_09_FORMAT_H
+#define JSON_SCHEMA_2019_09_FORMAT_H
 
 namespace json_schema {
 template <typename Storage> class SchemaFormat {
@@ -13,4 +13,4 @@ private:
   typename Storage::String itsValue{};
 };
 } // namespace json_schema
-#endif // JSON_SCHEMA_MODEL_FORMAT_FORMAT_H
+#endif // JSON_SCHEMA_2019_09_FORMAT_H

@@ -1,28 +1,18 @@
-#ifndef JSON_SCHEMA_MODEL_SCHEMA_H
-#define JSON_SCHEMA_MODEL_SCHEMA_H
-
-#include "json_schema/model/applicator/applicator.h"
-#include "json_schema/model/core/core.h"
-#include "json_schema/model/format/format.h"
-#include "json_schema/model/metadata/metadata.h"
-#include "json_schema/model/validation/validation.h"
+#ifndef JSON_SCHEMA_SCHEMA_OBJECT_H
+#define JSON_SCHEMA_SCHEMA_OBJECT_H
 
 namespace json_schema {
 
-template <typename Storage>
-class SchemaObject : private SchemaCore<Storage>,
-                     private SchemaApplicator<Storage>,
-                     private SchemaMetadata<Storage>,
-                     private SchemaValidation<Storage>,
-                     private SchemaFormat<Storage> {
+template <typename Storage, template<typename> typename... Sections>
+class SchemaObjectBase : private Sections<Storage>... {
 public:
   using SchemaCore = json_schema::SchemaCore<Storage>;
 
-  constexpr SchemaObject() = default;
-  constexpr SchemaObject(const SchemaObject &) = default;
-  constexpr SchemaObject(SchemaObject &&) = default;
-  constexpr SchemaObject &operator=(const SchemaObject &) = default;
-  constexpr SchemaObject &operator=(SchemaObject &&) = default;
+  constexpr SchemaObjectBase() = default;
+  constexpr SchemaObjectBase(const SchemaObjectBase &) = default;
+  constexpr SchemaObjectBase(SchemaObjectBase &&) = default;
+  constexpr SchemaObjectBase &operator=(const SchemaObjectBase &) = default;
+  constexpr SchemaObjectBase &operator=(SchemaObjectBase &&) = default;
 
   template <template <typename> typename Section>
   constexpr Section<Storage> &getSection() noexcept {
@@ -58,4 +48,4 @@ private:
 };
 
 } // namespace json_schema
-#endif // JSON_SCHEMA_MODEL_SCHEMA_H
+#endif // JSON_SCHEMA_SCHEMA_OBJECT_H

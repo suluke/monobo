@@ -1,10 +1,10 @@
-#ifndef JSON_SCHEMA_MODEL_CORE_CORE_H
-#define JSON_SCHEMA_MODEL_CORE_CORE_H
+#ifndef JSON_SCHEMA_2019_09_CORE_H
+#define JSON_SCHEMA_2019_09_CORE_H
 
-#include "json_schema/model/core/defs.h"
-#include "json_schema/model/core/vocabulary.h"
-#include "json_schema/model/format/uri.h"
-#include "json_schema/model/format/uri_reference.h"
+#include "json_schema/2019-09/defs.h"
+#include "json_schema/2019-09/vocabulary.h"
+#include "json_schema/2019-09/uri.h"
+#include "json_schema/2019-09/uri_reference.h"
 
 namespace json_schema {
 template <typename Storage> class SchemaCore {
@@ -47,4 +47,4 @@ public:
   Defs<Storage> itsDefs{};
 };
 } // namespace json_schema
-#endif // JSON_SCHEMA_MODEL_CORE_CORE_H
+#endif // JSON_SCHEMA_2019_09_CORE_H
