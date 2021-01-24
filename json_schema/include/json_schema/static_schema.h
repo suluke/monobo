@@ -35,7 +35,7 @@ struct StaticStorage {
     constexpr size_t size() const noexcept { return itsSize; }
   };
   struct Schema {
-    ptrdiff_t itsPos{0};
+    ptrdiff_t itsPos{-1};
 
     constexpr bool operator==(const Schema &theOther) const {
       return itsPos == theOther.itsPos;

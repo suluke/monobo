@@ -41,8 +41,9 @@ public:
     static constexpr typename Reader::ErrorOrConsumed
     readSchema(Reader &theReader, typename Reader::SchemaObject &theSchema,
                const std::string_view &theKey, const JSON &theValue) {
+      auto &aFormat = theSchema.template getSection<SchemaFormat>();
       if (theKey == "format") {
-
+        aFormat.itsFormat = theReader.allocateString(theValue.toString());
       } else {
         return false;
       }

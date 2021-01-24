@@ -6,8 +6,6 @@ namespace json_schema {
 template <typename Storage, template<typename> typename... Sections>
 class SchemaObjectBase : private Sections<Storage>... {
 public:
-  using SchemaCore = json_schema::SchemaCore<Storage>;
-
   constexpr SchemaObjectBase() = default;
   constexpr SchemaObjectBase(const SchemaObjectBase &) = default;
   constexpr SchemaObjectBase(SchemaObjectBase &&) = default;

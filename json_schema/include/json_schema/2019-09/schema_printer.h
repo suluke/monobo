@@ -5,7 +5,9 @@
 #include <iostream>
 
 #include "constexpr_json/ext/printing.h"
+#include "json_schema/2019-09/model/applicator.h"
 #include "json_schema/2019-09/model/core.h"
+#include "json_schema/2019-09/model/format.h"
 #include "json_schema/2019-09/model/validation.h"
 
 namespace json_schema {
@@ -48,6 +50,7 @@ private:
     theOS << std::left << std::setfill(' ');
     printObjectCore(theOS, theObj, theDepth);
     printObjectValidation(theOS, theObj, theDepth);
+    printObjectFormat(theOS, theObj, theDepth);
   }
 
   static void printObjectCore(std::ostream &theOS, const SchemaObject &theObj,
@@ -87,6 +90,27 @@ private:
         printObject(theOS, std::get<SchemaObject>(aValue), theDepth + 2);
       }
     }
+  }
+
+  static void printObjectApplicator(std::ostream &theOS,
+                                    const SchemaObject &theObj,
+                                    const unsigned theDepth) {
+    const auto &aApplicator = theObj.template getSection<SchemaApplicator>();
+    theOS << indent(theDepth) << "# Applicator\n";
+    const auto aPrintSchema =
+        [&theOS, theDepth](const std::variant<bool, SchemaObject> &theSchema) {
+          if (std::holds_alternative<bool>(theSchema)) {
+            theOS << " " << (std::get<bool>(theSchema) ? "true" : "false")
+                  << "\n";
+          } else {
+            theOS << "\n";
+            printObject(theOS, std::get<SchemaObject>(theSchema), theDepth + 1);
+          }
+        };
+    theOS << indent(theDepth) << "additionalItems:";
+    aPrintSchema(aApplicator.getAdditionalItems());
+    theOS << indent(theDepth) << "unevaluatedItems:";
+    aPrintSchema(aApplicator.getUnevaluatedItems());
   }
 
   static constexpr const char *toString(const Types theType) {
@@ -170,6 +194,14 @@ private:
     theOS << indent(theDepth) << "type:\n";
     for (const Types aType : aValidation.getType())
       theOS << indent(theDepth + 1) << toString(aType) << "\n";
+  }
+
+  static void printObjectFormat(std::ostream &theOS, const SchemaObject &theObj,
+                                const unsigned theDepth) {
+    const auto &aFormat = theObj.template getSection<SchemaFormat>();
+    theOS << indent(theDepth) << "# Format\n";
+    theOS << indent(theDepth) << std::setw(W_COL1)
+          << "format: " << aFormat.getFormat() << "\n";
   }
 
   const SchemaObject &itsSchemaObject;
