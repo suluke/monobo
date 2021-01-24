@@ -28,6 +28,7 @@ public:
 
     constexpr Accessor(const Context &theContext, const SchemaCore &theCore)
         : itsContext(&theContext), itsCore(&theCore) {}
+
     constexpr const UriRefAccessor getId() const {
       return UriRefAccessor{*itsContext, itsCore->itsId};
     }
@@ -55,6 +56,7 @@ public:
     constexpr const DefsAccessor getDefs() const {
       return DefsAccessor{*itsContext, itsCore->itsDefs};
     }
+
   private:
     const Context *itsContext;
     const SchemaCore *itsCore;

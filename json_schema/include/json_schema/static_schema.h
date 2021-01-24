@@ -47,6 +47,7 @@ struct StaticStorage {
 
   struct Json {
     ptrdiff_t itsPos{-1};
+    constexpr bool isValid() const { return itsPos >= 0; }
   };
 };
 
@@ -79,6 +80,7 @@ public:
   using SchemaRef = typename Storage::Schema;
   using SchemaObject = typename Standard::template SchemaObject<Storage>;
   using JsonRef = typename Storage::Json;
+  using JsonAccessor = typename JsonStorage::EntityRef;
   using StringRef = typename Storage::String;
   template <typename T> using BufferRef = typename Storage::template Buffer<T>;
   template <typename Key, typename Value>
@@ -255,19 +257,31 @@ public:
     BufferRef<T> itsBuffer;
 
   protected:
+    template <typename T2>
+    constexpr auto prettify(const BufferRef<T2> &theBuffer) const {
+      return BufferAccessor<T2, IsConst>{*itsContext, theBuffer};
+    }
     template <typename T1, typename T2>
     constexpr auto prettify(const std::pair<T1, T2> &thePair) const {
       return std::make_pair(prettify(thePair.first), prettify(thePair.second));
     }
     constexpr bool prettify(const bool theBool) const { return theBool; }
+    constexpr Types prettify(const Types theType) const { return theType; }
     constexpr std::string_view prettify(const StringRef theString) const {
       return itsContext->getString(theString);
     }
+    constexpr auto prettify(const JsonRef theJson) const {
+      if (!theJson.isValid())
+        throw "Implementation errors: Invalid json reference in buffer";
+      return itsContext->getJson(theJson);
+    }
     constexpr auto prettify(const SchemaRef theSchema) const {
-      using ReturnTy = std::variant<bool, SchemaObjectAccessor<StaticSchemaContext>>;
+      using ReturnTy =
+          std::variant<bool, SchemaObjectAccessor<StaticSchemaContext>>;
       if (itsContext->getTrueSchemaRef() == theSchema)
         return ReturnTy{true};
-      return ReturnTy{SchemaObjectAccessor<StaticSchemaContext>{*itsContext, theSchema}};
+      return ReturnTy{
+          SchemaObjectAccessor<StaticSchemaContext>{*itsContext, theSchema}};
     }
 
   private:
@@ -350,6 +364,9 @@ public:
 
   constexpr std::string_view getString(const StringRef &theStr) const {
     return {itsChars.data() + theStr.itsPos, theStr.itsSize};
+  }
+  constexpr JsonAccessor getJson(const JsonRef &theJson) const {
+    return JsonAccessor{itsJsonStorage, itsJsons[theJson.itsPos]};
   }
 
 private:
