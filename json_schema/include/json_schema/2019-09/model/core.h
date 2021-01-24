@@ -24,6 +24,7 @@ public:
     using UriAccessor = typename Uri::template Accessor<Context>;
     using VocabularyAccessor =
         typename Vocabulary<Storage>::template Accessor<Context>;
+    using DefsAccessor = typename Defs<Storage>::template Accessor<Context>;
 
     constexpr Accessor(const Context &theContext, const SchemaCore &theCore)
         : itsContext(&theContext), itsCore(&theCore) {}
@@ -36,7 +37,24 @@ public:
     constexpr const VocabularyAccessor getVocabulary() const {
       return VocabularyAccessor{*itsContext, itsCore->itsVocabulary};
     }
-
+    constexpr std::string_view getAnchor() const {
+      return itsContext->getString(itsCore->itsAnchor);
+    }
+    constexpr const UriRefAccessor getRef() const {
+      return UriRefAccessor{*itsContext, itsCore->itsRef};
+    }
+    constexpr const UriRefAccessor getRecursiveRef() const {
+      return UriRefAccessor{*itsContext, itsCore->itsRecursiveRef};
+    }
+    constexpr bool getRecursiveAnchor() const {
+      return itsCore->itsRecursiveAnchor;
+    }
+    constexpr std::string_view getComment() const {
+      return itsContext->getString(itsCore->itsComment);
+    }
+    constexpr const DefsAccessor getDefs() const {
+      return DefsAccessor{*itsContext, itsCore->itsDefs};
+    }
   private:
     const Context *itsContext;
     const SchemaCore *itsCore;

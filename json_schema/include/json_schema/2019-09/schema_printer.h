@@ -41,20 +41,47 @@ private:
 
   static void printObject(std::ostream &theOS, const SchemaObject &theObj,
                           const unsigned theDepth = 0) {
+    printObjectCore(theOS, theObj, theDepth);
+  }
+
+  static void printObjectCore(std::ostream &theOS, const SchemaObject &theObj,
+                              const unsigned theDepth) {
     const auto &aCore = theObj.template getSection<SchemaCore>();
-    constexpr int aKWWidth = 13;
+    constexpr int aKWWidth = 18;
     theOS << std::left << std::setfill(' ');
-    theOS << indent(theDepth) << "[Core]\n";
+    theOS << indent(theDepth) << "# Core\n";
+    theOS << indent(theDepth) << std::setw(aKWWidth)
+          << "$id:" << aCore.getId().toString() << "\n";
     theOS << indent(theDepth) << std::setw(aKWWidth)
           << "$schema:" << aCore.getSchema().toString() << "\n";
     theOS << indent(theDepth) << std::setw(aKWWidth)
-          << "$id:" << aCore.getId().toString() << "\n";
+          << "$anchor:" << aCore.getAnchor() << "\n";
+    theOS << indent(theDepth) << std::setw(aKWWidth)
+          << "$ref:" << aCore.getRef().toString() << "\n";
+    theOS << indent(theDepth) << std::setw(aKWWidth)
+          << "$recursiveRef:" << aCore.getRecursiveRef().toString() << "\n";
+    theOS << indent(theDepth) << std::setw(aKWWidth) << "$recursiveAnchor:"
+          << (aCore.getRecursiveAnchor() ? "true" : "false") << "\n";
     const auto aVocabDict = aCore.getVocabulary().toDict();
     theOS << indent(theDepth) << std::setw(aKWWidth)
           << "$vocabulary:" << aVocabDict.size() << "\n";
-    for (size_t aIdx = 0; aIdx < aVocabDict.size(); ++aIdx) {
-      theOS << indent(theDepth + 1) << aVocabDict[aIdx].first << ": "
-            << (aVocabDict[aIdx].second ? "true" : "false") << "\n";
+    for (const auto [aKey, aValue] : aVocabDict) {
+      theOS << indent(theDepth + 1) << aKey << ": "
+            << (aValue ? "true" : "false") << "\n";
+    }
+    theOS << indent(theDepth) << std::setw(aKWWidth)
+          << "$comment:" << aCore.getComment() << "\n";
+    const auto aDefsDict = aCore.getDefs().toDict();
+    theOS << indent(theDepth) << std::setw(aKWWidth)
+          << "$defs:" << aDefsDict.size() << "\n";
+    for (const auto [aKey, aValue] : aDefsDict) {
+      theOS << indent(theDepth + 1) << aKey << ":";
+      if (std::holds_alternative<bool>(aValue)) {
+        theOS << " " << (std::get<bool>(aValue) ? "true" : "false") << "\n";
+      } else {
+        theOS << "\n";
+        printObject(theOS, std::get<SchemaObject>(aValue), theDepth + 2);
+      }
     }
   }
 

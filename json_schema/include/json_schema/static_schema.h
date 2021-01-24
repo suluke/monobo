@@ -14,6 +14,12 @@ struct StaticStorage {
     size_t itsSize{0};
 
     constexpr size_t size() const noexcept { return itsSize; }
+    constexpr bool operator==(const Buffer &theOther) const {
+      return itsPos == theOther.itsPos && itsSize == theOther.itsSize;
+    }
+    constexpr bool operator!=(const Buffer &theOther) const {
+      return !(*this == theOther);
+    }
   };
 
   template <typename Key, typename Value>
@@ -201,10 +207,54 @@ public:
       return access(*itsContext, itsBuffer, theIdx);
     }
 
+    constexpr bool operator==(const BufferAccessor &theOther) const {
+      return itsContext == theOther.itsContext &&
+             itsBuffer == theOther.itsBuffer;
+    }
+    constexpr bool operator!=(const BufferAccessor &theOther) const {
+      return !(*this == theOther);
+    }
+
+    class Iterator {
+    public:
+      constexpr Iterator() = default;
+      constexpr Iterator(const Iterator &) = default;
+      constexpr Iterator &operator=(const Iterator &) = default;
+
+      constexpr Iterator(const BufferAccessor &theBuf, const ptrdiff_t thePos)
+          : itsPos{thePos}, itsBuffer{theBuf} {}
+
+      constexpr Iterator &operator++() {
+        ++itsPos;
+        return *this;
+      }
+      constexpr Iterator operator++(int) {
+        Iterator aCopy{*this};
+        ++(*this);
+        return aCopy;
+      }
+      constexpr auto operator*() const { return itsBuffer[itsPos]; }
+      constexpr bool operator==(const Iterator &theOther) const {
+        return itsPos == theOther.itsPos && itsBuffer == theOther.itsBuffer;
+      }
+      constexpr bool operator!=(const Iterator &theOther) const {
+        return !(*this == theOther);
+      }
+
+    private:
+      ptrdiff_t itsPos;
+      BufferAccessor itsBuffer;
+    };
+    constexpr Iterator begin() const { return {*this, 0}; }
+    constexpr Iterator end() const {
+      return {*this, static_cast<ptrdiff_t>(itsBuffer.size())};
+    }
+
   private:
     ContextTy *itsContext;
     BufferRef<T> itsBuffer;
 
+  protected:
     template <typename T1, typename T2>
     constexpr auto prettify(const std::pair<T1, T2> &thePair) const {
       return std::make_pair(prettify(thePair.first), prettify(thePair.second));
@@ -214,9 +264,13 @@ public:
       return itsContext->getString(theString);
     }
     constexpr auto prettify(const SchemaRef theSchema) const {
-      return SchemaObjectAccessor<StaticSchemaContext>{*itsContext, theSchema};
+      using ReturnTy = std::variant<bool, SchemaObjectAccessor<StaticSchemaContext>>;
+      if (itsContext->getTrueSchemaRef() == theSchema)
+        return ReturnTy{true};
+      return ReturnTy{SchemaObjectAccessor<StaticSchemaContext>{*itsContext, theSchema}};
     }
 
+  private:
     static constexpr Value &access(ContextTy &theCtx,
                                    const BufferRef<SchemaRef> theBuf,
                                    const size_t theIdx) {
@@ -254,6 +308,32 @@ public:
       return theCtx.itsStringListDicts[theBuf.itsPos + theIdx];
     }
   };
+  template <typename KeyT, typename ValT>
+  struct MapAccessor : BufferAccessor<std::pair<KeyT, ValT>> {
+    using Base = BufferAccessor<std::pair<KeyT, ValT>>;
+    using ContextTy = typename Base::ContextTy;
+    using Base::begin;
+    using Base::end;
+    using Base::operator[];
+    using Base::operator==;
+    using Base::operator!=;
+    using Base::size;
+
+    constexpr MapAccessor(ContextTy &theContext, MapRef<KeyT, ValT> theMap)
+        : Base(theContext, theMap) {}
+
+  public:
+    constexpr auto operator[](const std::string_view &theKey) const {
+      using LookupResult =
+          std::optional<decltype(Base::prettify(std::declval<const ValT &>()))>;
+
+      for (const auto [aKey, aVal] : *this) {
+        if (aKey == theKey)
+          return LookupResult{Base::prettify(aVal)};
+      }
+      return LookupResult{std::nullopt};
+    }
+  };
 
   template <typename T>
   constexpr void setBufferItem(BufferRef<T> &theList, const ptrdiff_t theIdx,
@@ -271,9 +351,6 @@ public:
   constexpr std::string_view getString(const StringRef &theStr) const {
     return {itsChars.data() + theStr.itsPos, theStr.itsSize};
   }
-
-  template <typename KeyT, typename ValT>
-  using MapAccessor = BufferAccessor<std::pair<KeyT, ValT>>;
 
 private:
   template <typename ErrorHandling> friend struct Allocator;
