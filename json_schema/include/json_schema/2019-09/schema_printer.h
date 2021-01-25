@@ -49,8 +49,26 @@ private:
                           const unsigned theDepth = 0) {
     theOS << std::left << std::setfill(' ');
     printObjectCore(theOS, theObj, theDepth);
+    printObjectApplicator(theOS, theObj, theDepth);
     printObjectValidation(theOS, theObj, theDepth);
     printObjectFormat(theOS, theObj, theDepth);
+  }
+
+  static void printSchema(std::ostream &theOS,
+                          const std::variant<bool, SchemaObject> &theSchema,
+                          const int theDepth,
+                          const bool theFreestanding = false) {
+    if (std::holds_alternative<bool>(theSchema)) {
+      if (theFreestanding)
+        theOS << indent(theDepth);
+      else
+        theOS << " ";
+      theOS << (std::get<bool>(theSchema) ? "true" : "false") << "\n";
+    } else {
+      if (!theFreestanding)
+        theOS << "\n";
+      printObject(theOS, std::get<SchemaObject>(theSchema), theDepth + 1);
+    }
   }
 
   static void printObjectCore(std::ostream &theOS, const SchemaObject &theObj,
@@ -83,12 +101,7 @@ private:
           << "$defs:" << aDefsDict.size() << "\n";
     for (const auto [aKey, aValue] : aDefsDict) {
       theOS << indent(theDepth + 1) << aKey << ":";
-      if (std::holds_alternative<bool>(aValue)) {
-        theOS << " " << (std::get<bool>(aValue) ? "true" : "false") << "\n";
-      } else {
-        theOS << "\n";
-        printObject(theOS, std::get<SchemaObject>(aValue), theDepth + 2);
-      }
+      printSchema(theOS, aValue, theDepth + 1);
     }
   }
 
@@ -99,18 +112,55 @@ private:
     theOS << indent(theDepth) << "# Applicator\n";
     const auto aPrintSchema =
         [&theOS, theDepth](const std::variant<bool, SchemaObject> &theSchema) {
-          if (std::holds_alternative<bool>(theSchema)) {
-            theOS << " " << (std::get<bool>(theSchema) ? "true" : "false")
-                  << "\n";
-          } else {
-            theOS << "\n";
-            printObject(theOS, std::get<SchemaObject>(theSchema), theDepth + 1);
-          }
+          printSchema(theOS, theSchema, theDepth + 1);
         };
     theOS << indent(theDepth) << "additionalItems:";
     aPrintSchema(aApplicator.getAdditionalItems());
     theOS << indent(theDepth) << "unevaluatedItems:";
     aPrintSchema(aApplicator.getUnevaluatedItems());
+    theOS << indent(theDepth) << "items:\n";
+    for (const auto aSchema : aApplicator.getItems())
+      printSchema(theOS, aSchema, theDepth + 1, true);
+    theOS << indent(theDepth) << "contains:";
+    aPrintSchema(aApplicator.getContains());
+    theOS << indent(theDepth) << "additionalProperties:";
+    aPrintSchema(aApplicator.getAdditionalProperties());
+    theOS << indent(theDepth) << "unevaluatedProperties:";
+    aPrintSchema(aApplicator.getUnevaluatedProperties());
+    theOS << indent(theDepth) << "properties:\n";
+    for (const auto [aKey, aSchema] : aApplicator.getProperties()) {
+      theOS << indent(theDepth + 1) << aKey << ":";
+      aPrintSchema(aSchema);
+    }
+    theOS << indent(theDepth) << "patternProperties:\n";
+    for (const auto [aKey, aSchema] : aApplicator.getPatternProperties()) {
+      theOS << indent(theDepth + 1) << aKey << ":";
+      aPrintSchema(aSchema);
+    }
+    theOS << indent(theDepth) << "dependentSchemas:\n";
+    for (const auto [aKey, aSchema] : aApplicator.getDependentSchemas()) {
+      theOS << indent(theDepth + 1) << aKey << ":";
+      aPrintSchema(aSchema);
+    }
+    theOS << indent(theDepth) << "propertyNames:";
+    aPrintSchema(aApplicator.getPropertyNames());
+    theOS << indent(theDepth) << "if:";
+    aPrintSchema(aApplicator.getIf());
+    theOS << indent(theDepth) << "then:";
+    aPrintSchema(aApplicator.getThen());
+    theOS << indent(theDepth) << "else:";
+    aPrintSchema(aApplicator.getElse());
+    theOS << indent(theDepth) << "allOf:\n";
+    for (const auto aSchema : aApplicator.getAllOf())
+      printSchema(theOS, aSchema, theDepth + 1, true);
+    theOS << indent(theDepth) << "anyOf:\n";
+    for (const auto aSchema : aApplicator.getAnyOf())
+      printSchema(theOS, aSchema, theDepth + 1, true);
+    theOS << indent(theDepth) << "oneOf:\n";
+    for (const auto aSchema : aApplicator.getOneOf())
+      printSchema(theOS, aSchema, theDepth + 1, true);
+    theOS << indent(theDepth) << "not:";
+    aPrintSchema(aApplicator.getNot());
   }
 
   static constexpr const char *toString(const Types theType) {
