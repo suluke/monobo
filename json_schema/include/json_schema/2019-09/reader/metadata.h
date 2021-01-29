@@ -36,6 +36,7 @@ public:
         aResult.NUM_CHARS += theValue.toString().size();
       } else if (theKey == "default") {
         aResult.JSON_INFO += cjson::DocumentInfo::read(theValue);
+        aResult.NUM_JSON_REFS += 1;
       } else if (theKey == "deprecated") {
         if (aType != TypeEnum::BOOL)
           return makeError(
@@ -52,7 +53,8 @@ public:
         if (aType != TypeEnum::ARRAY)
           return makeError(
               "examples must be of type array (2019-09/Validation:9.5.)");
-        // aResult.NUM_EXAMPLES_ENTRIES += theValue.toArray().size();
+        aResult.NUM_JSON_LIST_ITEMS += theValue.toArray().size();
+        aResult.NUM_JSON_REFS += theValue.toArray().size();
         for (const auto &aExample : theValue.toArray())
           aResult.JSON_INFO += cjson::DocumentInfo::read(aExample);
       } else {
@@ -67,13 +69,28 @@ public:
     static constexpr typename Reader::ErrorOrConsumed
     readSchema(Reader &theReader, typename Reader::SchemaObject &theSchema,
                const std::string_view &theKey, const JSON &theValue) {
+      auto &aMetadata = theSchema.template getSection<SchemaMetadata>();
       if (theKey == "title") {
+        aMetadata.itsTitle = theReader.allocateString(theValue.toString());
       } else if (theKey == "description") {
+        aMetadata.itsDescription = theReader.allocateString(theValue.toString());
       } else if (theKey == "default") {
+        aMetadata.itsDefault = theReader.allocateJson(theValue);
       } else if (theKey == "deprecated") {
+        aMetadata.itsDeprecated = theValue.toBool();
       } else if (theKey == "readOnly") {
+        aMetadata.itsReadOnly = theValue.toBool();
       } else if (theKey == "writeOnly") {
+        aMetadata.itsWriteOnly = theValue.toBool();
       } else if (theKey == "examples") {
+        auto aJsons =
+            theReader.template allocateList<typename Reader::Storage::Json>(
+                theValue.toArray().size());
+        ptrdiff_t aIdx{0};
+        for (const auto aElm : theValue.toArray()) {
+          theReader.setListItem(aJsons, aIdx++, theReader.allocateJson(aElm));
+        }
+        aMetadata.itsExamples = aJsons;
       } else {
         return false;
       }

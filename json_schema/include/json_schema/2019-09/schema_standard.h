@@ -1,6 +1,7 @@
 #ifndef JSON_SCHEMA_2019_09_SCHEMA_STANDARD_H
 #define JSON_SCHEMA_2019_09_SCHEMA_STANDARD_H
 #include "json_schema/2019-09/model/applicator.h"
+#include "json_schema/2019-09/model/content.h"
 #include "json_schema/2019-09/model/core.h"
 #include "json_schema/2019-09/model/format.h"
 #include "json_schema/2019-09/model/metadata.h"
@@ -22,7 +23,7 @@ struct Standard_2019_09 {
   template <typename Storage>
   using SchemaObject =
       SchemaObjectBase<Storage, SchemaCore, SchemaApplicator, SchemaMetadata,
-                       SchemaValidation, SchemaFormat>;
+                       SchemaValidation, SchemaFormat, SchemaContent>;
   template <typename JSON, typename ErrorHandling>
   using SchemaInfoReader =
       SchemaInfoReaderBase<JSON, ErrorHandling, ReaderApplicator::InfoReader,

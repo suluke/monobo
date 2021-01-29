@@ -50,9 +50,16 @@ public:
     static constexpr typename Reader::ErrorOrConsumed
     readSchema(Reader &theReader, typename Reader::SchemaObject &theSchema,
                const std::string_view &theKey, const JSON &theValue) {
+      auto &aContent = theSchema.template getSection<SchemaContent>();
       if (theKey == "contentMediaType") {
+        aContent.itsContentMediaType = theReader.allocateString(theValue.toString());
       } else if (theKey == "contentEncoding") {
+        aContent.itsContentEncoding = theReader.allocateString(theValue.toString());
       } else if (theKey == "contentSchema") {
+        const auto aSchema = theReader.readSchema(theValue);
+        if (Reader::ErrorHandling::isError(aSchema))
+          return Reader::ErrorHandling::template convertError<bool>(aSchema);
+        aContent.itsContentSchema = Reader::ErrorHandling::unwrap(aSchema);
       } else {
         return false;
       }

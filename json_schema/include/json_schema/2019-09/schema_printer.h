@@ -6,8 +6,10 @@
 
 #include "constexpr_json/ext/printing.h"
 #include "json_schema/2019-09/model/applicator.h"
+#include "json_schema/2019-09/model/content.h"
 #include "json_schema/2019-09/model/core.h"
 #include "json_schema/2019-09/model/format.h"
+#include "json_schema/2019-09/model/metadata.h"
 #include "json_schema/2019-09/model/validation.h"
 
 namespace json_schema {
@@ -52,6 +54,8 @@ private:
     printObjectApplicator(theOS, theObj, theDepth);
     printObjectValidation(theOS, theObj, theDepth);
     printObjectFormat(theOS, theObj, theDepth);
+    printObjectMetadata(theOS, theObj, theDepth);
+    printObjectContent(theOS, theObj, theDepth);
   }
 
   static void printSchema(std::ostream &theOS,
@@ -252,6 +256,53 @@ private:
     theOS << indent(theDepth) << "# Format\n";
     theOS << indent(theDepth) << std::setw(W_COL1)
           << "format: " << aFormat.getFormat() << "\n";
+  }
+
+  static void printObjectMetadata(std::ostream &theOS,
+                                  const SchemaObject &theObj,
+                                  const unsigned theDepth) {
+    const auto &aMetadata = theObj.template getSection<SchemaMetadata>();
+    theOS << indent(theDepth) << "# Metadata\n";
+    theOS << indent(theDepth) << std::setw(W_COL1)
+          << "title: " << aMetadata.getTitle() << "\n";
+    theOS << indent(theDepth) << std::setw(W_COL1)
+          << "description: " << aMetadata.getDescription() << "\n";
+    theOS << indent(theDepth) << "default: ";
+    const auto aDefaultMaybe = aMetadata.getDefault();
+    if (aDefaultMaybe) {
+      cjson::Printer aJsonPrinter;
+      aJsonPrinter.print(theOS, *aDefaultMaybe) << "\n";
+    } else {
+      theOS << "\n";
+    }
+    theOS << indent(theDepth) << std::setw(W_COL1)
+          << "deprecated: " << (aMetadata.getDeprecated() ? "true" : "false")
+          << "\n";
+    theOS << indent(theDepth) << std::setw(W_COL1)
+          << "readOnly: " << (aMetadata.getReadOnly() ? "true" : "false")
+          << "\n";
+    theOS << indent(theDepth) << std::setw(W_COL1)
+          << "writeOnly: " << (aMetadata.getWriteOnly() ? "true" : "false")
+          << "\n";
+    theOS << indent(theDepth) << "examples:\n";
+    cjson::Printer aJsonPrinter;
+    for (const auto aJson : aMetadata.getExamples()) {
+      theOS << indent(theDepth + 1);
+      aJsonPrinter.print(theOS, aJson) << "\n";
+    }
+  }
+
+  static void printObjectContent(std::ostream &theOS,
+                                 const SchemaObject &theObj,
+                                 const unsigned theDepth) {
+    const auto &aContent = theObj.template getSection<SchemaContent>();
+    theOS << indent(theDepth) << "# Content\n";
+    theOS << indent(theDepth) << std::setw(W_COL1)
+          << "contentMediaType: " << aContent.getContentMediaType() << "\n";
+    theOS << indent(theDepth) << std::setw(W_COL1)
+          << "contentEncoding: " << aContent.getContentEncoding() << "\n";
+    theOS << indent(theDepth) << "contentSchema:";
+    printSchema(theOS, aContent.getContentSchema(), theDepth + 1);
   }
 
   const SchemaObject &itsSchemaObject;
