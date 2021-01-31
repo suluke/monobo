@@ -1,3 +1,5 @@
+add_subdirectory(JSON-Schema-Test-Suite)
+
 find_path(CONSTEXPR_JSON_PROJECT_ROOT
   NAMES include/constexpr_json/document.h
   REQUIRED
