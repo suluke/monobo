@@ -42,7 +42,7 @@ template <typename DocumentTy> struct ArrayRefImpl {
   constexpr iterator end() const { return {*itsDoc, itsBegin + size()}; }
   constexpr EntityRefImpl<DocumentTy> operator[](size_t theIdx) const;
   template <typename OtherRefTy>
-  constexpr bool operator==(const OtherRefTy &theOther) {
+  constexpr bool operator==(const OtherRefTy &theOther) const noexcept {
     auto aOtherIter = theOther.begin();
     for (const EntityRefImpl aEntry : *this) {
       if (!(aEntry == *aOtherIter))

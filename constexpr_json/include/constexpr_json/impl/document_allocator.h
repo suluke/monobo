@@ -76,7 +76,7 @@ struct DocumentAllocator : private DocumentInfo {
     itsNumObjectProperties += theSize;
     return Entity{Entity::OBJECT, itsNumObjects++};
   }
-  template<typename JSON>
+  template <typename JSON>
   constexpr Entity allocateJson(DocTy &theDoc, const JSON &theJson) {
     switch (theJson.getType()) {
     case Entity::ARRAY: {
@@ -84,7 +84,8 @@ struct DocumentAllocator : private DocumentInfo {
       const Entity aEntity = allocateArray(theDoc, theJson.toArray().size());
       const Array &aArray = theDoc.itsArrays[aEntity.itsPayload];
       for (const auto &aElement : theJson.toArray()) {
-        theDoc.itsEntities[aArray.itsPosition + aIdx] = allocateJson(theDoc, aElement);
+        theDoc.itsEntities[aArray.itsPosition + aIdx] =
+            allocateJson(theDoc, aElement);
       }
       return aEntity;
     }
@@ -109,6 +110,10 @@ struct DocumentAllocator : private DocumentInfo {
       return allocateNumber(theDoc, theJson.toNumber());
     case Entity::STRING:
       return allocateRawString(theDoc, theJson.toString());
+    default:
+      // gcc 7 actually raises a really funny error when we move this behind the
+      // switch
+      throw "Implementation error: Exhausted Json Type enum options";
     }
   }
 
