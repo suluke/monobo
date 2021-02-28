@@ -4,10 +4,8 @@
 namespace json_schema {
 template <typename Storage> class Vocabulary {
 public:
-  using Entry =
-      typename Storage::template MapEntry<typename Storage::String, bool>;
   using EntryMap =
-      typename Storage::template Map<typename Storage::String, bool>;
+      typename Storage::template MapPtr<typename Storage::StringRef, bool>;
   constexpr Vocabulary() = default;
   constexpr Vocabulary(const Vocabulary &) = default;
   constexpr Vocabulary(Vocabulary &&) = default;
@@ -27,10 +25,12 @@ public:
         : itsContext(&theContext), itsVocab(theVocab) {}
 
     using MapAccessor =
-        typename Context::template MapAccessor<typename Storage::String, bool>;
+        typename Context::template MapAccessor<typename Storage::StringRef, bool>;
 
-    constexpr MapAccessor toDict() const {
-      return MapAccessor{*itsContext, itsVocab.toDict()};
+    constexpr std::optional<MapAccessor> toDict() const {
+      if (!itsVocab.toDict())
+        return std::nullopt;
+      return MapAccessor{*itsContext, *itsVocab.toDict()};
     }
 
   private:

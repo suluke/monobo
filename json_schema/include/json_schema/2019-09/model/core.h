@@ -38,8 +38,10 @@ public:
     constexpr const VocabularyAccessor getVocabulary() const {
       return VocabularyAccessor{*itsContext, itsCore->itsVocabulary};
     }
-    constexpr std::string_view getAnchor() const {
-      return itsContext->getString(itsCore->itsAnchor);
+    constexpr std::optional<std::string_view> getAnchor() const {
+      if (!itsCore->itsAnchor)
+        return std::nullopt;
+      return itsContext->getString(*itsCore->itsAnchor);
     }
     constexpr const UriRefAccessor getRef() const {
       return UriRefAccessor{*itsContext, itsCore->itsRef};
@@ -50,8 +52,10 @@ public:
     constexpr bool getRecursiveAnchor() const {
       return itsCore->itsRecursiveAnchor;
     }
-    constexpr std::string_view getComment() const {
-      return itsContext->getString(itsCore->itsComment);
+    constexpr std::optional<std::string_view> getComment() const {
+      if (!itsCore->itsComment)
+        return std::nullopt;
+      return itsContext->getString(*itsCore->itsComment);
     }
     constexpr const DefsAccessor getDefs() const {
       return DefsAccessor{*itsContext, itsCore->itsDefs};
@@ -64,7 +68,7 @@ public:
 
   UriReference itsId{};
   Uri itsSchema{};
-  typename Storage::String itsAnchor{};
+  typename Storage::StringPtr itsAnchor{};
   // FIXME variant::operator= issue
   // std::variant<UriReference, typename Storage::Schema> itsRef{};
   UriReference itsRef{};
@@ -72,7 +76,7 @@ public:
   UriReference itsRecursiveRef{};
   bool itsRecursiveAnchor{};
   Vocabulary<Storage> itsVocabulary{};
-  typename Storage::String itsComment{};
+  typename Storage::StringPtr itsComment{};
   Defs<Storage> itsDefs{};
 };
 } // namespace json_schema

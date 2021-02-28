@@ -15,8 +15,10 @@ public:
     constexpr Accessor(const Context &theContext, const SchemaFormat &theFormat)
         : itsContext(&theContext), itsFormat(&theFormat) {}
 
-    constexpr std::string_view getFormat() const {
-      return itsContext->getString(itsFormat->itsFormat);
+    constexpr std::optional<std::string_view> getFormat() const {
+      if (!itsFormat->itsFormat)
+        return std::nullopt;
+      return itsContext->getString(*itsFormat->itsFormat);
     }
 
   private:
@@ -24,7 +26,7 @@ public:
     const SchemaFormat *itsFormat;
   };
 
-  typename Storage::String itsFormat{};
+  typename Storage::StringPtr itsFormat{};
 };
 } // namespace json_schema
 #endif // JSON_SCHEMA_2019_09_MODEL_FORMAT_H

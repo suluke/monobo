@@ -19,26 +19,25 @@
 
 namespace json_schema {
 
-struct Standard_2019_09 {
+template <bool LENIENT = true> struct Standard_2019_09 {
   template <typename Storage>
   using SchemaObject =
       SchemaObjectBase<Storage, SchemaCore, SchemaApplicator, SchemaMetadata,
                        SchemaValidation, SchemaFormat, SchemaContent>;
   template <typename JSON, typename ErrorHandling>
-  using SchemaInfoReader =
-      SchemaInfoReaderBase<JSON, ErrorHandling, ReaderApplicator::InfoReader,
-                           ReaderCore::InfoReader, ReaderFormat::InfoReader,
-                           ReaderMetadata::InfoReader,
-                           ReaderValidation::InfoReader,
-                           ReaderContent::InfoReader, ReaderCompat::InfoReader>;
+  using SchemaInfoReader = SchemaInfoReaderBase<
+      LENIENT, JSON, ErrorHandling, ReaderCore::InfoReader,
+      ReaderApplicator::InfoReader, ReaderMetadata::InfoReader,
+      ReaderValidation::InfoReader, ReaderFormat::InfoReader,
+      ReaderContent::InfoReader, ReaderCompat::InfoReader>;
 
   template <typename SchemaContext, typename ErrorHandling>
   using SchemaReader =
-      SchemaReaderBase<SchemaContext, ErrorHandling,
-                       ReaderApplicator::SchemaReader, ReaderCore::SchemaReader,
+      SchemaReaderBase<LENIENT, SchemaContext, ErrorHandling,
+                       ReaderCore::SchemaReader, ReaderApplicator::SchemaReader/*,
                        ReaderFormat::SchemaReader, ReaderMetadata::SchemaReader,
                        ReaderValidation::SchemaReader,
-                       ReaderContent::SchemaReader, ReaderCompat::SchemaReader>;
+                       ReaderContent::SchemaReader, ReaderCompat::SchemaReader*/>;
 };
 } // namespace json_schema
 #endif // JSON_SCHEMA_2019_09_SCHEMA_STANDARD_H

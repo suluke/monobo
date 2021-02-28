@@ -12,23 +12,33 @@ public:
   constexpr SchemaValidation &operator=(const SchemaValidation &) = default;
   constexpr SchemaValidation &operator=(SchemaValidation &&) = default;
 
+  template <typename T> using Ptr = typename Storage::template Ptr<std::remove_reference_t<T>>;
   using StringList =
-      typename Storage::template Buffer<typename Storage::String>;
-  using TypesList = typename Storage::template Buffer<Types>;
-  using JsonList = typename Storage::template Buffer<typename Storage::Json>;
+      typename Storage::template BufferRef<typename Storage::StringRef>;
+  using TypesList = typename Storage::template BufferPtr<Types>;
+  using JsonList =
+      typename Storage::template BufferPtr<typename Storage::JsonRef>;
   using StringListDict =
-      typename Storage::template Map<typename Storage::String, StringList>;
+      typename Storage::template MapPtr<typename Storage::StringRef,
+                                        StringList>;
 
   template <typename Context> class Accessor {
   public:
     using StringListAccessor =
-        typename Context::template BufferAccessor<typename Storage::String>;
+        typename Context::template BufferAccessor<typename Storage::StringRef>;
+    using StringListAccessorMaybe = std::optional<StringListAccessor>;
+
     using TypesListAccessor = typename Context::template BufferAccessor<Types>;
+    using TypesListAccessorMaybe = std::optional<TypesListAccessor>;
+
     using StringListDictAccessor =
-        typename Context::template MapAccessor<typename Storage::String,
+        typename Context::template MapAccessor<typename Storage::StringRef,
                                                StringList>;
+    using StringListDictAccessorMaybe = std::optional<StringListDictAccessor>;
+
     using JsonListAccessor =
-        typename Context::template BufferAccessor<typename Storage::Json>;
+        typename Context::template BufferAccessor<typename Storage::JsonRef>;
+    using JsonListAccessorMaybe = std::optional<JsonListAccessor>;
 
     constexpr Accessor(const Context &theContext,
                        const SchemaValidation &theValidation)
@@ -68,26 +78,36 @@ public:
     constexpr bool getUniqueItems() const {
       return itsValidation->itsUniqueItems;
     }
-    constexpr std::string_view getPattern() const {
-      return itsContext->getString(itsValidation->itsPattern);
+    constexpr std::optional<std::string_view> getPattern() const {
+      if (!itsValidation->itsPattern)
+        return std::nullopt;
+      return itsContext->getString(*itsValidation->itsPattern);
     }
-    constexpr StringListAccessor getRequired() const {
-      return StringListAccessor{*itsContext, itsValidation->itsRequired};
+    constexpr StringListAccessorMaybe getRequired() const {
+      if (!itsValidation->itsRequired)
+        return std::nullopt;
+      return StringListAccessor{*itsContext, *itsValidation->itsRequired};
     }
-    constexpr StringListDictAccessor getDependentRequired() const {
+    constexpr StringListDictAccessorMaybe getDependentRequired() const {
+      if (!itsValidation->itsDependentRequired)
+        return std::nullopt;
       return StringListDictAccessor{*itsContext,
-                                    itsValidation->itsDependentRequired};
+                                    *itsValidation->itsDependentRequired};
     }
-    constexpr TypesListAccessor getType() const {
-      return TypesListAccessor{*itsContext, itsValidation->itsType};
+    constexpr TypesListAccessorMaybe getType() const {
+      if (!itsValidation->itsType)
+        return std::nullopt;
+      return TypesListAccessor{*itsContext, *itsValidation->itsType};
     }
     constexpr std::optional<typename Context::JsonAccessor> getConst() const {
-      if (itsValidation->itsConst.isValid())
-        return itsContext->getJson(itsValidation->itsConst);
-      return std::nullopt;
+      if (!itsValidation->itsConst)
+        return std::nullopt;
+      return itsContext->getJson(*itsValidation->itsConst);
     }
-    constexpr JsonListAccessor getEnum() const {
-      return JsonListAccessor{*itsContext, itsValidation->itsEnum};
+    constexpr JsonListAccessorMaybe getEnum() const {
+      if (!itsValidation->itsEnum)
+        return std::nullopt;
+      return JsonListAccessor{*itsContext, *itsValidation->itsEnum};
     }
 
   private:
@@ -110,11 +130,11 @@ public:
   size_t itsMaxProperties{};
   size_t itsMinProperties{};
   bool itsUniqueItems{false};
-  typename Storage::String itsPattern{};
-  StringList itsRequired{};
+  typename Storage::StringPtr itsPattern{};
+  Ptr<StringList> itsRequired{};
   StringListDict itsDependentRequired{};
   TypesList itsType{};
-  typename Storage::Json itsConst{};
+  typename Storage::JsonPtr itsConst{};
   JsonList itsEnum{};
 };
 } // namespace json_schema

@@ -52,14 +52,14 @@ public:
                const std::string_view &theKey, const JSON &theValue) {
       auto &aContent = theSchema.template getSection<SchemaContent>();
       if (theKey == "contentMediaType") {
-        aContent.itsContentMediaType = theReader.allocateString(theValue.toString());
+        aContent.itsContentMediaType = Reader::toPtr(theReader.allocateString(theValue.toString()));
       } else if (theKey == "contentEncoding") {
-        aContent.itsContentEncoding = theReader.allocateString(theValue.toString());
+        aContent.itsContentEncoding = Reader::toPtr(theReader.allocateString(theValue.toString()));
       } else if (theKey == "contentSchema") {
         const auto aSchema = theReader.readSchema(theValue);
         if (Reader::ErrorHandling::isError(aSchema))
           return Reader::ErrorHandling::template convertError<bool>(aSchema);
-        aContent.itsContentSchema = Reader::ErrorHandling::unwrap(aSchema);
+        aContent.itsContentSchema = Reader::toPtr(Reader::ErrorHandling::unwrap(aSchema));
       } else {
         return false;
       }

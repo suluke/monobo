@@ -43,7 +43,8 @@ public:
                const std::string_view &theKey, const JSON &theValue) {
       auto &aFormat = theSchema.template getSection<SchemaFormat>();
       if (theKey == "format") {
-        aFormat.itsFormat = theReader.allocateString(theValue.toString());
+        aFormat.itsFormat =
+            Reader::toPtr(theReader.allocateString(theValue.toString()));
       } else {
         return false;
       }

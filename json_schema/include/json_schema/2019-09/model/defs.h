@@ -4,10 +4,9 @@
 namespace json_schema {
 template <typename Storage> class Defs {
 public:
-  using Entry = typename Storage::template MapEntry<typename Storage::String,
-                                                    typename Storage::Schema>;
-  using EntryMap = typename Storage::template Map<typename Storage::String,
-                                                  typename Storage::Schema>;
+  using EntryMap =
+      typename Storage::template MapPtr<typename Storage::StringRef,
+                                        typename Storage::SchemaRef>;
   constexpr Defs() = default;
   constexpr Defs(const Defs &) = default;
   constexpr Defs(EntryMap &&theEntries) : itsEntries(std::move(theEntries)) {}
@@ -26,11 +25,13 @@ public:
         : itsContext(&theContext), itsDefs(theDefs) {}
 
     using MapAccessor =
-        typename Context::template MapAccessor<typename Storage::String,
-                                               typename Storage::Schema>;
+        typename Context::template MapAccessor<typename Storage::StringRef,
+                                               typename Storage::SchemaRef>;
 
-    constexpr MapAccessor toDict() const {
-      return MapAccessor{*itsContext, itsDefs.toDict()};
+    constexpr std::optional<MapAccessor> toDict() const {
+      if (!itsDefs.toDict())
+        return std::nullopt;
+      return MapAccessor{*itsContext, *itsDefs.toDict()};
     }
 
   private:

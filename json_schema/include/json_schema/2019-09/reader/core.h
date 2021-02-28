@@ -123,37 +123,42 @@ public:
                const std::string_view &theKey, const JSON &theValue) {
       auto &aCore = theSchema.template getSection<SchemaCore>();
       if (theKey == "$id") {
-        aCore.itsId = theReader.allocateString(theValue.toString());
+        aCore.itsId =
+            Reader::toPtr(theReader.allocateString(theValue.toString()));
       } else if (theKey == "$schema") {
-        aCore.itsSchema = theReader.allocateString(theValue.toString());
+        aCore.itsSchema =
+            Reader::toPtr(theReader.allocateString(theValue.toString()));
       } else if (theKey == "$anchor") {
-        aCore.itsAnchor = theReader.allocateString(theValue.toString());
+        aCore.itsAnchor =
+            Reader::toPtr(theReader.allocateString(theValue.toString()));
       } else if (theKey == "$ref") {
-        aCore.itsRef = theReader.allocateString(theValue.toString());
+        aCore.itsRef =
+            Reader::toPtr(theReader.allocateString(theValue.toString()));
       } else if (theKey == "$recursiveRef") {
-        aCore.itsRecursiveRef = theReader.allocateString(theValue.toString());
+        aCore.itsRecursiveRef =
+            Reader::toPtr(theReader.allocateString(theValue.toString()));
       } else if (theKey == "$recursiveAnchor") {
         aCore.itsRecursiveAnchor = theValue.toBool();
       } else if (theKey == "$vocabulary") {
         const size_t aVocabSize = theValue.toObject().size();
         auto aVocabObj =
-            theReader
-                .template allocateMap<typename Reader::Storage::String, bool>(
-                    aVocabSize);
+            theReader.template allocateMap<typename Reader::Storage::StringRef,
+                                           bool>(aVocabSize);
         ptrdiff_t aIdx{0};
         for (const auto &aKVPair : theValue.toObject()) {
           const auto aStr = theReader.allocateString(aKVPair.first);
           const bool aBool = aKVPair.second.toBool();
           theReader.setMapEntry(aVocabObj, aIdx++, aStr, aBool);
         }
-        aCore.itsVocabulary = std::move(aVocabObj);
+        aCore.itsVocabulary = Reader::toPtr(aVocabObj);
       } else if (theKey == "$comment") {
-        aCore.itsComment = theReader.allocateString(theValue.toString());
+        aCore.itsComment =
+            Reader::toPtr(theReader.allocateString(theValue.toString()));
       } else if (theKey == "$defs") {
         auto aDefsObj = theReader.readSchemaDict(theValue);
         if (Reader::ErrorHandling::isError(aDefsObj))
           return Reader::ErrorHandling::template convertError<bool>(aDefsObj);
-        aCore.itsDefs = std::move(Reader::ErrorHandling::unwrap(aDefsObj));
+        aCore.itsDefs = Reader::toPtr(Reader::ErrorHandling::unwrap(aDefsObj));
       } else {
         return false;
       }

@@ -4,7 +4,7 @@
 #include "json_schema/schema_info.h"
 
 namespace json_schema {
-template <typename JSON_, typename ErrorHandling_, typename... Sections>
+template <bool LENIENT, typename JSON_, typename ErrorHandling_, typename... Sections>
 class SchemaInfoReaderBase {
 public:
   using Self = SchemaInfoReaderBase;
@@ -31,9 +31,10 @@ public:
           return ErrorHandling::template convertError<SchemaInfo>(
               aReadResOrError);
         const auto aReadRes = ErrorHandling::unwrap(aReadResOrError);
-        if (!aReadRes)
+        if (!aReadRes && !LENIENT)
           return makeError("Unknown schema entity encountered");
-        aResult += *aReadRes;
+        if (aReadRes)
+          aResult += *aReadRes;
       }
       break;
     }

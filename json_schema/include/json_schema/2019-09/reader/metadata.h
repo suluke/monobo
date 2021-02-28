@@ -71,11 +71,13 @@ public:
                const std::string_view &theKey, const JSON &theValue) {
       auto &aMetadata = theSchema.template getSection<SchemaMetadata>();
       if (theKey == "title") {
-        aMetadata.itsTitle = theReader.allocateString(theValue.toString());
+        aMetadata.itsTitle =
+            Reader::toPtr(theReader.allocateString(theValue.toString()));
       } else if (theKey == "description") {
-        aMetadata.itsDescription = theReader.allocateString(theValue.toString());
+        aMetadata.itsDescription =
+            Reader::toPtr(theReader.allocateString(theValue.toString()));
       } else if (theKey == "default") {
-        aMetadata.itsDefault = theReader.allocateJson(theValue);
+        aMetadata.itsDefault = Reader::toPtr(theReader.allocateJson(theValue));
       } else if (theKey == "deprecated") {
         aMetadata.itsDeprecated = theValue.toBool();
       } else if (theKey == "readOnly") {
@@ -84,13 +86,13 @@ public:
         aMetadata.itsWriteOnly = theValue.toBool();
       } else if (theKey == "examples") {
         auto aJsons =
-            theReader.template allocateList<typename Reader::Storage::Json>(
+            theReader.template allocateList<typename Reader::Storage::JsonRef>(
                 theValue.toArray().size());
         ptrdiff_t aIdx{0};
         for (const auto aElm : theValue.toArray()) {
           theReader.setListItem(aJsons, aIdx++, theReader.allocateJson(aElm));
         }
-        aMetadata.itsExamples = aJsons;
+        aMetadata.itsExamples = Reader::toPtr(aJsons);
       } else {
         return false;
       }

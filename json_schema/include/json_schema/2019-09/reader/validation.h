@@ -172,7 +172,7 @@ public:
       } else if (theKey == "minLength") {
         aValidation.itsMinLength = static_cast<size_t>(theValue.toNumber());
       } else if (theKey == "pattern") {
-        aValidation.itsPattern = theReader.allocateString(theValue.toString());
+        aValidation.itsPattern = Reader::toPtr(theReader.allocateString(theValue.toString()));
       } else if (theKey == "maxItems") {
         aValidation.itsMaxItems = static_cast<size_t>(theValue.toNumber());
       } else if (theKey == "minItems") {
@@ -191,9 +191,9 @@ public:
         const auto aStringBuf = theReader.readStringList(theValue);
         if (Reader::ErrorHandling::isError(aStringBuf))
           return Reader::ErrorHandling::template convertError<bool>(aStringBuf);
-        aValidation.itsRequired = Reader::ErrorHandling::unwrap(aStringBuf);
+        aValidation.itsRequired = Reader::toPtr(Reader::ErrorHandling::unwrap(aStringBuf));
       } else if (theKey == "dependentRequired") {
-        using StringRef = typename Reader::Storage::String;
+        using StringRef = typename Reader::Storage::StringRef;
         using StringList = typename Reader::template List<StringRef>;
         auto aDict = theReader.template allocateMap<StringRef, StringList>(
             theValue.toObject().size());
@@ -207,18 +207,18 @@ public:
           theReader.setMapEntry(aDict, aIdx++, aKey,
                                 Reader::ErrorHandling::unwrap(aStringsOrError));
         }
-        aValidation.itsDependentRequired = aDict;
+        aValidation.itsDependentRequired = Reader::toPtr(aDict);
       } else if (theKey == "const") {
-        aValidation.itsConst = theReader.allocateJson(theValue);
+        aValidation.itsConst = Reader::toPtr(theReader.allocateJson(theValue));
       } else if (theKey == "enum") {
         auto aJsons =
-            theReader.template allocateList<typename Reader::Storage::Json>(
+            theReader.template allocateList<typename Reader::Storage::JsonRef>(
                 theValue.toArray().size());
         ptrdiff_t aIdx{0};
         for (const auto aElm : theValue.toArray()) {
           theReader.setListItem(aJsons, aIdx++, theReader.allocateJson(aElm));
         }
-        aValidation.itsEnum = aJsons;
+        aValidation.itsEnum = Reader::toPtr(aJsons);
       } else if (theKey == "type") {
         using TypeEnum = decltype(std::declval<JSON>().getType());
         const auto aStringToType =
@@ -247,7 +247,7 @@ public:
             return Reader::ErrorHandling::template makeError<bool>(
                 "Encountered unknown type");
           theReader.setListItem(aTypesList, 0, *aTypeMaybe);
-          aValidation.itsType = aTypesList;
+          aValidation.itsType = Reader::toPtr(aTypesList);
         } else if (theValue.getType() == TypeEnum::ARRAY) {
           auto aTypesList =
               theReader.template allocateList<Types>(theValue.toArray().size());
@@ -259,7 +259,7 @@ public:
                   "Encountered unknown type");
             theReader.setListItem(aTypesList, aIdx++, *aTypeMaybe);
           }
-          aValidation.itsType = aTypesList;
+          aValidation.itsType = Reader::toPtr(aTypesList);
         } else {
           return Reader::ErrorHandling::template makeError<bool>(
               "`type` property is neither string nor list");

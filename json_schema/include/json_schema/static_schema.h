@@ -9,49 +9,68 @@
 namespace json_schema {
 
 struct StaticStorage {
-  template <typename T> struct Buffer {
-    size_t itsPos{0};
+  // FIXME should not exist
+  template<typename T>
+  using Ref = std::reference_wrapper<T>;
+  template <typename T> struct Ptr : public json_schema::Optional<T> {
+    using element_type = const T;
+    static constexpr Ptr pointer_to(element_type &theRef) noexcept {
+      return Ptr{theRef};
+    }
+  };
+
+  template <typename T> struct BufferRef {
+    using Self = BufferRef;
+    ptrdiff_t itsPos{0};
     size_t itsSize{0};
 
     constexpr size_t size() const noexcept { return itsSize; }
-    constexpr bool operator==(const Buffer &theOther) const {
+    constexpr bool operator==(const Self &theOther) const {
       return itsPos == theOther.itsPos && itsSize == theOther.itsSize;
     }
-    constexpr bool operator!=(const Buffer &theOther) const {
+    constexpr bool operator!=(const Self &theOther) const {
       return !(*this == theOther);
     }
   };
+  template <typename T> using BufferPtr = Ptr<BufferRef<T>>;
 
   template <typename Key, typename Value>
   using MapEntry = std::pair<Key, Value>;
 
   template <typename Key, typename Value>
-  using Map = Buffer<MapEntry<Key, Value>>;
+  using MapRef = BufferRef<MapEntry<Key, Value>>;
 
-  struct String {
-    size_t itsPos{0};
+  template <typename Key, typename Value>
+  using MapPtr = BufferPtr<MapEntry<Key, Value>>;
+
+  struct StringRef {
+    ptrdiff_t itsPos{0};
     size_t itsSize{0};
 
     constexpr size_t size() const noexcept { return itsSize; }
   };
-  struct Schema {
-    ptrdiff_t itsPos{-1};
+  using StringPtr = Ptr<StringRef>;
+  struct SchemaRef {
+    using Self = SchemaRef;
 
-    constexpr bool operator==(const Schema &theOther) const {
+    ptrdiff_t itsPos{0};
+
+    constexpr bool operator==(const Self &theOther) const {
       return itsPos == theOther.itsPos;
     }
-    constexpr bool operator!=(const Schema &theOther) const {
+    constexpr bool operator!=(const Self &theOther) const {
       return itsPos != theOther.itsPos;
     }
   };
+  using SchemaPtr = Ptr<SchemaRef>;
 
-  struct Json {
-    ptrdiff_t itsPos{-1};
-    constexpr bool isValid() const { return itsPos >= 0; }
+  struct JsonRef {
+    ptrdiff_t itsPos{0};
   };
+  using JsonPtr = Ptr<JsonRef>;
 };
 
-template <typename Standard, size_t MAX_SCHEMAS, size_t MAX_VOCAB_ENTRIES,
+template <typename Standard_, size_t MAX_SCHEMAS, size_t MAX_VOCAB_ENTRIES,
           size_t MAX_SCHEMA_DICT_ENTRIES, size_t MAX_STRINGLIST_DICT_ENTRIES,
           size_t MAX_SCHEMA_LIST_ITEMS, size_t MAX_TYPES_LIST_ITEMS,
           size_t MAX_STRING_LIST_ITEMS, size_t MAX_CHARS,
@@ -68,6 +87,7 @@ public:
   StaticSchemaContext &operator=(const StaticSchemaContext &) = default;
   StaticSchemaContext &operator=(StaticSchemaContext &&) = default;
 
+  using Standard = Standard_;
   template <typename T, size_t N> using Buffer = std::array<T, N>;
   template <typename Key, typename Value, size_t Size>
   using Map = Buffer<std::pair<Key, Value>, Size>;
@@ -77,25 +97,22 @@ public:
                             MAX_JSON_OBJECTS, MAX_JSON_OBJECT_PROPS>;
 
   using Storage = StaticStorage;
-  using SchemaRef = typename Storage::Schema;
+  using SchemaRef = typename Storage::SchemaRef;
   using SchemaObject = typename Standard::template SchemaObject<Storage>;
-  using JsonRef = typename Storage::Json;
+  using JsonRef = typename Storage::JsonRef;
   using JsonAccessor = typename JsonStorage::EntityRef;
-  using StringRef = typename Storage::String;
-  template <typename T> using BufferRef = typename Storage::template Buffer<T>;
+  using StringRef = typename Storage::StringRef;
+  template <typename T>
+  using BufferRef = typename Storage::template BufferRef<T>;
   template <typename Key, typename Value>
   using MapEntry = std::pair<Key, Value>;
   template <typename KeyT, typename ValT>
-  using MapRef = typename Storage::template Map<KeyT, ValT>;
+  using MapRef = typename Storage::template BufferRef<MapEntry<KeyT, ValT>>;
 
   template <typename ErrorHandling>
   struct Allocator : SchemaInfo,
                      cjson::DocumentAllocator<JsonStorage, ErrorHandling> {
     using JsonAlloc = cjson::DocumentAllocator<JsonStorage, ErrorHandling>;
-    using String = typename Storage::String;
-    template <typename T> using Buffer = typename Storage::template Buffer<T>;
-    template <typename KeyT, typename ValT>
-    using Map = typename Storage::template Map<KeyT, ValT>;
 
     constexpr Allocator() = default;
 
@@ -104,70 +121,76 @@ public:
       theContext.itsSchemaObjects[NUM_SCHEMA_OBJECTS] = theSchema;
       return SchemaRef{static_cast<ptrdiff_t>(NUM_SCHEMA_OBJECTS++)};
     }
-    constexpr String allocateString(StaticSchemaContext &theContext,
-                                    const std::string_view &theStr) {
-      String aStr{NUM_CHARS, theStr.size()};
+    constexpr StringRef allocateString(StaticSchemaContext &theContext,
+                                       const std::string_view &theStr) {
+      StringRef aStr{static_cast<ptrdiff_t>(NUM_CHARS), theStr.size()};
       for (const char aChar : theStr) {
         theContext.itsChars[NUM_CHARS++] = aChar;
       }
       return aStr;
     }
 
-    constexpr Buffer<SchemaRef> allocateBuffer(StaticSchemaContext &theContext,
-                                               const size_t theSize,
-                                               const type_tag<SchemaRef>) {
-      Buffer<SchemaRef> aResult{NUM_SCHEMA_LIST_ITEMS, theSize};
+    constexpr BufferRef<SchemaRef>
+    allocateBuffer(StaticSchemaContext &theContext, const size_t theSize,
+                   const type_tag<SchemaRef>) {
+      BufferRef<SchemaRef> aResult{
+          static_cast<ptrdiff_t>(NUM_SCHEMA_LIST_ITEMS), theSize};
       NUM_SCHEMA_LIST_ITEMS += theSize;
       if (NUM_SCHEMA_LIST_ITEMS > MAX_SCHEMA_LIST_ITEMS)
         throw "Over-allocating schema buffers";
       return aResult;
     }
-    constexpr Buffer<String> allocateBuffer(StaticSchemaContext &theContext,
-                                            const size_t theSize,
-                                            const type_tag<String>) {
-      Buffer<String> aResult{NUM_STRING_LIST_ITEMS, theSize};
+    constexpr BufferRef<StringRef>
+    allocateBuffer(StaticSchemaContext &theContext, const size_t theSize,
+                   const type_tag<StringRef>) {
+      BufferRef<StringRef> aResult{
+          static_cast<ptrdiff_t>(NUM_STRING_LIST_ITEMS), theSize};
       NUM_STRING_LIST_ITEMS += theSize;
       if (NUM_STRING_LIST_ITEMS > MAX_STRING_LIST_ITEMS)
         throw "Over-allocating string buffers";
       return aResult;
     }
-    constexpr Buffer<Types> allocateBuffer(StaticSchemaContext &theContext,
-                                           const size_t theSize,
-                                           const type_tag<Types>) {
-      Buffer<Types> aResult{NUM_TYPES_LIST_ITEMS, theSize};
+    constexpr BufferRef<Types> allocateBuffer(StaticSchemaContext &theContext,
+                                              const size_t theSize,
+                                              const type_tag<Types>) {
+      BufferRef<Types> aResult{static_cast<ptrdiff_t>(NUM_TYPES_LIST_ITEMS),
+                               theSize};
       NUM_TYPES_LIST_ITEMS += theSize;
       if (NUM_TYPES_LIST_ITEMS > MAX_TYPES_LIST_ITEMS)
         throw "Over-allocating types buffers";
       return aResult;
     }
-    constexpr Buffer<JsonRef> allocateBuffer(StaticSchemaContext &theContext,
-                                             const size_t theSize,
-                                             const type_tag<JsonRef>) {
-      Buffer<JsonRef> aResult{NUM_JSON_LIST_ITEMS, theSize};
+    constexpr BufferRef<JsonRef> allocateBuffer(StaticSchemaContext &theContext,
+                                                const size_t theSize,
+                                                const type_tag<JsonRef>) {
+      BufferRef<JsonRef> aResult{static_cast<ptrdiff_t>(NUM_JSON_LIST_ITEMS),
+                                 theSize};
       NUM_JSON_LIST_ITEMS += theSize;
       if (NUM_JSON_LIST_ITEMS > MAX_JSON_LIST_ITEMS)
         throw "Over-allocating json buffers";
       return aResult;
     }
-    constexpr Map<String, bool> allocateMap(StaticSchemaContext &theContext,
-                                            const size_t theSize,
-                                            const type_tag<String, bool>) {
-      Map<String, bool> aMap{NUM_VOCAB_ENTRIES, theSize};
+    constexpr MapRef<StringRef, bool>
+    allocateMap(StaticSchemaContext &theContext, const size_t theSize,
+                const type_tag<StringRef, bool>) {
+      MapRef<StringRef, bool> aMap{static_cast<ptrdiff_t>(NUM_VOCAB_ENTRIES),
+                                   theSize};
       NUM_VOCAB_ENTRIES += theSize;
       return aMap;
     }
-    constexpr Map<String, SchemaRef>
+    constexpr MapRef<StringRef, SchemaRef>
     allocateMap(StaticSchemaContext &theContext, const size_t theSize,
-                const type_tag<String, SchemaRef>) {
-      Map<String, SchemaRef> aMap{NUM_SCHEMA_DICT_ENTRIES, theSize};
+                const type_tag<StringRef, SchemaRef>) {
+      MapRef<StringRef, SchemaRef> aMap{
+          static_cast<ptrdiff_t>(NUM_SCHEMA_DICT_ENTRIES), theSize};
       NUM_SCHEMA_DICT_ENTRIES += theSize;
       return aMap;
     }
-    constexpr Map<String, BufferRef<StringRef>>
+    constexpr MapRef<StringRef, BufferRef<StringRef>>
     allocateMap(StaticSchemaContext &theContext, const size_t theSize,
-                const type_tag<String, BufferRef<StringRef>>) {
-      Map<String, BufferRef<StringRef>> aMap{NUM_STRINGLIST_DICT_ENTRIES,
-                                             theSize};
+                const type_tag<StringRef, BufferRef<StringRef>>) {
+      MapRef<StringRef, BufferRef<StringRef>> aMap{
+          static_cast<ptrdiff_t>(NUM_STRINGLIST_DICT_ENTRIES), theSize};
       NUM_STRINGLIST_DICT_ENTRIES += theSize;
       return aMap;
     }
@@ -217,36 +240,7 @@ public:
       return !(*this == theOther);
     }
 
-    class Iterator {
-    public:
-      constexpr Iterator() = default;
-      constexpr Iterator(const Iterator &) = default;
-      constexpr Iterator &operator=(const Iterator &) = default;
-
-      constexpr Iterator(const BufferAccessor &theBuf, const ptrdiff_t thePos)
-          : itsPos{thePos}, itsBuffer{theBuf} {}
-
-      constexpr Iterator &operator++() {
-        ++itsPos;
-        return *this;
-      }
-      constexpr Iterator operator++(int) {
-        Iterator aCopy{*this};
-        ++(*this);
-        return aCopy;
-      }
-      constexpr auto operator*() const { return itsBuffer[itsPos]; }
-      constexpr bool operator==(const Iterator &theOther) const {
-        return itsPos == theOther.itsPos && itsBuffer == theOther.itsBuffer;
-      }
-      constexpr bool operator!=(const Iterator &theOther) const {
-        return !(*this == theOther);
-      }
-
-    private:
-      ptrdiff_t itsPos;
-      BufferAccessor itsBuffer;
-    };
+    using Iterator = SubscriptIterator<BufferAccessor>;
     constexpr Iterator begin() const { return {*this, 0}; }
     constexpr Iterator end() const {
       return {*this, static_cast<ptrdiff_t>(itsBuffer.size())};
@@ -271,8 +265,6 @@ public:
       return itsContext->getString(theString);
     }
     constexpr auto prettify(const JsonRef theJson) const {
-      if (!theJson.isValid())
-        throw "Implementation errors: Invalid json reference in buffer";
       return itsContext->getJson(theJson);
     }
     constexpr auto prettify(const SchemaRef theSchema) const {
@@ -328,7 +320,6 @@ public:
     using ContextTy = typename Base::ContextTy;
     using Base::begin;
     using Base::end;
-    using Base::operator[];
     using Base::operator==;
     using Base::operator!=;
     using Base::size;
@@ -370,15 +361,11 @@ public:
   }
 
 private:
-  template <typename ErrorHandling> friend struct Allocator;
-  friend SchemaRef;
-
   template <typename, bool> friend class BufferAccessor;
 
   Buffer<SchemaObject, MAX_SCHEMAS> itsSchemaObjects{};
-  Buffer<typename Vocabulary<Storage>::Entry, MAX_VOCAB_ENTRIES>
-      itsVocabEntries{};
-  Buffer<typename Defs<Storage>::Entry, MAX_SCHEMA_DICT_ENTRIES>
+  Buffer<MapEntry<StringRef, bool>, MAX_VOCAB_ENTRIES> itsVocabEntries{};
+  Buffer<MapEntry<StringRef, SchemaRef>, MAX_SCHEMA_DICT_ENTRIES>
       itsStringSchemaMaps{};
   Buffer<SchemaRef, MAX_SCHEMA_LIST_ITEMS> itsSchemaLists{};
   Buffer<Types, MAX_TYPES_LIST_ITEMS> itsTypesLists{};

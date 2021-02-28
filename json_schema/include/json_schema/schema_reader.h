@@ -7,20 +7,22 @@
 #include <variant>
 
 namespace json_schema {
-template <typename SchemaContext, typename ErrorHandling_, typename... Sections>
+template <bool LENIENT, typename SchemaContext, typename ErrorHandling_, typename... Sections>
 class SchemaReaderBase {
 public:
   using ErrorHandling = ErrorHandling_;
   using Storage = typename SchemaContext::Storage;
-  using SchemaRef = typename Storage::Schema;
+  using StringRef = typename Storage::StringRef;
+  using SchemaRef = typename Storage::SchemaRef;
   using SchemaObject = typename SchemaContext::SchemaObject;
   using ErrorOrConsumed = typename ErrorHandling::template ErrorOr<bool>;
   using SchemaAllocator =
       typename SchemaContext::template Allocator<ErrorHandling>;
 
-  template <typename T> using List = typename Storage::template Buffer<T>;
+  // FIXME should be renamed to ListRef
+  template <typename T> using List = typename Storage::template BufferRef<T>;
   template <typename KeyT, typename ValT>
-  using Map = typename Storage::template Map<KeyT, ValT>;
+  using MapRef = typename Storage::template MapRef<KeyT, ValT>;
 
   template <typename... JSONs> struct ReadResult {
     using SchemaObject = SchemaObjectAccessor<SchemaContext>;
@@ -51,13 +53,25 @@ public:
                                           ErrorHandling::unwrap(aErrorMaybe)};
   }
 
-  constexpr typename Storage::String
+  template <typename T>
+  using PtrTy = typename Storage::template Ptr<std::remove_reference_t<T>>;
+
+  template <typename T> static constexpr PtrTy<T> toPtr(T &&theRef) {
+    return pointer_traits<PtrTy<T>>::pointer_to(theRef);
+  }
+
+  // FIXME this kind of reference-to-pointer conversion should be Storage's responsibility
+  template <typename T> static constexpr PtrTy<T> toPtr(typename Storage::template Ref<T> theRef) {
+    return pointer_traits<PtrTy<T>>::pointer_to(theRef.get());
+  }
+
+  constexpr StringRef
   allocateString(const std::string_view &theStr) {
     return itsSchemaAlloc.allocateString(itsContext, theStr);
   }
 
   template <typename JSON>
-  constexpr typename Storage::Json allocateJson(const JSON &theJson) {
+  constexpr typename Storage::JsonRef allocateJson(const JSON &theJson) {
     return itsSchemaAlloc.allocateJson(itsContext, theJson);
   }
 
@@ -72,13 +86,13 @@ public:
   }
 
   template <typename KeyT, typename ValT>
-  constexpr Map<KeyT, ValT> allocateMap(const size_t theSize) {
+  constexpr MapRef<KeyT, ValT> allocateMap(const size_t theSize) {
     return itsSchemaAlloc.allocateMap(itsContext, theSize,
                                       type_tag<KeyT, ValT>{});
   }
 
   template <typename KeyT, typename ValT>
-  constexpr void setMapEntry(Map<KeyT, ValT> &theMap, const ptrdiff_t theIdx,
+  constexpr void setMapEntry(MapRef<KeyT, ValT> &theMap, const ptrdiff_t theIdx,
                              const KeyT &theKey, const ValT &theVal) {
     itsContext.setMapEntry(theMap, theIdx, theKey, theVal);
   }
@@ -102,7 +116,7 @@ public:
         if (ErrorHandling::isError(aErrorOrConsumed))
           return ErrorHandling::template convertError<SchemaRef>(
               aErrorOrConsumed);
-        if (!ErrorHandling::unwrap(aErrorOrConsumed))
+        if (!ErrorHandling::unwrap(aErrorOrConsumed) && !LENIENT)
           return ErrorHandling::template makeError<SchemaRef>(
               "Encountered unknown entity in schema");
       }
@@ -115,13 +129,13 @@ public:
   template <typename JSON>
   constexpr auto readSchemaList(const JSON &theJson) ->
       typename ErrorHandling::template ErrorOr<List<SchemaRef>> {
-    auto aSchemaBuf = allocateList<SchemaRef>(theJson.toArray().size());
-    using ListTy = std::decay_t<decltype(aSchemaBuf)>;
+    using ListRefTy = List<SchemaRef>;
+    ListRefTy aSchemaBuf = allocateList<SchemaRef>(theJson.toArray().size());
     ptrdiff_t aIdx{0};
     for (const auto &aJsonItem : theJson.toArray()) {
       const auto aSchema = readSchema(aJsonItem);
       if (ErrorHandling::isError(aSchema))
-        return ErrorHandling::template convertError<ListTy>(aSchema);
+        return ErrorHandling::template convertError<ListRefTy>(aSchema);
       setListItem(aSchemaBuf, aIdx++, ErrorHandling::unwrap(aSchema));
     }
     return aSchemaBuf;
@@ -130,16 +144,16 @@ public:
   template <typename JSON>
   constexpr auto readSchemaDict(const JSON &theJson) ->
       typename ErrorHandling::template ErrorOr<
-          typename Storage::template Map<typename Storage::String, SchemaRef>> {
-    auto aSchemaDict = allocateMap<typename Storage::String, SchemaRef>(
+          MapRef<StringRef, SchemaRef>> {
+    using MapRefTy = MapRef<StringRef, SchemaRef>;
+    MapRefTy aSchemaDict = allocateMap<StringRef, SchemaRef>(
         theJson.toObject().size());
-    using MapTy = std::decay_t<decltype(aSchemaDict)>;
     ptrdiff_t aIdx{0};
     for (const auto &[aKey, aValue] : theJson.toObject()) {
       const auto aStr = allocateString(aKey);
-      const auto aSchema = readSchema(aValue);
+      const SchemaRef aSchema = readSchema(aValue);
       if (ErrorHandling::isError(aSchema))
-        return ErrorHandling::template convertError<MapTy>(aSchema);
+        return ErrorHandling::template convertError<MapRefTy>(aSchema);
       setMapEntry(aSchemaDict, aIdx++, aStr, ErrorHandling::unwrap(aSchema));
     }
     return aSchemaDict;
@@ -147,9 +161,10 @@ public:
 
   template <typename JSON>
   constexpr auto readStringList(const JSON &theJson) ->
-      typename ErrorHandling::template ErrorOr<List<typename Storage::String>> {
-    auto aStringBuf =
-        allocateList<typename Storage::String>(theJson.toArray().size());
+      typename ErrorHandling::template ErrorOr<
+          List<StringRef>> {
+    List<StringRef> aStringBuf =
+        allocateList<StringRef>(theJson.toArray().size());
     ptrdiff_t aIdx{0};
     for (const auto &aJsonItem : theJson.toArray())
       setListItem(aStringBuf, aIdx++, allocateString(aJsonItem.toString()));
