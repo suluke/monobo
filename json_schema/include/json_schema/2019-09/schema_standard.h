@@ -34,10 +34,10 @@ template <bool LENIENT = true> struct Standard_2019_09 {
   template <typename SchemaContext, typename ErrorHandling>
   using SchemaReader =
       SchemaReaderBase<LENIENT, SchemaContext, ErrorHandling,
-                       ReaderCore::SchemaReader, ReaderApplicator::SchemaReader/*,
+                       ReaderCore::SchemaReader, ReaderApplicator::SchemaReader,
                        ReaderFormat::SchemaReader, ReaderMetadata::SchemaReader,
                        ReaderValidation::SchemaReader,
-                       ReaderContent::SchemaReader, ReaderCompat::SchemaReader*/>;
+                       ReaderContent::SchemaReader, ReaderCompat::SchemaReader>;
 };
 } // namespace json_schema
 #endif // JSON_SCHEMA_2019_09_SCHEMA_STANDARD_H

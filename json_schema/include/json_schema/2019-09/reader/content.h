@@ -56,7 +56,7 @@ public:
       } else if (theKey == "contentEncoding") {
         aContent.itsContentEncoding = Reader::toPtr(theReader.allocateString(theValue.toString()));
       } else if (theKey == "contentSchema") {
-        const auto aSchema = theReader.readSchema(theValue);
+        auto aSchema = theReader.readSchema(theValue);
         if (Reader::ErrorHandling::isError(aSchema))
           return Reader::ErrorHandling::template convertError<bool>(aSchema);
         aContent.itsContentSchema = Reader::toPtr(Reader::ErrorHandling::unwrap(aSchema));

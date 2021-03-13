@@ -188,7 +188,7 @@ public:
       } else if (theKey == "minProperties") {
         aValidation.itsMinProperties = static_cast<size_t>(theValue.toNumber());
       } else if (theKey == "required") {
-        const auto aStringBuf = theReader.readStringList(theValue);
+        auto aStringBuf = theReader.readStringList(theValue);
         if (Reader::ErrorHandling::isError(aStringBuf))
           return Reader::ErrorHandling::template convertError<bool>(aStringBuf);
         aValidation.itsRequired = Reader::toPtr(Reader::ErrorHandling::unwrap(aStringBuf));
