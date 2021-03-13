@@ -1,10 +1,13 @@
-add_subdirectory(JSON-Schema-Test-Suite)
-
+# Set up directory-wide variables
+# MUST be before any add_subdirectory calls
 find_path(CONSTEXPR_JSON_PROJECT_ROOT
   NAMES include/constexpr_json/document.h
   REQUIRED
   PATHS ${CMAKE_SOURCE_DIR}/constexpr_json
 )
+
+add_subdirectory(JSON-Schema-Test-Suite)
+
 include(${CONSTEXPR_JSON_PROJECT_ROOT}/cmake/GenerateJsonHeader.cmake)
 generate_json_header("${CMAKE_CURRENT_BINARY_DIR}/meta/core.json.h" "../res/meta/core.json")
 generate_json_header("${CMAKE_CURRENT_BINARY_DIR}/meta/applicator.json.h" "../res/meta/applicator.json")
