@@ -13,7 +13,7 @@ namespace detail {
 template <>
 inline std::optional<unsigned>
 CliLibCfgStd::parse(const std::string_view &value) {
-  unsigned u;
+  unsigned u{};
 #if CLI_ARGS_HAS_CHARCONV
   auto result = std::from_chars(value.data(), value.data() + value.size(), u);
   if (result.ptr != value.data() + value.size())
