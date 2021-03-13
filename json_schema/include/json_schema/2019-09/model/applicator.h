@@ -9,7 +9,7 @@ template <typename Storage> class SchemaApplicator {
 public:
   template <typename T> using Ptr = typename Storage::template Ptr<T>;
   using SchemaRef = typename Storage::SchemaRef;
-  using SchemaPtr = Ptr<SchemaRef>;
+  using SchemaPtr = typename Storage::SchemaPtr;
   using SchemaList = typename Storage::template BufferPtr<SchemaRef>;
   using SchemaDict =
       typename Storage::template MapPtr<typename Storage::StringRef, SchemaRef>;

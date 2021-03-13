@@ -53,16 +53,8 @@ public:
                                           ErrorHandling::unwrap(aErrorMaybe)};
   }
 
-  template <typename T>
-  using PtrTy = typename Storage::template Ptr<std::remove_reference_t<T>>;
-
-  template <typename T> static constexpr PtrTy<T> toPtr(T &&theRef) {
-    return pointer_traits<PtrTy<T>>::pointer_to(theRef);
-  }
-
-  // FIXME this kind of reference-to-pointer conversion should be Storage's responsibility
-  template <typename T> static constexpr PtrTy<T> toPtr(typename Storage::template Ref<T> theRef) {
-    return pointer_traits<PtrTy<T>>::pointer_to(theRef.get());
+  template <typename T> static constexpr auto toPtr(T &&theRef) {
+    return SchemaContext::Storage::pointer_to(std::forward<T>(theRef));
   }
 
   constexpr StringRef
@@ -80,9 +72,9 @@ public:
   }
 
   template <typename T>
-  constexpr void setListItem(List<T> &theBuf, ptrdiff_t theIdx,
+  constexpr void appendToList(List<T> &theBuf,
                              const T &theVal) {
-    itsContext.setBufferItem(theBuf, theIdx, theVal);
+    itsContext.extendBuffer(theBuf, theVal);
   }
 
   template <typename KeyT, typename ValT>
@@ -92,9 +84,9 @@ public:
   }
 
   template <typename KeyT, typename ValT>
-  constexpr void setMapEntry(MapRef<KeyT, ValT> &theMap, const ptrdiff_t theIdx,
+  constexpr void addMapEntry(MapRef<KeyT, ValT> &theMap,
                              const KeyT &theKey, const ValT &theVal) {
-    itsContext.setMapEntry(theMap, theIdx, theKey, theVal);
+    itsContext.addMapEntry(theMap, theKey, theVal);
   }
 
   template <typename JSON>
@@ -131,12 +123,11 @@ public:
       typename ErrorHandling::template ErrorOr<List<SchemaRef>> {
     using ListRefTy = List<SchemaRef>;
     ListRefTy aSchemaBuf = allocateList<SchemaRef>(theJson.toArray().size());
-    ptrdiff_t aIdx{0};
     for (const auto &aJsonItem : theJson.toArray()) {
       const auto aSchema = readSchema(aJsonItem);
       if (ErrorHandling::isError(aSchema))
         return ErrorHandling::template convertError<ListRefTy>(aSchema);
-      setListItem(aSchemaBuf, aIdx++, ErrorHandling::unwrap(aSchema));
+      appendToList(aSchemaBuf, ErrorHandling::unwrap(aSchema));
     }
     return aSchemaBuf;
   }
@@ -148,13 +139,12 @@ public:
     using MapRefTy = MapRef<StringRef, SchemaRef>;
     MapRefTy aSchemaDict = allocateMap<StringRef, SchemaRef>(
         theJson.toObject().size());
-    ptrdiff_t aIdx{0};
     for (const auto &[aKey, aValue] : theJson.toObject()) {
       const auto aStr = allocateString(aKey);
       const SchemaRef aSchema = readSchema(aValue);
       if (ErrorHandling::isError(aSchema))
         return ErrorHandling::template convertError<MapRefTy>(aSchema);
-      setMapEntry(aSchemaDict, aIdx++, aStr, ErrorHandling::unwrap(aSchema));
+      addMapEntry(aSchemaDict, aStr, ErrorHandling::unwrap(aSchema));
     }
     return aSchemaDict;
   }
@@ -165,9 +155,8 @@ public:
           List<StringRef>> {
     List<StringRef> aStringBuf =
         allocateList<StringRef>(theJson.toArray().size());
-    ptrdiff_t aIdx{0};
     for (const auto &aJsonItem : theJson.toArray())
-      setListItem(aStringBuf, aIdx++, allocateString(aJsonItem.toString()));
+      appendToList(aStringBuf, allocateString(aJsonItem.toString()));
     return aStringBuf;
   }
 

@@ -88,9 +88,8 @@ public:
         auto aJsons =
             theReader.template allocateList<typename Reader::Storage::JsonRef>(
                 theValue.toArray().size());
-        ptrdiff_t aIdx{0};
         for (const auto aElm : theValue.toArray()) {
-          theReader.setListItem(aJsons, aIdx++, theReader.allocateJson(aElm));
+          theReader.appendToList(aJsons, theReader.allocateJson(aElm));
         }
         aMetadata.itsExamples = Reader::toPtr(aJsons);
       } else {

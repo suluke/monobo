@@ -197,14 +197,13 @@ public:
         using StringList = typename Reader::template List<StringRef>;
         auto aDict = theReader.template allocateMap<StringRef, StringList>(
             theValue.toObject().size());
-        ptrdiff_t aIdx{0};
         for (const auto &aKVPair : theValue.toObject()) {
           const auto aKey = theReader.allocateString(aKVPair.first);
           const auto aStringsOrError = theReader.readStringList(aKVPair.second);
           if (Reader::ErrorHandling::isError(aStringsOrError))
             return Reader::ErrorHandling::template convertError<bool>(
                 aStringsOrError);
-          theReader.setMapEntry(aDict, aIdx++, aKey,
+          theReader.addMapEntry(aDict, aKey,
                                 Reader::ErrorHandling::unwrap(aStringsOrError));
         }
         aValidation.itsDependentRequired = Reader::toPtr(aDict);
@@ -214,9 +213,8 @@ public:
         auto aJsons =
             theReader.template allocateList<typename Reader::Storage::JsonRef>(
                 theValue.toArray().size());
-        ptrdiff_t aIdx{0};
         for (const auto aElm : theValue.toArray()) {
-          theReader.setListItem(aJsons, aIdx++, theReader.allocateJson(aElm));
+          theReader.appendToList(aJsons, theReader.allocateJson(aElm));
         }
         aValidation.itsEnum = Reader::toPtr(aJsons);
       } else if (theKey == "type") {
@@ -246,18 +244,17 @@ public:
           if (!aTypeMaybe)
             return Reader::ErrorHandling::template makeError<bool>(
                 "Encountered unknown type");
-          theReader.setListItem(aTypesList, 0, *aTypeMaybe);
+          theReader.appendToList(aTypesList, *aTypeMaybe);
           aValidation.itsType = Reader::toPtr(aTypesList);
         } else if (theValue.getType() == TypeEnum::ARRAY) {
           auto aTypesList =
               theReader.template allocateList<Types>(theValue.toArray().size());
-          ptrdiff_t aIdx{0};
           for (const auto &aJsonItem : theValue.toArray()) {
             const auto aTypeMaybe = aStringToType(aJsonItem.toString());
             if (!aTypeMaybe)
               return Reader::ErrorHandling::template makeError<bool>(
                   "Encountered unknown type");
-            theReader.setListItem(aTypesList, aIdx++, *aTypeMaybe);
+            theReader.appendToList(aTypesList, *aTypeMaybe);
           }
           aValidation.itsType = Reader::toPtr(aTypesList);
         } else {

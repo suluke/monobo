@@ -144,11 +144,10 @@ public:
         auto aVocabObj =
             theReader.template allocateMap<typename Reader::Storage::StringRef,
                                            bool>(aVocabSize);
-        ptrdiff_t aIdx{0};
         for (const auto &aKVPair : theValue.toObject()) {
           const auto aStr = theReader.allocateString(aKVPair.first);
           const bool aBool = aKVPair.second.toBool();
-          theReader.setMapEntry(aVocabObj, aIdx++, aStr, aBool);
+          theReader.addMapEntry(aVocabObj, aStr, aBool);
         }
         aCore.itsVocabulary = Reader::toPtr(aVocabObj);
       } else if (theKey == "$comment") {

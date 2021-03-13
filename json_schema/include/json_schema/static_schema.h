@@ -10,8 +10,7 @@ namespace json_schema {
 
 struct StaticStorage {
   // FIXME should not exist
-  template<typename T>
-  using Ref = std::reference_wrapper<T>;
+  template <typename T> using Ref = std::reference_wrapper<T>;
   template <typename T> struct Ptr : public json_schema::Optional<T> {
     using element_type = const T;
     static constexpr Ptr pointer_to(element_type &theRef) noexcept {
@@ -19,10 +18,16 @@ struct StaticStorage {
     }
   };
 
+  template<typename T>
+  constexpr static auto pointer_to(T&& theRef) {
+    return pointer_traits<Ptr<std::remove_reference_t<T>>>::pointer_to(theRef);
+  }
+
   template <typename T> struct BufferRef {
     using Self = BufferRef;
     ptrdiff_t itsPos{0};
     size_t itsSize{0};
+    size_t itsCapacity{0};
 
     constexpr size_t size() const noexcept { return itsSize; }
     constexpr bool operator==(const Self &theOther) const {
@@ -52,6 +57,8 @@ struct StaticStorage {
   using StringPtr = Ptr<StringRef>;
   struct SchemaRef {
     using Self = SchemaRef;
+
+    // SchemaRef() = delete;
 
     ptrdiff_t itsPos{0};
 
@@ -134,7 +141,7 @@ public:
     allocateBuffer(StaticSchemaContext &theContext, const size_t theSize,
                    const type_tag<SchemaRef>) {
       BufferRef<SchemaRef> aResult{
-          static_cast<ptrdiff_t>(NUM_SCHEMA_LIST_ITEMS), theSize};
+          static_cast<ptrdiff_t>(NUM_SCHEMA_LIST_ITEMS), 0, theSize};
       NUM_SCHEMA_LIST_ITEMS += theSize;
       if (NUM_SCHEMA_LIST_ITEMS > MAX_SCHEMA_LIST_ITEMS)
         throw "Over-allocating schema buffers";
@@ -144,7 +151,7 @@ public:
     allocateBuffer(StaticSchemaContext &theContext, const size_t theSize,
                    const type_tag<StringRef>) {
       BufferRef<StringRef> aResult{
-          static_cast<ptrdiff_t>(NUM_STRING_LIST_ITEMS), theSize};
+          static_cast<ptrdiff_t>(NUM_STRING_LIST_ITEMS), 0, theSize};
       NUM_STRING_LIST_ITEMS += theSize;
       if (NUM_STRING_LIST_ITEMS > MAX_STRING_LIST_ITEMS)
         throw "Over-allocating string buffers";
@@ -153,7 +160,7 @@ public:
     constexpr BufferRef<Types> allocateBuffer(StaticSchemaContext &theContext,
                                               const size_t theSize,
                                               const type_tag<Types>) {
-      BufferRef<Types> aResult{static_cast<ptrdiff_t>(NUM_TYPES_LIST_ITEMS),
+      BufferRef<Types> aResult{static_cast<ptrdiff_t>(NUM_TYPES_LIST_ITEMS), 0,
                                theSize};
       NUM_TYPES_LIST_ITEMS += theSize;
       if (NUM_TYPES_LIST_ITEMS > MAX_TYPES_LIST_ITEMS)
@@ -163,7 +170,7 @@ public:
     constexpr BufferRef<JsonRef> allocateBuffer(StaticSchemaContext &theContext,
                                                 const size_t theSize,
                                                 const type_tag<JsonRef>) {
-      BufferRef<JsonRef> aResult{static_cast<ptrdiff_t>(NUM_JSON_LIST_ITEMS),
+      BufferRef<JsonRef> aResult{static_cast<ptrdiff_t>(NUM_JSON_LIST_ITEMS), 0,
                                  theSize};
       NUM_JSON_LIST_ITEMS += theSize;
       if (NUM_JSON_LIST_ITEMS > MAX_JSON_LIST_ITEMS)
@@ -173,7 +180,7 @@ public:
     constexpr MapRef<StringRef, bool>
     allocateMap(StaticSchemaContext &theContext, const size_t theSize,
                 const type_tag<StringRef, bool>) {
-      MapRef<StringRef, bool> aMap{static_cast<ptrdiff_t>(NUM_VOCAB_ENTRIES),
+      MapRef<StringRef, bool> aMap{static_cast<ptrdiff_t>(NUM_VOCAB_ENTRIES), 0,
                                    theSize};
       NUM_VOCAB_ENTRIES += theSize;
       return aMap;
@@ -182,7 +189,7 @@ public:
     allocateMap(StaticSchemaContext &theContext, const size_t theSize,
                 const type_tag<StringRef, SchemaRef>) {
       MapRef<StringRef, SchemaRef> aMap{
-          static_cast<ptrdiff_t>(NUM_SCHEMA_DICT_ENTRIES), theSize};
+          static_cast<ptrdiff_t>(NUM_SCHEMA_DICT_ENTRIES), 0, theSize};
       NUM_SCHEMA_DICT_ENTRIES += theSize;
       return aMap;
     }
@@ -190,7 +197,7 @@ public:
     allocateMap(StaticSchemaContext &theContext, const size_t theSize,
                 const type_tag<StringRef, BufferRef<StringRef>>) {
       MapRef<StringRef, BufferRef<StringRef>> aMap{
-          static_cast<ptrdiff_t>(NUM_STRINGLIST_DICT_ENTRIES), theSize};
+          static_cast<ptrdiff_t>(NUM_STRINGLIST_DICT_ENTRIES), 0, theSize};
       NUM_STRINGLIST_DICT_ENTRIES += theSize;
       return aMap;
     }
@@ -225,11 +232,14 @@ public:
 
     constexpr size_t size() const { return itsBuffer.size(); }
     constexpr auto operator[](const ptrdiff_t theIdx) const {
-      return prettify(access(*itsContext, itsBuffer, theIdx));
+      return prettify(getStorage()[itsBuffer.itsPos + theIdx]);
     }
 
     constexpr Value &getRawRef(const ptrdiff_t theIdx) const {
-      return access(*itsContext, itsBuffer, theIdx);
+      return getStorage()[theIdx];
+    }
+    constexpr auto &getStorage() const {
+      return getStorage(*itsContext, type_tag<T>{});
     }
 
     constexpr bool operator==(const BufferAccessor &theOther) const {
@@ -277,41 +287,35 @@ public:
     }
 
   private:
-    static constexpr Value &access(ContextTy &theCtx,
-                                   const BufferRef<SchemaRef> theBuf,
-                                   const size_t theIdx) {
-      return theCtx.itsSchemaLists[theBuf.itsPos + theIdx];
+    static constexpr inline auto &getStorage(ContextTy &theCtx,
+                                             const type_tag<SchemaRef>) {
+      return theCtx.itsSchemaLists;
     }
-    static constexpr Value &access(ContextTy &theCtx,
-                                   const BufferRef<StringRef> theBuf,
-                                   const size_t theIdx) {
-      return theCtx.itsStringLists[theBuf.itsPos + theIdx];
+    static constexpr inline auto &getStorage(ContextTy &theCtx,
+                                             const type_tag<StringRef>) {
+      return theCtx.itsStringLists;
     }
-    static constexpr Value &access(ContextTy &theCtx,
-                                   const BufferRef<Types> theBuf,
-                                   const size_t theIdx) {
-      return theCtx.itsTypesLists[theBuf.itsPos + theIdx];
+    static constexpr inline auto &getStorage(ContextTy &theCtx,
+                                             const type_tag<Types>) {
+      return theCtx.itsTypesLists;
     }
-    static constexpr Value &access(ContextTy &theCtx,
-                                   const BufferRef<JsonRef> theBuf,
-                                   const size_t theIdx) {
-      return theCtx.itsJsonLists[theBuf.itsPos + theIdx];
+    static constexpr inline auto &getStorage(ContextTy &theCtx,
+                                             const type_tag<JsonRef>) {
+      return theCtx.itsJsonLists;
     }
-    static constexpr Value &access(ContextTy &theCtx,
-                                   const MapRef<StringRef, bool> theBuf,
-                                   const size_t theIdx) {
-      return theCtx.itsVocabEntries[theBuf.itsPos + theIdx];
+    static constexpr inline auto &
+    getStorage(ContextTy &theCtx, const type_tag<MapEntry<StringRef, bool>>) {
+      return theCtx.itsVocabEntries;
     }
-    static constexpr Value &access(ContextTy &theCtx,
-                                   const MapRef<StringRef, SchemaRef> theBuf,
-                                   const size_t theIdx) {
-      return theCtx.itsStringSchemaMaps[theBuf.itsPos + theIdx];
+    static constexpr inline auto &
+    getStorage(ContextTy &theCtx,
+               const type_tag<MapEntry<StringRef, SchemaRef>>) {
+      return theCtx.itsStringSchemaMaps;
     }
-    static constexpr Value &
-    access(ContextTy &theCtx,
-           const MapRef<StringRef, BufferRef<StringRef>> theBuf,
-           const size_t theIdx) {
-      return theCtx.itsStringListDicts[theBuf.itsPos + theIdx];
+    static constexpr inline auto &
+    getStorage(ContextTy &theCtx,
+               const type_tag<MapEntry<StringRef, BufferRef<StringRef>>>) {
+      return theCtx.itsStringListDicts;
     }
   };
   template <typename KeyT, typename ValT>
@@ -341,16 +345,22 @@ public:
   };
 
   template <typename T>
-  constexpr void setBufferItem(BufferRef<T> &theList, const ptrdiff_t theIdx,
-                               const T &theValue) {
-    BufferAccessor<T, false>{*this, theList}.getRawRef(theIdx) = theValue;
+  constexpr void extendBuffer(BufferRef<T> &theList, const T &theValue) {
+    if (theList.itsSize >= theList.itsCapacity)
+      throw "Exceeding buffer capacity";
+    BufferAccessor<T, false>{*this, theList}.getStorage()[theList.itsSize] =
+        theValue;
+    ++theList.itsSize;
   }
   template <typename KeyT, typename ValT>
-  constexpr void setMapEntry(MapRef<KeyT, ValT> &theMap, const ptrdiff_t theIdx,
-                             const KeyT &theKey, const ValT &theVal) {
+  constexpr void addMapEntry(MapRef<KeyT, ValT> &theMap, const KeyT &theKey,
+                             const ValT &theVal) {
+    if (theMap.itsSize >= theMap.itsCapacity)
+      throw "Exceeding map capacity";
     BufferAccessor<MapEntry<KeyT, ValT>, false> aMapRef{*this, theMap};
-    aMapRef.getRawRef(theIdx).first = theKey;
-    aMapRef.getRawRef(theIdx).second = theVal;
+    aMapRef.getStorage()[theMap.itsSize].first = theKey;
+    aMapRef.getStorage()[theMap.itsSize].second = theVal;
+    ++theMap.itsSize;
   }
 
   constexpr std::string_view getString(const StringRef &theStr) const {

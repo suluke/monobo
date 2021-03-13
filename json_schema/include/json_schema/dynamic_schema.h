@@ -16,6 +16,7 @@
 namespace json_schema {
 struct DynamicStorage {
   template <typename T> struct Ref : public std::reference_wrapper<T> {
+    Ref() = delete;
     Ref(T &theRef) : std::reference_wrapper<T>(theRef) {}
     Ref &operator=(T &theRef) {
       this->std::reference_wrapper<T>::operator=(theRef);
@@ -61,6 +62,14 @@ struct DynamicStorage {
   };
   using JsonRef = Ref<cjson::DynamicDocument>;
   using JsonPtr = Ptr<cjson::DynamicDocument>;
+
+  template<typename T>
+  constexpr static auto pointer_to(const Ref<T>& theRef) {
+    return &theRef.get();
+  }
+  static constexpr auto pointer_to(const SchemaRef& theRef) {
+    return SchemaPtr{theRef};
+  }
 };
 
 template <typename Standard_> struct DynamicSchemaContext {
@@ -107,7 +116,7 @@ template <typename Standard_> struct DynamicSchemaContext {
     BufferRef<T> allocateBuffer(DynamicSchemaContext &theContext,
                                 const size_t theSize, const type_tag<T>) {
       auto aBuffer = std::make_shared<Buffer<T>>();
-      aBuffer->resize(theSize);
+      aBuffer->reserve(theSize);
       BufferRef<T> aBufferRef = *aBuffer;
       theContext.itsAllocations.emplace_back(std::move(aBuffer));
       return aBufferRef;
@@ -255,14 +264,13 @@ template <typename Standard_> struct DynamicSchemaContext {
   };
 
   template <typename T>
-  constexpr void setBufferItem(BufferRef<T> theList, const ptrdiff_t theIdx,
-                               const T &theValue) {
-    theList.get()[theIdx] = theValue;
+  constexpr void extendBuffer(BufferRef<T> theList, const T &theValue) {
+    theList.get().push_back(theValue);
   }
   template <typename KeyT, typename ValT>
-  constexpr void setMapEntry(MapRef<KeyT, ValT> theMap, const ptrdiff_t theIdx,
-                             const KeyT &theKey, const ValT &theVal) {
-    theMap.get()[theKey] = theVal;
+  constexpr void addMapEntry(MapRef<KeyT, ValT> theMap, const KeyT &theKey,
+                             const ValT &theVal) {
+    theMap.get().emplace(theKey, theVal);
   }
 
   constexpr SchemaRef getTrueSchemaRef() const { return SchemaRef{nullptr}; }

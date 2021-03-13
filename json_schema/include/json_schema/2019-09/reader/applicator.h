@@ -102,7 +102,8 @@ public:
         auto aSchema = theReader.readSchema(theValue);
         if (Reader::ErrorHandling::isError(aSchema))
           return Reader::ErrorHandling::template convertError<bool>(aSchema);
-        aApplicator.itsAdditionalItems = Reader::toPtr(Reader::ErrorHandling::unwrap(aSchema));
+        aApplicator.itsAdditionalItems =
+            Reader::toPtr(Reader::ErrorHandling::unwrap(aSchema));
       } else if (theKey == "unevaluatedItems") {
         auto aSchema = theReader.readSchema(theValue);
         if (Reader::ErrorHandling::isError(aSchema))
@@ -113,7 +114,8 @@ public:
         auto aSchema = theReader.readSchema(theValue);
         if (Reader::ErrorHandling::isError(aSchema))
           return Reader::ErrorHandling::template convertError<bool>(aSchema);
-        aApplicator.itsContains = Reader::toPtr(Reader::ErrorHandling::unwrap(aSchema));
+        aApplicator.itsContains =
+            Reader::toPtr(Reader::ErrorHandling::unwrap(aSchema));
       } else if (theKey == "additionalProperties") {
         auto aSchema = theReader.readSchema(theValue);
         if (Reader::ErrorHandling::isError(aSchema))
@@ -130,33 +132,39 @@ public:
         auto aSchema = theReader.readSchema(theValue);
         if (Reader::ErrorHandling::isError(aSchema))
           return Reader::ErrorHandling::template convertError<bool>(aSchema);
-        aApplicator.itsPropertyNames = Reader::toPtr(Reader::ErrorHandling::unwrap(aSchema));
+        aApplicator.itsPropertyNames =
+            Reader::toPtr(Reader::ErrorHandling::unwrap(aSchema));
       } else if (theKey == "if") {
         auto aSchema = theReader.readSchema(theValue);
         if (Reader::ErrorHandling::isError(aSchema))
           return Reader::ErrorHandling::template convertError<bool>(aSchema);
-        aApplicator.itsIf = Reader::toPtr(Reader::ErrorHandling::unwrap(aSchema));
+        aApplicator.itsIf =
+            Reader::toPtr(Reader::ErrorHandling::unwrap(aSchema));
       } else if (theKey == "then") {
         auto aSchema = theReader.readSchema(theValue);
         if (Reader::ErrorHandling::isError(aSchema))
           return Reader::ErrorHandling::template convertError<bool>(aSchema);
-        aApplicator.itsThen = Reader::toPtr(Reader::ErrorHandling::unwrap(aSchema));
+        aApplicator.itsThen =
+            Reader::toPtr(Reader::ErrorHandling::unwrap(aSchema));
       } else if (theKey == "else") {
         auto aSchema = theReader.readSchema(theValue);
         if (Reader::ErrorHandling::isError(aSchema))
           return Reader::ErrorHandling::template convertError<bool>(aSchema);
-        aApplicator.itsElse = Reader::toPtr(Reader::ErrorHandling::unwrap(aSchema));
+        aApplicator.itsElse =
+            Reader::toPtr(Reader::ErrorHandling::unwrap(aSchema));
       } else if (theKey == "not") {
         auto aSchema = theReader.readSchema(theValue);
         if (Reader::ErrorHandling::isError(aSchema))
           return Reader::ErrorHandling::template convertError<bool>(aSchema);
-        aApplicator.itsNot = Reader::toPtr(Reader::ErrorHandling::unwrap(aSchema));
+        aApplicator.itsNot =
+            Reader::toPtr(Reader::ErrorHandling::unwrap(aSchema));
       } else if (theKey == "properties") {
         auto aSchemaDict = theReader.readSchemaDict(theValue);
         if (Reader::ErrorHandling::isError(aSchemaDict))
           return Reader::ErrorHandling::template convertError<bool>(
               aSchemaDict);
-        aApplicator.itsProperties = Reader::toPtr(Reader::ErrorHandling::unwrap(aSchemaDict));
+        aApplicator.itsProperties =
+            Reader::toPtr(Reader::ErrorHandling::unwrap(aSchemaDict));
       } else if (theKey == "patternProperties") {
         auto aSchemaDict = theReader.readSchemaDict(theValue);
         if (Reader::ErrorHandling::isError(aSchemaDict))
@@ -179,31 +187,35 @@ public:
           const auto aSchema = theReader.readSchema(theValue);
           if (Reader::ErrorHandling::isError(aSchema))
             return Reader::ErrorHandling::template convertError<bool>(aSchema);
-          theReader.setListItem(aSchemaBuf, 0,
-                                Reader::ErrorHandling::unwrap(aSchema));
+          theReader.appendToList(aSchemaBuf,
+                                 Reader::ErrorHandling::unwrap(aSchema));
           aApplicator.itsItems = Reader::toPtr(aSchemaBuf);
         } else {
           auto aSchemaBuf = theReader.readSchemaList(theValue);
           if (Reader::ErrorHandling::isError(aSchemaBuf))
             return Reader::ErrorHandling::template convertError<bool>(
                 aSchemaBuf);
-          aApplicator.itsItems = Reader::toPtr(Reader::ErrorHandling::unwrap(aSchemaBuf));
+          aApplicator.itsItems =
+              Reader::toPtr(Reader::ErrorHandling::unwrap(aSchemaBuf));
         }
       } else if (theKey == "allOf") {
         auto aSchemaBuf = theReader.readSchemaList(theValue);
         if (Reader::ErrorHandling::isError(aSchemaBuf))
           return Reader::ErrorHandling::template convertError<bool>(aSchemaBuf);
-        aApplicator.itsAllOf = Reader::toPtr(Reader::ErrorHandling::unwrap(aSchemaBuf));
+        aApplicator.itsAllOf =
+            Reader::toPtr(Reader::ErrorHandling::unwrap(aSchemaBuf));
       } else if (theKey == "anyOf") {
         auto aSchemaBuf = theReader.readSchemaList(theValue);
         if (Reader::ErrorHandling::isError(aSchemaBuf))
           return Reader::ErrorHandling::template convertError<bool>(aSchemaBuf);
-        aApplicator.itsAnyOf = Reader::toPtr(Reader::ErrorHandling::unwrap(aSchemaBuf));
+        aApplicator.itsAnyOf =
+            Reader::toPtr(Reader::ErrorHandling::unwrap(aSchemaBuf));
       } else if (theKey == "oneOf") {
         auto aSchemaBuf = theReader.readSchemaList(theValue);
         if (Reader::ErrorHandling::isError(aSchemaBuf))
           return Reader::ErrorHandling::template convertError<bool>(aSchemaBuf);
-        aApplicator.itsOneOf = Reader::toPtr(Reader::ErrorHandling::unwrap(aSchemaBuf));
+        aApplicator.itsOneOf =
+            Reader::toPtr(Reader::ErrorHandling::unwrap(aSchemaBuf));
       } else {
         return false;
       }

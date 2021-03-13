@@ -12,15 +12,16 @@ public:
   constexpr SchemaValidation &operator=(const SchemaValidation &) = default;
   constexpr SchemaValidation &operator=(SchemaValidation &&) = default;
 
-  template <typename T> using Ptr = typename Storage::template Ptr<std::remove_reference_t<T>>;
-  using StringList =
+  using StringListPtr =
+      typename Storage::template BufferPtr<typename Storage::StringRef>;
+  using StringListRef =
       typename Storage::template BufferRef<typename Storage::StringRef>;
   using TypesList = typename Storage::template BufferPtr<Types>;
   using JsonList =
       typename Storage::template BufferPtr<typename Storage::JsonRef>;
   using StringListDict =
       typename Storage::template MapPtr<typename Storage::StringRef,
-                                        StringList>;
+                                        StringListRef>;
 
   template <typename Context> class Accessor {
   public:
@@ -33,7 +34,7 @@ public:
 
     using StringListDictAccessor =
         typename Context::template MapAccessor<typename Storage::StringRef,
-                                               StringList>;
+                                               StringListRef>;
     using StringListDictAccessorMaybe = std::optional<StringListDictAccessor>;
 
     using JsonListAccessor =
@@ -131,7 +132,7 @@ public:
   size_t itsMinProperties{};
   bool itsUniqueItems{false};
   typename Storage::StringPtr itsPattern{};
-  Ptr<StringList> itsRequired{};
+  StringListPtr itsRequired{};
   StringListDict itsDependentRequired{};
   TypesList itsType{};
   typename Storage::JsonPtr itsConst{};
