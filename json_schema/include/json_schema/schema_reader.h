@@ -7,7 +7,8 @@
 #include <variant>
 
 namespace json_schema {
-template <bool LENIENT, typename SchemaContext, typename ErrorHandling_, typename... Sections>
+template <bool LENIENT, typename SchemaContext, typename ErrorHandling_,
+          typename... Sections>
 class SchemaReaderBase {
 public:
   using ErrorHandling = ErrorHandling_;
@@ -57,8 +58,7 @@ public:
     return SchemaContext::Storage::pointer_to(std::forward<T>(theRef));
   }
 
-  constexpr StringRef
-  allocateString(const std::string_view &theStr) {
+  constexpr StringRef allocateString(const std::string_view &theStr) {
     return itsSchemaAlloc.allocateString(itsContext, theStr);
   }
 
@@ -72,8 +72,7 @@ public:
   }
 
   template <typename T>
-  constexpr void appendToList(List<T> &theBuf,
-                             const T &theVal) {
+  constexpr void appendToList(List<T> &theBuf, const T &theVal) {
     itsContext.extendBuffer(theBuf, theVal);
   }
 
@@ -84,8 +83,8 @@ public:
   }
 
   template <typename KeyT, typename ValT>
-  constexpr void addMapEntry(MapRef<KeyT, ValT> &theMap,
-                             const KeyT &theKey, const ValT &theVal) {
+  constexpr void addMapEntry(MapRef<KeyT, ValT> &theMap, const KeyT &theKey,
+                             const ValT &theVal) {
     itsContext.addMapEntry(theMap, theKey, theVal);
   }
 
@@ -134,11 +133,10 @@ public:
 
   template <typename JSON>
   constexpr auto readSchemaDict(const JSON &theJson) ->
-      typename ErrorHandling::template ErrorOr<
-          MapRef<StringRef, SchemaRef>> {
+      typename ErrorHandling::template ErrorOr<MapRef<StringRef, SchemaRef>> {
     using MapRefTy = MapRef<StringRef, SchemaRef>;
-    MapRefTy aSchemaDict = allocateMap<StringRef, SchemaRef>(
-        theJson.toObject().size());
+    MapRefTy aSchemaDict =
+        allocateMap<StringRef, SchemaRef>(theJson.toObject().size());
     for (const auto &[aKey, aValue] : theJson.toObject()) {
       const auto aStr = allocateString(aKey);
       const SchemaRef aSchema = readSchema(aValue);
@@ -151,8 +149,7 @@ public:
 
   template <typename JSON>
   constexpr auto readStringList(const JSON &theJson) ->
-      typename ErrorHandling::template ErrorOr<
-          List<StringRef>> {
+      typename ErrorHandling::template ErrorOr<List<StringRef>> {
     List<StringRef> aStringBuf =
         allocateList<StringRef>(theJson.toArray().size());
     for (const auto &aJsonItem : theJson.toArray())

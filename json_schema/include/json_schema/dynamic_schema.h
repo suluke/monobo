@@ -63,11 +63,10 @@ struct DynamicStorage {
   using JsonRef = Ref<cjson::DynamicDocument>;
   using JsonPtr = Ptr<cjson::DynamicDocument>;
 
-  template<typename T>
-  constexpr static auto pointer_to(const Ref<T>& theRef) {
+  template <typename T> constexpr static auto pointer_to(const Ref<T> &theRef) {
     return &theRef.get();
   }
-  static constexpr auto pointer_to(const SchemaRef& theRef) {
+  static constexpr auto pointer_to(const SchemaRef &theRef) {
     return SchemaPtr{theRef};
   }
 };

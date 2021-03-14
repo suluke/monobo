@@ -40,7 +40,7 @@ public:
   };
 
 private:
-  EntryMap itsEntries;
+  EntryMap itsEntries{};
 };
 } // namespace json_schema
 #endif // JSON_SCHEMA_2019_09_MODEL_DEFS_H

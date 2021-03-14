@@ -110,14 +110,18 @@ int main() {
               << "(" << (aValidateRes ? "invalid" : "valid") << ")"
               << "\n";
   }
-  // { // Dynamic
-  //   auto aReadResult = readSchemaIgnoreError<DynamicSchemaContext<Standard>>(
-  //       aRootDoc->getRoot(), aCoreDoc->getRoot(), aApplicatorDoc->getRoot(),
-  //       aValidationDoc->getRoot(), aMetadataDoc->getRoot(),
-  //       aFormatDoc->getRoot(), aContentDoc->getRoot());
-  //   using SchemaObject = std::decay_t<decltype(aReadResult)>::SchemaObject;
-  //   std::cout << SchemaPrinter(std::get<const SchemaObject>(aReadResult[0]))
-  //             << "\n";
-  // }
+  { // Dynamic
+    auto aReadResult = readSchemaIgnoreError<DynamicSchemaContext<Standard>>(
+        aRootDoc->getRoot(), aCoreDoc->getRoot(), aApplicatorDoc->getRoot(),
+        aValidationDoc->getRoot(), aMetadataDoc->getRoot(),
+        aFormatDoc->getRoot(), aContentDoc->getRoot());
+    using SchemaObject = std::decay_t<decltype(aReadResult)>::SchemaObject;
+    const SchemaValidator aSchemaValidator(aReadResult.itsSchemas[0],
+                                           aReadResult.itsContext);
+    const auto aValidateRes = aSchemaValidator.validate(aValidationJson);
+    std::cout << SchemaPrinter(std::get<const SchemaObject>(aReadResult[0]))
+              << "(" << (aValidateRes ? "invalid" : "valid") << ")"
+              << "\n";
+  }
   return 0;
 }

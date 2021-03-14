@@ -191,7 +191,8 @@ public:
         auto aStringBuf = theReader.readStringList(theValue);
         if (Reader::ErrorHandling::isError(aStringBuf))
           return Reader::ErrorHandling::template convertError<bool>(aStringBuf);
-        aValidation.itsRequired = Reader::toPtr(Reader::ErrorHandling::unwrap(aStringBuf));
+        aValidation.itsRequired =
+            Reader::toPtr(Reader::ErrorHandling::unwrap(aStringBuf));
       } else if (theKey == "dependentRequired") {
         using StringRef = typename Reader::Storage::StringRef;
         using StringList = typename Reader::template List<StringRef>;

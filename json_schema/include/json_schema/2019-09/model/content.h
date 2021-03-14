@@ -48,9 +48,9 @@ public:
   };
 
   // private:
-  StringPtr itsContentMediaType;
-  StringPtr itsContentEncoding;
-  SchemaPtr itsContentSchema;
+  StringPtr itsContentMediaType{};
+  StringPtr itsContentEncoding{};
+  SchemaPtr itsContentSchema{};
 };
 } // namespace json_schema
 #endif // JSON_SCHEMA_2019_09_MODEL_CONTENT_H

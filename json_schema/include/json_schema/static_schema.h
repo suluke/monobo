@@ -18,8 +18,7 @@ struct StaticStorage {
     }
   };
 
-  template<typename T>
-  constexpr static auto pointer_to(T&& theRef) {
+  template <typename T> constexpr static auto pointer_to(T &&theRef) {
     return pointer_traits<Ptr<std::remove_reference_t<T>>>::pointer_to(theRef);
   }
 
