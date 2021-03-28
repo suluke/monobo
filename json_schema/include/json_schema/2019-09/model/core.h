@@ -5,6 +5,7 @@
 #include "json_schema/2019-09/model/uri.h"
 #include "json_schema/2019-09/model/uri_reference.h"
 #include "json_schema/2019-09/model/vocabulary.h"
+#include "json_schema/modelling.h"
 
 namespace json_schema {
 template <typename Storage> class SchemaCore {
@@ -49,7 +50,7 @@ public:
     constexpr const UriRefAccessor getRecursiveRef() const {
       return UriRefAccessor{*itsContext, itsCore->itsRecursiveRef};
     }
-    constexpr bool getRecursiveAnchor() const {
+    constexpr auto getRecursiveAnchor() const {
       return itsCore->itsRecursiveAnchor;
     }
     constexpr std::optional<std::string_view> getComment() const {
@@ -74,7 +75,7 @@ public:
   UriReference itsRef{};
   // std::optional<typename Storage::Schema> itsRefResolved{};
   UriReference itsRecursiveRef{};
-  bool itsRecursiveAnchor{};
+  with_default_false itsRecursiveAnchor{};
   Vocabulary<Storage> itsVocabulary{};
   typename Storage::StringPtr itsComment{};
   Defs<Storage> itsDefs{};

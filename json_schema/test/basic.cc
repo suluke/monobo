@@ -31,7 +31,7 @@ constexpr auto readSchemaIgnoreError(JSONs &&...theJsons) {
 }
 
 int main() {
-  using Standard = Standard_2019_09<>;
+  using Standard = Standard_2019_09</*Lenient=*/false>;
   // using ErrorHandling = cjson::ErrorWillReturnNone;
   // using ErrorHandling = cjson::ErrorWillThrow;
 

@@ -159,14 +159,11 @@ public:
   }
 };
 
-template<typename T>
-struct pointer_traits<T*> {
-  using pointer = T*;
+template <typename T> struct pointer_traits<T *> {
+  using pointer = T *;
   using element_type = T;
   using difference_type = std::ptrdiff_t;
-  static constexpr pointer pointer_to(element_type &theElm) {
-    return &theElm;
-  }
+  static constexpr pointer pointer_to(element_type &theElm) { return &theElm; }
 };
 
 } // namespace json_schema

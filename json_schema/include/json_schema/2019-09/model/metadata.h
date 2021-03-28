@@ -1,6 +1,8 @@
 #ifndef JSON_SCHEMA_2019_09_MODEL_METADATA_H
 #define JSON_SCHEMA_2019_09_MODEL_METADATA_H
 
+#include "json_schema/modelling.h"
+
 namespace json_schema {
 template <typename Storage> class SchemaMetadata {
 public:
@@ -42,9 +44,9 @@ public:
       return itsContext->getJson(*itsMetadata->itsDefault);
     }
 
-    constexpr bool getDeprecated() const { return itsMetadata->itsDeprecated; }
-    constexpr bool getReadOnly() const { return itsMetadata->itsReadOnly; }
-    constexpr bool getWriteOnly() const { return itsMetadata->itsWriteOnly; }
+    constexpr auto getDeprecated() const { return itsMetadata->itsDeprecated; }
+    constexpr auto getReadOnly() const { return itsMetadata->itsReadOnly; }
+    constexpr auto getWriteOnly() const { return itsMetadata->itsWriteOnly; }
 
     constexpr JsonListAccessorMaybe getExamples() const {
       if (!itsMetadata->itsExamples)
@@ -61,9 +63,9 @@ public:
   StringPtr itsTitle{};
   StringPtr itsDescription{};
   JsonPtr itsDefault{};
-  bool itsDeprecated = false;
-  bool itsReadOnly = false;
-  bool itsWriteOnly = false;
+  with_default_false itsDeprecated{};
+  with_default_false itsReadOnly{};
+  with_default_false itsWriteOnly{};
   JsonListPtr itsExamples{};
 };
 } // namespace json_schema

@@ -24,6 +24,7 @@ template <bool LENIENT = true> struct Standard_2019_09 {
   using SchemaObject =
       SchemaObjectBase<Storage, SchemaCore, SchemaApplicator, SchemaMetadata,
                        SchemaValidation, SchemaFormat, SchemaContent>;
+
   template <typename JSON, typename ErrorHandling>
   using SchemaInfoReader = SchemaInfoReaderBase<
       LENIENT, JSON, ErrorHandling, ReaderCore::InfoReader,

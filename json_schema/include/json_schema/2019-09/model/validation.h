@@ -1,7 +1,8 @@
 #ifndef JSON_SCHEMA_2019_09_MODEL_VALIDATION_H
 #define JSON_SCHEMA_2019_09_MODEL_VALIDATION_H
 
-#include "json_schema/2019-09/model/types.h"
+#include "json_schema/modelling.h"
+#include <limits>
 
 namespace json_schema {
 template <typename Storage> class SchemaValidation {
@@ -45,38 +46,34 @@ public:
                        const SchemaValidation &theValidation)
         : itsContext(&theContext), itsValidation(&theValidation) {}
 
-    constexpr double getMultipleOf() const {
+    constexpr auto getMultipleOf() const {
       return itsValidation->itsMultipleOf;
     }
-    constexpr double getMaximum() const { return itsValidation->itsMaximum; }
-    constexpr double getExclusiveMaximum() const {
+    constexpr auto getMaximum() const { return itsValidation->itsMaximum; }
+    constexpr auto getExclusiveMaximum() const {
       return itsValidation->itsExclusiveMaximum;
     }
-    constexpr double getMinimum() const { return itsValidation->itsMinimum; }
-    constexpr double getExclusiveMinimum() const {
+    constexpr auto getMinimum() const { return itsValidation->itsMinimum; }
+    constexpr auto getExclusiveMinimum() const {
       return itsValidation->itsExclusiveMinimum;
     }
-    constexpr size_t getMaxLength() const {
-      return itsValidation->itsMaxLength;
-    }
-    constexpr size_t getMinLength() const {
-      return itsValidation->itsMinLength;
-    }
-    constexpr size_t getMaxItems() const { return itsValidation->itsMaxItems; }
-    constexpr size_t getMinItems() const { return itsValidation->itsMinItems; }
-    constexpr size_t getMaxContains() const {
+    constexpr auto getMaxLength() const { return itsValidation->itsMaxLength; }
+    constexpr auto getMinLength() const { return itsValidation->itsMinLength; }
+    constexpr auto getMaxItems() const { return itsValidation->itsMaxItems; }
+    constexpr auto getMinItems() const { return itsValidation->itsMinItems; }
+    constexpr auto getMaxContains() const {
       return itsValidation->itsMaxContains;
     }
-    constexpr size_t getMinContains() const {
+    constexpr auto getMinContains() const {
       return itsValidation->itsMinContains;
     }
-    constexpr size_t getMaxProperties() const {
+    constexpr auto getMaxProperties() const {
       return itsValidation->itsMaxProperties;
     }
-    constexpr size_t getMinProperties() const {
+    constexpr auto getMinProperties() const {
       return itsValidation->itsMinProperties;
     }
-    constexpr bool getUniqueItems() const {
+    constexpr auto getUniqueItems() const {
       return itsValidation->itsUniqueItems;
     }
     constexpr std::optional<std::string_view> getPattern() const {
@@ -116,21 +113,41 @@ public:
     const SchemaValidation *itsValidation;
   };
 
-  // private:
-  double itsMultipleOf{};
-  double itsMaximum{};
-  double itsExclusiveMaximum{};
-  double itsMinimum{};
-  double itsExclusiveMinimum{};
-  size_t itsMaxLength{};
-  size_t itsMinLength{};
-  size_t itsMaxItems{};
-  size_t itsMinItems{};
-  size_t itsMaxContains{};
-  size_t itsMinContains{1};
-  size_t itsMaxProperties{};
-  size_t itsMinProperties{};
-  bool itsUniqueItems{false};
+private:
+  struct One {
+    constexpr double operator()() const noexcept { return 1.; }
+  };
+  template <typename T> struct negative {
+    constexpr double operator()() const noexcept(noexcept(-T{}())) {
+      return -T{}();
+    }
+  };
+
+public:
+  using with_default_inf = with_default<
+      nullary_function<double, std::numeric_limits<double>::infinity>>;
+  using with_default_negative_inf = with_default<negative<
+      nullary_function<double, std::numeric_limits<double>::infinity>>>;
+  using with_default_max =
+      with_default<nullary_function<size_t, std::numeric_limits<size_t>::max>>;
+  using with_default_zero = with_default<std::integral_constant<size_t, 0>>;
+
+  with_default<One> itsMultipleOf{};
+
+  with_default_inf itsMaximum{};
+  with_default_inf itsExclusiveMaximum{};
+  with_default_negative_inf itsMinimum{};
+  with_default_negative_inf itsExclusiveMinimum{};
+
+  with_default_max itsMaxLength{};
+  with_default_zero itsMinLength{};
+  with_default_max itsMaxItems{};
+  with_default_zero itsMinItems{};
+  with_default_max itsMaxContains{};
+  with_default<std::integral_constant<size_t, 1>> itsMinContains{};
+  with_default_max itsMaxProperties{};
+  with_default_zero itsMinProperties{};
+  with_default_false itsUniqueItems{};
   typename Storage::StringPtr itsPattern{};
   StringListPtr itsRequired{};
   StringListDict itsDependentRequired{};
