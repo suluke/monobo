@@ -63,7 +63,6 @@ public:
             return ErrorHandling::template convertError<InfoMaybe>(
                 aInfoOrError);
           SchemaInfo aResult = ErrorHandling::unwrap(aInfoOrError);
-          aResult.NUM_SCHEMA_LIST_ITEMS += 1;
           return aResult;
         }
       } else if (theKey == "properties" || theKey == "patternProperties" ||
@@ -182,14 +181,10 @@ public:
       } else if (theKey == "items") {
         using TypeEnum = decltype(std::declval<JSON>().getType());
         if (theValue.getType() != TypeEnum::ARRAY) {
-          auto aSchemaBuf =
-              theReader.template allocateList<typename Reader::SchemaRef>(1);
           const auto aSchema = theReader.readSchema(theValue);
           if (Reader::ErrorHandling::isError(aSchema))
             return Reader::ErrorHandling::template convertError<bool>(aSchema);
-          theReader.appendToList(aSchemaBuf,
-                                 Reader::ErrorHandling::unwrap(aSchema));
-          aApplicator.itsItems = Reader::toPtr(aSchemaBuf);
+          aApplicator.itsItems = Reader::toPtr(Reader::ErrorHandling::unwrap(aSchema));
         } else {
           auto aSchemaBuf = theReader.readSchemaList(theValue);
           if (Reader::ErrorHandling::isError(aSchemaBuf))

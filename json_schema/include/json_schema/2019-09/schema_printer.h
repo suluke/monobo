@@ -190,9 +190,17 @@ private:
         aPrintSchema(aUnevaluatedItems);
       }
       if (const auto aItems = aApplicator.getItems()) {
+        using Accessor = typename SchemaObject::template Accessor<SchemaApplicator>;
+        using SchemaList = typename Accessor::SchemaListAccessor;
         theOS << indent(theDepth) << "items:\n";
-        for (const auto aSchema : *aItems)
-          printSchema(theOS, aSchema, theDepth + 1, true);
+        if (std::holds_alternative<SchemaObject>(*aItems)) {
+          printSchema(theOS, std::get<SchemaObject>(*aItems), theDepth + 1,
+                      true);
+        } else {
+          const auto &aSchemaList = std::get<SchemaList>(*aItems);
+          for (const auto aSchema : aSchemaList)
+            printSchema(theOS, aSchema, theDepth + 1, true);
+        }
       }
       if (const auto aContains = aApplicator.getContains()) {
         theOS << indent(theDepth) << std::setw(W_COL1) << "contains:";
