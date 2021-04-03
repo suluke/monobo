@@ -166,12 +166,7 @@ template <typename Standard_> struct DynamicSchemaContext {
     }
     auto decorate(JsonRef theJson) const { return theJson.get().getRoot(); }
     constexpr auto decorate(SchemaRef theSchema) const {
-      using ReturnTy =
-          std::variant<bool, SchemaObjectAccessor<DynamicSchemaContext>>;
-      if (itsContext->getTrueSchemaRef() == theSchema)
-        return ReturnTy{true};
-      return ReturnTy{
-          SchemaObjectAccessor<DynamicSchemaContext>{*itsContext, theSchema}};
+      return SchemaObjectAccessor<DynamicSchemaContext>{*itsContext, theSchema};
     }
     template <typename... Args>
     constexpr auto operator()(Args &&...theArgs) const {
@@ -272,9 +267,15 @@ template <typename Standard_> struct DynamicSchemaContext {
     theMap.get().emplace(theKey, theVal);
   }
 
-  constexpr SchemaRef getTrueSchemaRef() const { return SchemaRef{nullptr}; }
   constexpr const SchemaObject &getSchemaObject(const SchemaRef &theRef) const {
     return *static_cast<SchemaObject *>(theRef.itsSchema);
+  }
+
+  constexpr bool isTrueSchema(const SchemaRef &theRef) const noexcept {
+    return false; // TODO
+  }
+  constexpr bool isFalseSchema(const SchemaRef &theRef) const noexcept {
+    return false; // TODO
   }
 
   std::string_view getString(StringRef theStr) const { return theStr.get(); }

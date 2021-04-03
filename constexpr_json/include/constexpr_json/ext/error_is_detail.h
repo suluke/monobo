@@ -21,6 +21,11 @@ struct ErrorWillReturnDetail {
     return std::get<T>(theValue);
   }
 
+  template <typename T>
+  static constexpr T &unwrap(ErrorOr<T> &theValue) noexcept {
+    return std::get<T>(theValue);
+  }
+
   template <typename T, typename... Args>
   static constexpr ErrorOr<T> makeError(Args &&... theArgs) {
     return ErrorDetail{std::forward<Args>(theArgs)...};

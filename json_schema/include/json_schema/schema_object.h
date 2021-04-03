@@ -40,6 +40,13 @@ public:
         itsContext->getSchemaObject(itsSchemaObject).template getSection<Section>()};
   }
 
+  constexpr bool isTrueSchema() const noexcept {
+    return itsContext->isTrueSchema(itsSchemaObject);
+  }
+  constexpr bool isFalseSchema() const noexcept {
+    return itsContext->isFalseSchema(itsSchemaObject);;
+  }
+
 private:
   const Context *itsContext{};
   SchemaRef itsSchemaObject;

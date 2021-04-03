@@ -1,6 +1,7 @@
 #ifndef CONSTEXPR_JSON_EXT_MULTI_ENCODING_H
 #define CONSTEXPR_JSON_EXT_MULTI_ENCODING_H
 
+#include <algorithm>
 #include <array>
 #include <string_view>
 #include <variant>

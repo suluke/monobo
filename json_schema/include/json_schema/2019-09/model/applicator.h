@@ -2,7 +2,7 @@
 #define JSON_SCHEMA_2019_09_MODEL_APPLICATOR_H
 
 #include "json_schema/schema_object.h"
-#include <variant>
+#include <optional>
 
 namespace json_schema {
 template <typename Storage> class SchemaApplicator {
@@ -22,8 +22,7 @@ public:
 
   template <typename Context> class Accessor {
   public:
-    using SchemaObjAccessor = SchemaObjectAccessor<Context>;
-    using SchemaAccessor = std::variant<bool, SchemaObjAccessor>;
+    using SchemaAccessor = SchemaObjectAccessor<Context>;
     using MaybeSchemaAccessor = std::optional<SchemaAccessor>;
     using SchemaListAccessor =
         typename Context::template BufferAccessor<SchemaRef>;
@@ -38,21 +37,13 @@ public:
         : itsContext(&theContext), itsApplicator(&theApplicator) {}
 
     constexpr MaybeSchemaAccessor getAdditionalItems() const {
-      if (const auto aAdditionalItems = itsApplicator->itsAdditionalItems) {
-        if (*aAdditionalItems == itsContext->getTrueSchemaRef())
-          return SchemaAccessor{true};
-        return SchemaAccessor{
-            SchemaObjAccessor{*itsContext, *aAdditionalItems}};
-      }
+      if (const auto aAdditionalItems = itsApplicator->itsAdditionalItems)
+        return SchemaAccessor{*itsContext, *aAdditionalItems};
       return std::nullopt;
     }
     constexpr MaybeSchemaAccessor getUnevaluatedItems() const {
-      if (const auto aUnevaluatedItems = itsApplicator->itsUnevaluatedItems) {
-        if (*aUnevaluatedItems == itsContext->getTrueSchemaRef())
-          return SchemaAccessor{true};
-        return SchemaAccessor{
-            SchemaObjAccessor{*itsContext, *aUnevaluatedItems}};
-      }
+      if (const auto aUnevaluatedItems = itsApplicator->itsUnevaluatedItems)
+        return SchemaAccessor{*itsContext, *aUnevaluatedItems};
       return std::nullopt;
     }
     constexpr MaybeSchemaListAccessor getItems() const {
@@ -61,31 +52,20 @@ public:
       return std::nullopt;
     }
     constexpr MaybeSchemaAccessor getContains() const {
-      if (const auto aContains = itsApplicator->itsContains) {
-        if (*aContains == itsContext->getTrueSchemaRef())
-          return SchemaAccessor{true};
-        return SchemaAccessor{SchemaObjAccessor{*itsContext, *aContains}};
-      }
+      if (const auto aContains = itsApplicator->itsContains)
+        return SchemaAccessor{*itsContext, *aContains};
       return std::nullopt;
     }
     constexpr MaybeSchemaAccessor getAdditionalProperties() const {
       if (const auto aAdditionalProperties =
-              itsApplicator->itsAdditionalProperties) {
-        if (*aAdditionalProperties == itsContext->getTrueSchemaRef())
-          return SchemaAccessor{true};
-        return SchemaAccessor{
-            SchemaObjAccessor{*itsContext, *aAdditionalProperties}};
-      }
+              itsApplicator->itsAdditionalProperties)
+        return SchemaAccessor{*itsContext, *aAdditionalProperties};
       return std::nullopt;
     }
     constexpr MaybeSchemaAccessor getUnevaluatedProperties() const {
       if (const auto aUnevaluatedProperties =
-              itsApplicator->itsUnevaluatedProperties) {
-        if (*aUnevaluatedProperties == itsContext->getTrueSchemaRef())
-          return SchemaAccessor{true};
-        return SchemaAccessor{
-            SchemaObjAccessor{*itsContext, *aUnevaluatedProperties}};
-      }
+              itsApplicator->itsUnevaluatedProperties)
+        return SchemaAccessor{*itsContext, *aUnevaluatedProperties};
       return std::nullopt;
     }
     constexpr MaybeSchemaDictAccessor getProperties() const {
@@ -104,35 +84,23 @@ public:
       return std::nullopt;
     }
     constexpr MaybeSchemaAccessor getPropertyNames() const {
-      if (const auto aPropertyNames = itsApplicator->itsPropertyNames) {
-        if (*aPropertyNames == itsContext->getTrueSchemaRef())
-          return SchemaAccessor{true};
-        return SchemaAccessor{SchemaObjAccessor{*itsContext, *aPropertyNames}};
-      }
+      if (const auto aPropertyNames = itsApplicator->itsPropertyNames)
+        return SchemaAccessor{*itsContext, *aPropertyNames};
       return std::nullopt;
     }
     constexpr MaybeSchemaAccessor getIf() const {
-      if (const auto aIf = itsApplicator->itsIf) {
-        if (*aIf == itsContext->getTrueSchemaRef())
-          return SchemaAccessor{true};
-        return SchemaAccessor{SchemaObjAccessor{*itsContext, *aIf}};
-      }
+      if (const auto aIf = itsApplicator->itsIf)
+        return SchemaAccessor{*itsContext, *aIf};
       return std::nullopt;
     }
     constexpr MaybeSchemaAccessor getThen() const {
-      if (const auto aThen = itsApplicator->itsThen) {
-        if (*aThen == itsContext->getTrueSchemaRef())
-          return SchemaAccessor{true};
-        return SchemaAccessor{SchemaObjAccessor{*itsContext, *aThen}};
-      }
+      if (const auto aThen = itsApplicator->itsThen)
+        return SchemaAccessor{*itsContext, *aThen};
       return std::nullopt;
     }
     constexpr MaybeSchemaAccessor getElse() const {
-      if (const auto aElse = itsApplicator->itsElse) {
-        if (*aElse == itsContext->getTrueSchemaRef())
-          return SchemaAccessor{true};
-        return SchemaAccessor{SchemaObjAccessor{*itsContext, *aElse}};
-      }
+      if (const auto aElse = itsApplicator->itsElse)
+        return SchemaAccessor{*itsContext, *aElse};
       return std::nullopt;
     }
     constexpr MaybeSchemaListAccessor getAllOf() const {
@@ -151,11 +119,8 @@ public:
       return std::nullopt;
     }
     constexpr MaybeSchemaAccessor getNot() const {
-      if (const auto aNot = itsApplicator->itsNot) {
-        if (*aNot == itsContext->getTrueSchemaRef())
-          return SchemaAccessor{true};
-        return SchemaAccessor{SchemaObjAccessor{*itsContext, *aNot}};
-      }
+      if (const auto aNot = itsApplicator->itsNot)
+        return SchemaAccessor{*itsContext, *aNot};
       return std::nullopt;
     }
 

@@ -93,21 +93,17 @@ int main() {
         aRootDoc->getRoot(), aCoreDoc->getRoot(), aApplicatorDoc->getRoot(),
         aValidationDoc->getRoot(), aMetadataDoc->getRoot(),
         aFormatDoc->getRoot(), aContentDoc->getRoot());
-    using SchemaObject = std::decay_t<decltype(aReadResult)>::SchemaObject;
     static_assert(aReadResult.itsSchemas.size() == 7u,
                   "Number of schemas read does not "
                   "match number of input schemas");
-    static_assert(*std::get<const SchemaObject>(aReadResult[0])
-                       .getSection<SchemaCore>()
-                       .getId()
-                       .toString() ==
+    static_assert(*aReadResult[0].getSection<SchemaCore>().getId().toString() ==
                   "https://json-schema.org/draft/2019-09/schema");
 
     constexpr SchemaValidator aSchemaValidator(aReadResult.itsSchemas[0],
                                                aReadResult.itsContext);
     constexpr auto aValidateRes = aSchemaValidator.validate(aValidationJson);
-    std::cout << SchemaPrinter(std::get<const SchemaObject>(aReadResult[0]))
-              << "(" << (aValidateRes ? "invalid" : "valid") << ")"
+    std::cout << SchemaPrinter(aReadResult[0]) << "("
+              << (aValidateRes ? "invalid" : "valid") << ")"
               << "\n";
   }
   { // Dynamic
@@ -115,12 +111,11 @@ int main() {
         aRootDoc->getRoot(), aCoreDoc->getRoot(), aApplicatorDoc->getRoot(),
         aValidationDoc->getRoot(), aMetadataDoc->getRoot(),
         aFormatDoc->getRoot(), aContentDoc->getRoot());
-    using SchemaObject = std::decay_t<decltype(aReadResult)>::SchemaObject;
     const SchemaValidator aSchemaValidator(aReadResult.itsSchemas[0],
                                            aReadResult.itsContext);
     const auto aValidateRes = aSchemaValidator.validate(aValidationJson);
-    std::cout << SchemaPrinter(std::get<const SchemaObject>(aReadResult[0]))
-              << "(" << (aValidateRes ? "invalid" : "valid") << ")"
+    std::cout << SchemaPrinter(aReadResult[0]) << "("
+              << (aValidateRes ? "invalid" : "valid") << ")"
               << "\n";
   }
   return 0;

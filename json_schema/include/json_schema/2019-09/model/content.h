@@ -1,6 +1,8 @@
 #ifndef JSON_SCHEMA_2019_09_MODEL_CONTENT_H
 #define JSON_SCHEMA_2019_09_MODEL_CONTENT_H
 
+#include "json_schema/schema_object.h"
+
 namespace json_schema {
 template <typename Storage> class SchemaContent {
 public:
@@ -15,7 +17,7 @@ public:
 
   template <typename Context> class Accessor {
   public:
-    using SchemaAccessor = std::variant<bool, SchemaObjectAccessor<Context>>;
+    using SchemaAccessor = SchemaObjectAccessor<Context>;
     using SchemaAccessorMaybe = std::optional<SchemaAccessor>;
 
     constexpr Accessor(const Context &theContext,
@@ -36,8 +38,6 @@ public:
     constexpr SchemaAccessorMaybe getContentSchema() const {
       if (!itsContent->itsContentSchema)
         return std::nullopt;
-      if (*itsContent->itsContentSchema == itsContext->getTrueSchemaRef())
-        return SchemaAccessor{true};
       return SchemaAccessor{SchemaObjectAccessor<Context>{
           *itsContext, *itsContent->itsContentSchema}};
     }

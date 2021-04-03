@@ -19,3 +19,9 @@ add_custom_command(
 )
 
 add_custom_target(json-schema-test-suite DEPENDS ${SCHEMA_TESTSUITE_PACKAGE_JSON})
+
+add_executable(json_schema_testsuite_driver driver.cc)
+target_link_libraries(json_schema_testsuite_driver PRIVATE cli_args)
+target_link_libraries(json_schema_testsuite_driver PRIVATE json_schema)
+# FIXME needs platform-specific coding
+target_link_libraries(json_schema_testsuite_driver PRIVATE stdc++fs)

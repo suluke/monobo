@@ -8,7 +8,7 @@
 
 namespace json_schema {
 template <bool LENIENT, typename SchemaContext, typename ErrorHandling_,
-          typename... Sections>
+          typename BoolGen, typename... Sections>
 class SchemaReaderBase {
 public:
   using ErrorHandling = ErrorHandling_;
@@ -30,10 +30,7 @@ public:
     SchemaContext itsContext;
     std::array<SchemaRef, sizeof...(JSONs)> itsSchemas;
 
-    constexpr std::variant<bool, const SchemaObject>
-    operator[](const ptrdiff_t theIdx) const {
-      if (itsContext.getTrueSchemaRef() == itsSchemas[theIdx])
-        return true;
+    constexpr const SchemaObject operator[](const ptrdiff_t theIdx) const {
       return SchemaObject{itsContext, itsSchemas[theIdx]};
     }
   };
@@ -96,9 +93,8 @@ public:
     if (aType == TypeEnum::BOOL) {
       const auto aBoolSchemaVal = theJson.toBool();
       if (!aBoolSchemaVal)
-        return ErrorHandling::template makeError<SchemaRef>(
-            "Schema value must be `true` in case it is of type bool");
-      return itsContext.getTrueSchemaRef();
+        return getFalseSchemaRef();
+      return getTrueSchemaRef();
     } else if (aType == TypeEnum::OBJECT) {
       SchemaObject aSchema;
       for (const auto &[aKey, aValue] : theJson.toObject()) {
@@ -139,7 +135,7 @@ public:
         allocateMap<StringRef, SchemaRef>(theJson.toObject().size());
     for (const auto &[aKey, aValue] : theJson.toObject()) {
       const auto aStr = allocateString(aKey);
-      const SchemaRef aSchema = readSchema(aValue);
+      const auto aSchema = readSchema(aValue);
       if (ErrorHandling::isError(aSchema))
         return ErrorHandling::template convertError<MapRefTy>(aSchema);
       addMapEntry(aSchemaDict, aStr, ErrorHandling::unwrap(aSchema));
@@ -158,7 +154,12 @@ public:
   }
 
 private:
-  SchemaReaderBase() = default;
+  constexpr SchemaReaderBase()
+      : itsContext{}, itsSchemaAlloc{},
+        itsTrueSchemaRef{itsSchemaAlloc.allocateSchema(
+            BoolGen{}.makeTrueSchema(), itsContext)},
+        itsFalseSchemaRef{itsSchemaAlloc.allocateSchema(
+            BoolGen{}.makeFalseSchema(itsTrueSchemaRef), itsContext)} {}
 
   template <typename... JSONs>
   using ErrorOrMany = typename ErrorHandling::template ErrorOr<
@@ -204,8 +205,13 @@ private:
     return Section::readSchema(*this, theSchema, theKey, theValue);
   }
 
+  constexpr SchemaRef getTrueSchemaRef() const { return itsTrueSchemaRef; }
+  constexpr SchemaRef getFalseSchemaRef() const { return itsFalseSchemaRef; }
+
   SchemaContext itsContext;
   SchemaAllocator itsSchemaAlloc;
+  SchemaRef itsTrueSchemaRef;
+  SchemaRef itsFalseSchemaRef;
 };
 } // namespace json_schema
 #endif // JSON_SCHEMA_SCHEMA_READER_H

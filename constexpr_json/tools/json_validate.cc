@@ -1,4 +1,3 @@
-#include "cli_args/cli_args.h"
 #include "constexpr_json/ext/ascii.h"
 #include "constexpr_json/ext/error_is_detail.h"
 #include "constexpr_json/ext/multi_encoding.h"
@@ -10,6 +9,8 @@
 #include <optional>
 #include <sstream>
 #include <string_view>
+
+#include "cli_args/cli_args.h"
 
 namespace cl = ::cli_args;
 

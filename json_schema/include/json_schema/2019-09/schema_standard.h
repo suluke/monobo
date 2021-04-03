@@ -32,9 +32,26 @@ template <bool LENIENT = true> struct Standard_2019_09 {
       ReaderValidation::InfoReader, ReaderFormat::InfoReader,
       ReaderContent::InfoReader, ReaderCompat::InfoReader>;
 
+  /// SchemaReader needs access to a definition of the boolean Schema
+  /// definitions.
+  template <typename SchemaContext> struct BoolGen {
+    using SchemaRef = typename SchemaContext::SchemaRef;
+    using SchemaObj = SchemaObject<typename SchemaContext::Storage>;
+
+    constexpr SchemaObj makeTrueSchema() {
+      return SchemaObj{};
+    }
+    constexpr SchemaObj makeFalseSchema(SchemaRef theTrue) {
+      SchemaObj aSchema{};
+      aSchema.template getSection<SchemaApplicator>().itsNot =
+          SchemaContext::Storage::pointer_to(theTrue);
+      return aSchema;
+    }
+  };
+
   template <typename SchemaContext, typename ErrorHandling>
   using SchemaReader =
-      SchemaReaderBase<LENIENT, SchemaContext, ErrorHandling,
+      SchemaReaderBase<LENIENT, SchemaContext, ErrorHandling, BoolGen<SchemaContext>,
                        ReaderCore::SchemaReader, ReaderApplicator::SchemaReader,
                        ReaderFormat::SchemaReader, ReaderMetadata::SchemaReader,
                        ReaderValidation::SchemaReader,

@@ -19,8 +19,12 @@ struct StreamParser {
   using ParserTy =
       cjson::DocumentParser<InputEncoding, OutputEncoding, ErrorHandling>;
   using ParserParseResult = cjson::DynamicDocument::ParseResult<ParserTy>;
+
+  /// Hold the parsing result iff there is no error reading the input stream.
   using Result = std::optional<ParserParseResult>;
 
+  /// @return nullopt in case there was an error reading from the stream.
+  ///         Parsing result otherwise.
   static Result parse(std::istream &theStream,
                       std::string *theJsonOut = nullptr,
                       const InputEncoding theInEnc = {},

@@ -93,20 +93,21 @@ private:
   }
 
   template <typename OS>
-  static void
-  printSchema(OS &theOS, const std::variant<bool, SchemaObject> &theSchema,
-              const int theDepth, const bool theFreestanding = false) {
-    if (std::holds_alternative<bool>(theSchema)) {
+  static void printSchema(OS &theOS, const SchemaObject &theSchema,
+                          const int theDepth,
+                          const bool theFreestanding = false) {
+    if (theSchema.isTrueSchema() || theSchema.isFalseSchema()) {
+      const bool aSchemaValue = theSchema.isTrueSchema();
       if (theFreestanding)
         theOS << indent(theDepth);
       else
         theOS << " ";
-      theOS << (std::get<bool>(theSchema) ? "true" : "false") << "\n";
+      theOS << (aSchemaValue ? "true" : "false") << "\n";
     } else {
       if (!theFreestanding)
         theOS << "\n";
       theOS << indent(theDepth) << "## SCHEMA\n";
-      printObject(theOS, std::get<SchemaObject>(theSchema), theDepth + 1);
+      printObject(theOS, theSchema, theDepth + 1);
     }
   }
 
@@ -174,9 +175,7 @@ private:
     const auto &aApplicator = theObj.template getSection<SchemaApplicator>();
     const auto printTo = [aApplicator, theDepth](auto &theOS) {
       const auto aPrintSchema =
-          [&theOS,
-           theDepth](const std::optional<std::variant<bool, SchemaObject>>
-                         &theSchema) {
+          [&theOS, theDepth](const std::optional<SchemaObject> &theSchema) {
             if (theSchema)
               printSchema(theOS, *theSchema, theDepth + 1);
             else

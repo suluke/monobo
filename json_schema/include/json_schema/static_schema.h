@@ -214,9 +214,14 @@ public:
     ptrdiff_t itsJsons{0};
   };
 
-  constexpr SchemaRef getTrueSchemaRef() const { return SchemaRef{-1}; }
   constexpr const SchemaObject &getSchemaObject(const SchemaRef &theRef) const {
     return itsSchemaObjects[theRef.itsPos];
+  }
+  constexpr bool isTrueSchema(const SchemaRef &theRef) const noexcept {
+    return theRef.itsPos == 0;
+  }
+  constexpr bool isFalseSchema(const SchemaRef &theRef) const noexcept {
+    return theRef.itsPos == 1;
   }
 
   /// Map in-the-wild Storage::Buffer objects to accesses on this context's
@@ -277,12 +282,7 @@ public:
       return itsContext->getJson(theJson);
     }
     constexpr auto prettify(const SchemaRef theSchema) const {
-      using ReturnTy =
-          std::variant<bool, SchemaObjectAccessor<StaticSchemaContext>>;
-      if (itsContext->getTrueSchemaRef() == theSchema)
-        return ReturnTy{true};
-      return ReturnTy{
-          SchemaObjectAccessor<StaticSchemaContext>{*itsContext, theSchema}};
+      return SchemaObjectAccessor<StaticSchemaContext>{*itsContext, theSchema};
     }
 
   private:
@@ -392,8 +392,9 @@ private:
 
 #define JSON_SCHEMA_STATIC_CONTEXT_TYPE(theStandard, theInfo)                  \
   json_schema::StaticSchemaContext<                                            \
-      theStandard, (theInfo).NUM_SCHEMA_OBJECTS, (theInfo).NUM_VOCAB_ENTRIES,  \
-      (theInfo).NUM_SCHEMA_DICT_ENTRIES,                                       \
+      theStandard,                                                             \
+      (theInfo).NUM_SCHEMA_OBJECTS + 2 /* Always count `true` and `false`*/,   \
+      (theInfo).NUM_VOCAB_ENTRIES, (theInfo).NUM_SCHEMA_DICT_ENTRIES,          \
       (theInfo).NUM_STRINGLIST_DICT_ENTRIES, (theInfo).NUM_SCHEMA_LIST_ITEMS,  \
       (theInfo).NUM_TYPES_LIST_ITEMS, (theInfo).NUM_STRING_LIST_ITEMS,         \
       (theInfo).NUM_CHARS, (theInfo).NUM_JSON_LIST_ITEMS,                      \

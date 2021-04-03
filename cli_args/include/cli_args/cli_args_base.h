@@ -486,7 +486,7 @@ private:
   template <typename T, typename... args_t>
   constexpr void consume(const CliInit<T> &init, args_t &&...args) {
     if (!getPtr())
-      value = std::make_unique<ValTy>(static_cast<const ValTy &>(init.get()));
+      value = std::make_unique<ValTy>(init.get());
     else
       *getPtr() = init.get();
     consume(std::forward<args_t>(args)...);
