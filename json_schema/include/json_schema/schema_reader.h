@@ -2,6 +2,7 @@
 #define JSON_SCHEMA_SCHEMA_READER_H
 
 #include "constexpr_json/impl/document_allocator.h"
+#include "json_schema/schema_object.h"
 #include "json_schema/util.h"
 
 #include <variant>
@@ -25,18 +26,21 @@ public:
   template <typename KeyT, typename ValT>
   using MapRef = typename Storage::template MapRef<KeyT, ValT>;
 
-  template <typename... JSONs> struct ReadResult {
+  template <size_t SIZE> struct ReadResult {
     using SchemaObject = SchemaObjectAccessor<SchemaContext>;
     SchemaContext itsContext;
-    std::array<SchemaRef, sizeof...(JSONs)> itsSchemas;
+    std::array<SchemaRef, SIZE> itsSchemas;
 
     constexpr const SchemaObject operator[](const ptrdiff_t theIdx) const {
       return SchemaObject{itsContext, itsSchemas[theIdx]};
     }
+    constexpr const SchemaContext& getContext() const noexcept {
+      return itsContext;
+    }
   };
   template <typename... JSONs>
   using ReadResultOrError =
-      typename ErrorHandling::template ErrorOr<ReadResult<JSONs...>>;
+      typename ErrorHandling::template ErrorOr<ReadResult<sizeof...(JSONs)>>;
 
   template <typename JSON, typename... MoreJSONs>
   static constexpr ReadResultOrError<JSON, MoreJSONs...>
@@ -44,11 +48,11 @@ public:
     SchemaReaderBase aInstance;
     const auto aErrorMaybe =
         aInstance.readMany(theJson, std::forward<MoreJSONs>(theMoreJsons)...);
+    using ResultTy = ReadResult<sizeof...(MoreJSONs) + 1>;
     if (ErrorHandling::isError(aErrorMaybe))
-      return ErrorHandling::template convertError<
-          ReadResult<JSON, MoreJSONs...>>(aErrorMaybe);
-    return ReadResult<JSON, MoreJSONs...>{std::move(aInstance.itsContext),
-                                          ErrorHandling::unwrap(aErrorMaybe)};
+      return ErrorHandling::template convertError<ResultTy>(aErrorMaybe);
+    return ResultTy{std::move(aInstance.itsContext),
+                    ErrorHandling::unwrap(aErrorMaybe)};
   }
 
   template <typename T> static constexpr auto toPtr(T &&theRef) {

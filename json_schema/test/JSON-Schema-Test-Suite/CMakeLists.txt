@@ -2,7 +2,8 @@ include(${CONSTEXPR_JSON_PROJECT_ROOT}/cmake/Download.cmake)
 
 set(SCHEMA_TESTSUITE_DOWNLOAD_URL "https://github.com/json-schema-org/JSON-Schema-Test-Suite/archive/master.tar.gz")
 set(SCHEMA_TESTSUITE_ARCHIVE_PATH "${CMAKE_CURRENT_BINARY_DIR}/JSON-Schema-Test-Suite.tar.gz")
-set(SCHEMA_TESTSUITE_PACKAGE_JSON "${CMAKE_CURRENT_BINARY_DIR}/JSON-Schema-Test-Suite-master/package.json")
+set(SCHEMA_TESTSUITE_DIR "${CMAKE_CURRENT_BINARY_DIR}/JSON-Schema-Test-Suite-master")
+set(SCHEMA_TESTSUITE_PACKAGE_JSON "${SCHEMA_TESTSUITE_DIR}/package.json")
 
 # Step 1: Download archive from github
 add_downloaded_file(
@@ -25,3 +26,21 @@ target_link_libraries(json_schema_testsuite_driver PRIVATE cli_args)
 target_link_libraries(json_schema_testsuite_driver PRIVATE json_schema)
 # FIXME needs platform-specific coding
 target_link_libraries(json_schema_testsuite_driver PRIVATE stdc++fs)
+
+add_test(
+  NAME json-schema-test-suite-download
+  COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} -- json-schema-test-suite
+)
+set_tests_properties(json-schema-test-suite-download
+  PROPERTIES FIXTURES_SETUP json-schema-test-suite
+)
+
+add_test(
+  NAME json-schema-test-suite
+  COMMAND json_schema_testsuite_driver ${SCHEMA_TESTSUITE_DIR}/tests/draft2019-09
+)
+set_tests_properties(json-schema-test-suite
+  PROPERTIES
+    FIXTURES_REQUIRED json-schema-test-suite
+    WILL_FAIL ON
+)

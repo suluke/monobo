@@ -3,7 +3,7 @@
 
 namespace json_schema {
 
-template <typename Storage, template<typename> typename... Sections>
+template <typename Storage, template <typename> typename... Sections>
 class SchemaObjectBase : private Sections<Storage>... {
 public:
   constexpr SchemaObjectBase() = default;
@@ -35,16 +35,21 @@ public:
 
   template <template <typename> typename Section>
   constexpr const Accessor<Section> getSection() const noexcept {
-    return Accessor<Section>{
-        *itsContext,
-        itsContext->getSchemaObject(itsSchemaObject).template getSection<Section>()};
+    return Accessor<Section>{*itsContext,
+                             itsContext->getSchemaObject(itsSchemaObject)
+                                 .template getSection<Section>()};
   }
 
   constexpr bool isTrueSchema() const noexcept {
     return itsContext->isTrueSchema(itsSchemaObject);
   }
   constexpr bool isFalseSchema() const noexcept {
-    return itsContext->isFalseSchema(itsSchemaObject);;
+    return itsContext->isFalseSchema(itsSchemaObject);
+  }
+
+  constexpr const Context &getContext() const noexcept { return *itsContext; }
+  constexpr const SchemaRef &getRefInternal() const noexcept {
+    return itsSchemaObject;
   }
 
 private:

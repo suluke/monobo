@@ -4,13 +4,18 @@
 #include "constexpr_json/ext/error_is_nullopt.h"
 
 namespace json_schema {
-template <typename SchemaTy, typename ContextTy,
+template <typename ContextTy,
           typename ErrorHandling = cjson::ErrorWillReturnNone>
 class SchemaValidator {
 public:
-  constexpr SchemaValidator(const SchemaTy &theSchema,
+  using SchemaRef = typename ContextTy::SchemaRef;
+
+  constexpr SchemaValidator(const SchemaRef &theSchema,
                             const ContextTy &theContext)
-      : itsSchema{theSchema}, itsContext{theContext} {}
+      : itsContext{theContext}, itsSchema{theSchema} {}
+  SchemaValidator(const SchemaObjectAccessor<ContextTy> &theSchema)
+      : itsContext{theSchema.getContext()}, itsSchema{
+                                                theSchema.getRefInternal()} {}
 
   template <typename JSON>
   constexpr typename std::optional<typename ErrorHandling::ErrorDetail>
@@ -19,8 +24,8 @@ public:
   }
 
 private:
-  SchemaTy itsSchema;
   ContextTy itsContext;
+  SchemaRef itsSchema;
 };
 } // namespace json_schema
 #endif // JSON_SCHEMA_SCHEMA_VALIDATOR_H

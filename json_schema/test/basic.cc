@@ -81,6 +81,9 @@ int main() {
 #define HEADER "schema.json.h"
 #include "schema_loading_helper.h"
 
+  // FIXME static tests currently disabled in gcc because of excessive memory
+  // usage during compilation
+#if !defined(__GNUG__) || defined(__clang__) || defined(__INTEL_COMPILER)
   { // Static
     constexpr auto aSchemaInfo = *aRootInfo + *aCoreInfo + *aApplicatorInfo +
                                  *aValidationInfo + *aMetadataInfo +
@@ -93,26 +96,28 @@ int main() {
         aRootDoc->getRoot(), aCoreDoc->getRoot(), aApplicatorDoc->getRoot(),
         aValidationDoc->getRoot(), aMetadataDoc->getRoot(),
         aFormatDoc->getRoot(), aContentDoc->getRoot());
+
     static_assert(aReadResult.itsSchemas.size() == 7u,
                   "Number of schemas read does not "
                   "match number of input schemas");
     static_assert(*aReadResult[0].getSection<SchemaCore>().getId().toString() ==
                   "https://json-schema.org/draft/2019-09/schema");
 
+    // static case needs pointerless SchemaRef
     constexpr SchemaValidator aSchemaValidator(aReadResult.itsSchemas[0],
-                                               aReadResult.itsContext);
+                                               aReadResult.getContext());
     constexpr auto aValidateRes = aSchemaValidator.validate(aValidationJson);
     std::cout << SchemaPrinter(aReadResult[0]) << "("
               << (aValidateRes ? "invalid" : "valid") << ")"
               << "\n";
   }
+#endif
   { // Dynamic
     auto aReadResult = readSchemaIgnoreError<DynamicSchemaContext<Standard>>(
         aRootDoc->getRoot(), aCoreDoc->getRoot(), aApplicatorDoc->getRoot(),
         aValidationDoc->getRoot(), aMetadataDoc->getRoot(),
         aFormatDoc->getRoot(), aContentDoc->getRoot());
-    const SchemaValidator aSchemaValidator(aReadResult.itsSchemas[0],
-                                           aReadResult.itsContext);
+    const SchemaValidator aSchemaValidator(aReadResult[0]);
     const auto aValidateRes = aSchemaValidator.validate(aValidationJson);
     std::cout << SchemaPrinter(aReadResult[0]) << "("
               << (aValidateRes ? "invalid" : "valid") << ")"
