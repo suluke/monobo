@@ -116,9 +116,13 @@ template <typename T, typename... Ts> struct variant_storage<T, Ts...> {
     if (thePos == 0) {
       assign<IsActive>(theData.itsData.itsHead, type_result<T>{});
     } else {
+      // FIXME bug fixed in gcc11 https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80635
+      #pragma GCC diagnostic push
+      #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
       if constexpr (!IsActive) {
         itsData = Data{variant_storage<>{}, type_result<variant_storage<>>{}};
       }
+      #pragma GCC diagnostic pop
       if constexpr (!std::is_same_v<decltype(itsData.itsTail),
                                     variant_storage<>>) {
         itsData.itsTail.template assign_pos<IsActive>(thePos - 1,
@@ -179,19 +183,6 @@ inline constexpr size_t position_of = position_of_impl<T, 0, Ts...>::value;
 
 static_assert(position_of<char, char, const char *> == 0);
 static_assert(position_of<const char *, char, const char *> == 1);
-
-template <size_t Pos, typename T, typename... Ts>
-constexpr auto type_at_impl() {
-  if constexpr (Pos == 0) {
-    return type_result<T>{};
-  } else {
-    return type_at_impl<Pos - 1, Ts...>;
-  }
-}
-
-template <size_t Pos, typename... Ts>
-using type_at = typename decltype(type_at_impl<Pos, Ts...>())::type;
-
 } // namespace impl
 
 /// Shitty std::variant reimplementation
@@ -265,8 +256,8 @@ inline const T &get(const Variant<Ts...> &theVariant) {
   return theVariant.template get<T>();
 }
 
-// static_assert(Variant<char, const char *>{'a'}.index() == 0u);
-// static_assert(Variant<char, const char *>{"a"}.index() == 1u);
+static_assert(Variant<char, const char *>{'a'}.index() == 0u);
+static_assert(Variant<char, const char *>{"a"}.index() == 1u);
 
 } // namespace json_schema
 #endif // JSON_SCHEMA_UTIL_VARIANT_H
