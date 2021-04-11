@@ -13,3 +13,4 @@ target_link_libraries(json_schema INTERFACE constexpr_json)
 
 add_subdirectory(lib)
 add_subdirectory(test)
+add_subdirectory(tools)

@@ -9,8 +9,6 @@
 namespace json_schema {
 
 struct StaticStorage {
-  // FIXME should not exist
-  template <typename T> using Ref = std::reference_wrapper<T>;
   template <typename T> struct Ptr : public json_schema::Optional<T> {
     using element_type = const T;
     static constexpr Ptr pointer_to(element_type &theRef) noexcept {

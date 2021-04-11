@@ -193,11 +193,11 @@ private:
         using Accessor = typename SchemaObject::template Accessor<SchemaApplicator>;
         using SchemaList = typename Accessor::SchemaListAccessor;
         theOS << indent(theDepth) << "items:\n";
-        if (std::holds_alternative<SchemaObject>(*aItems)) {
-          printSchema(theOS, std::get<SchemaObject>(*aItems), theDepth + 1,
+        if (holds_alternative<SchemaObject>(*aItems)) {
+          printSchema(theOS, get<SchemaObject>(*aItems), theDepth + 1,
                       true);
         } else {
-          const auto &aSchemaList = std::get<SchemaList>(*aItems);
+          const auto &aSchemaList = get<SchemaList>(*aItems);
           for (const auto aSchema : aSchemaList)
             printSchema(theOS, aSchema, theDepth + 1, true);
         }

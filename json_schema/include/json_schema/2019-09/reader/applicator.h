@@ -181,7 +181,7 @@ public:
       } else if (theKey == "items") {
         using TypeEnum = decltype(std::declval<JSON>().getType());
         if (theValue.getType() != TypeEnum::ARRAY) {
-          const auto aSchema = theReader.readSchema(theValue);
+          auto aSchema = theReader.readSchema(theValue);
           if (Reader::ErrorHandling::isError(aSchema))
             return Reader::ErrorHandling::template convertError<bool>(aSchema);
           aApplicator.itsItems = Reader::toPtr(Reader::ErrorHandling::unwrap(aSchema));

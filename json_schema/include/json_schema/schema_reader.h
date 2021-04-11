@@ -5,8 +5,6 @@
 #include "json_schema/schema_object.h"
 #include "json_schema/util.h"
 
-#include <variant>
-
 namespace json_schema {
 template <bool LENIENT, typename SchemaContext, typename ErrorHandling_,
           typename BoolGen, typename... Sections>

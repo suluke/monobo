@@ -2,8 +2,8 @@
 #define JSON_SCHEMA_2019_09_MODEL_APPLICATOR_H
 
 #include "json_schema/schema_object.h"
+#include "json_schema/util/variant.h"
 #include <optional>
-#include <variant>
 
 namespace json_schema {
 template <typename Storage> class SchemaApplicator {
@@ -47,15 +47,15 @@ public:
         return SchemaAccessor{*itsContext, *aUnevaluatedItems};
       return std::nullopt;
     }
-    constexpr std::optional<std::variant<SchemaListAccessor, SchemaAccessor>>
+    constexpr std::optional<Variant<SchemaListAccessor, SchemaAccessor>>
     getItems() const {
-      using ValueTy = std::variant<SchemaListAccessor, SchemaAccessor>;
+      using ValueTy = Variant<SchemaListAccessor, SchemaAccessor>;
       const auto &aItems = itsApplicator->itsItems;
-      if (std::holds_alternative<SchemaList>(aItems)) {
-        if (auto &aItemsList = std::get<SchemaList>(aItems))
+      if (holds_alternative<SchemaList>(aItems)) {
+        if (auto &aItemsList = get<SchemaList>(aItems))
           return ValueTy{SchemaListAccessor{*itsContext, *aItemsList}};
         return std::nullopt;
-      } else if (auto &aItemsSchema = std::get<SchemaPtr>(aItems))
+      } else if (auto &aItemsSchema = get<SchemaPtr>(aItems))
         return ValueTy{SchemaAccessor{*itsContext, *aItemsSchema}};
       return std::nullopt;
     }
@@ -140,7 +140,7 @@ public:
   // private:
   SchemaPtr itsAdditionalItems{};
   SchemaPtr itsUnevaluatedItems{};
-  std::variant<SchemaList, SchemaPtr> itsItems{};
+  Variant<SchemaList, SchemaPtr> itsItems{};
   SchemaPtr itsContains{};
   SchemaPtr itsAdditionalProperties{};
   SchemaPtr itsUnevaluatedProperties{};

@@ -18,7 +18,6 @@
 
 namespace cl = ::cli_args;
 namespace fs = ::std::filesystem;
-using namespace std::string_literals;
 
 const char *const TOOLNAME = "json_schema_testsuite_driver";
 const char *const TOOLDESC = "Verify JSON documents using JSON-Schema";
@@ -34,7 +33,7 @@ enum ERROR {
 
 static cl::list<fs::path> gInputs(cl::meta("files"),
                                   cl::desc("File(s) to be validated"),
-                                  cl::init({"-"s}));
+                                  cl::init({"-"}));
 
 using Standard = json_schema::Standard_2019_09</*Lenient=*/false>;
 using Context = json_schema::DynamicSchemaContext<Standard>;
