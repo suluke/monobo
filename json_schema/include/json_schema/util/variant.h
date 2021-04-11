@@ -1,6 +1,8 @@
 #ifndef JSON_SCHEMA_UTIL_VARIANT_H
 #define JSON_SCHEMA_UTIL_VARIANT_H
 
+#include "json_schema/util/warning.h"
+
 namespace json_schema {
 namespace impl {
 template <typename T> struct type_result { using type = T; };
@@ -116,13 +118,12 @@ template <typename T, typename... Ts> struct variant_storage<T, Ts...> {
     if (thePos == 0) {
       assign<IsActive>(theData.itsData.itsHead, type_result<T>{});
     } else {
-      // FIXME bug fixed in gcc11 https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80635
-      #pragma GCC diagnostic push
-      #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+      // FIXME
+      MONOBO_PUSH_WARNING_MUTE_GCC("-Wmaybe-uninitialized", "Bug fixed in gcc11 https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80635")
       if constexpr (!IsActive) {
         itsData = Data{variant_storage<>{}, type_result<variant_storage<>>{}};
       }
-      #pragma GCC diagnostic pop
+      MONOBO_POP_WARNING_GCC("-Wmaybe-uninitialized")
       if constexpr (!std::is_same_v<decltype(itsData.itsTail),
                                     variant_storage<>>) {
         itsData.itsTail.template assign_pos<IsActive>(thePos - 1,
