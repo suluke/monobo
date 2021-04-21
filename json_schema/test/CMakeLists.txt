@@ -7,6 +7,7 @@ find_path(CONSTEXPR_JSON_PROJECT_ROOT
 )
 
 add_subdirectory(JSON-Schema-Test-Suite)
+add_subdirectory(util)
 
 include(${CONSTEXPR_JSON_PROJECT_ROOT}/cmake/GenerateJsonHeader.cmake)
 generate_json_header("${CMAKE_CURRENT_BINARY_DIR}/meta/core.json.h" "../res/meta/core.json")

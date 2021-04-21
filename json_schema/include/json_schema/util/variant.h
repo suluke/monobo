@@ -1,6 +1,10 @@
 #ifndef JSON_SCHEMA_UTIL_VARIANT_H
 #define JSON_SCHEMA_UTIL_VARIANT_H
 
+#include <cstddef>
+#include <limits>
+#include <type_traits>
+#include <utility>
 #include "json_schema/util/warning.h"
 
 namespace json_schema {
@@ -37,16 +41,16 @@ template <> struct variant_storage<> {
 /// These cute little helpers help implementing the "if we get some X&&, use it
 /// for alternative T that would be selected in overload resolution"
 /// requirement.
-template <typename T, typename I1, typename I2> struct InitSelect {
+template <typename I1, typename I2> struct InitSelect {
   constexpr type_result<void> operator()(...) { return {}; }
   constexpr type_result<I1> operator()(I1) { return {}; }
   constexpr type_result<I2> operator()(I2) { return {}; }
 };
-template <typename T, typename I1> struct InitSelect<T, I1, void> {
+template < typename I1> struct InitSelect<I1, void> {
   constexpr type_result<void> operator()(...) { return {}; }
   constexpr type_result<I1> operator()(I1) { return {}; }
 };
-template <typename T, typename I2> struct InitSelect<T, void, I2> {
+template <typename I2> struct InitSelect<void, I2> {
   constexpr type_result<void> operator()(...) { return {}; }
   constexpr type_result<I2> operator()(I2) { return {}; }
 };
@@ -58,7 +62,7 @@ template <typename T, typename Best, typename H, typename... Ts>
 constexpr auto select_initialized_impl() {
   using Recursion =
       typename decltype(select_initialized_impl<T, Best, Ts...>())::type;
-  using Result = std::invoke_result_t<InitSelect<T, H, Recursion>, T>;
+  using Result = std::invoke_result_t<InitSelect<H, Recursion>, T>;
   return Result{};
 }
 template <typename T, typename... Ts> constexpr auto select_initialized_type() {
@@ -196,6 +200,8 @@ private:
       impl::position_of<impl::type_initialized_by<T, Ts...>, Ts...>;
 
 public:
+  static inline constexpr index_t variant_npos{static_cast<index_t>(-1)};
+
   constexpr Variant() = default;
   // constexpr Variant(const Variant &theOther) = default;
   constexpr Variant(const Variant &theOther)
@@ -226,13 +232,15 @@ public:
   template <typename T> constexpr Variant &operator=(T &&theInit) {
     auto aTag = impl::select_initialized_type<T, Ts...>();
     using NewTy = typename decltype(aTag)::type;
+    static_assert(!std::is_same_v<NewTy, void>, "Failed to determine type to be activated/assigned to");
     constexpr size_t aNewIdx = impl::position_of<NewTy, Ts...>;
+    static_assert(aNewIdx != variant_npos, "Failed to determine type to be activated/assigned to");
     if (aNewIdx == index()) {
       itsStorage.template assign<true>(std::forward<T>(theInit), aTag);
     } else {
       itsStorage.template assign<false>(std::forward<T>(theInit), aTag);
     }
-    itsActiveIdx = aNewIdx;
+    itsActiveIdx = static_cast<index_t>(aNewIdx);
     return *this;
   }
 

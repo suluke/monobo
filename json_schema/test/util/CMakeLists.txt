@@ -1,0 +1,3 @@
+add_executable(json_schema_util_variant_test variant.cc)
+target_link_libraries(json_schema_util_variant_test PRIVATE gtest_main json_schema)
+gtest_discover_tests(json_schema_util_variant_test)
