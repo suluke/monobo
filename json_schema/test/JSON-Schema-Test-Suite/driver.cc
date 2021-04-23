@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#include <gtest/gtest.h>
+
 #include "json_schema/2019-09/schema_standard.h"
 #include "json_schema/2019-09/schema_validator.h"
 #include "json_schema/dynamic_schema.h"
@@ -26,7 +28,7 @@ enum ERROR {
   OK = 0,
   ERROR_INVALID_JSON = 1,
   ERROR_MALFORMED_TEST = 2,
-  ERROR_TEST_FAILED = 3,
+  ERROR_TEST_PARSING_FAILED = 3,
   ERROR_OPEN_FAILED = 11,
   ERROR_READ_FAILED = 12,
 };
@@ -38,8 +40,36 @@ static cl::list<fs::path> gInputs(cl::meta("files"),
 using Standard = json_schema::Standard_2019_09</*Lenient=*/false>;
 using Context = json_schema::DynamicSchemaContext<Standard>;
 using Reader = Standard::template SchemaReader<Context, cjson::ErrorWillThrow>;
-using Schema = typename Reader::template ReadResult<1>::SchemaObject;
+using ReadResult = typename Reader::template ReadResult<1>;
+using Schema = ReadResult::SchemaObject;
 using Validator = json_schema::SchemaValidator<Context>;
+
+class TestsuiteFixture : public testing::Test {};
+class TestsuiteTest : public TestsuiteFixture {
+public:
+  explicit TestsuiteTest(
+      const std::shared_ptr<cjson::DynamicDocument> &theJsonDoc,
+      const std::shared_ptr<ReadResult> &theSchemaContext,
+      const cjson::DynamicDocument::EntityRef theData,
+      const bool theShouldBeValid)
+      : itsJsonDoc{theJsonDoc}, itsSchemaContext{theSchemaContext},
+        itsData{theData}, itsShouldBeValid{theShouldBeValid} {}
+  void TestBody() override {
+    Validator aValidator((*itsSchemaContext)[0]);
+    const auto aErrorMaybe = aValidator.validate(itsData);
+    if (itsShouldBeValid) {
+      EXPECT_FALSE(aErrorMaybe);
+    } else {
+      EXPECT_TRUE(aErrorMaybe);
+    }
+  }
+
+private:
+  std::shared_ptr<cjson::DynamicDocument> itsJsonDoc;
+  std::shared_ptr<ReadResult> itsSchemaContext;
+  cjson::DynamicDocument::EntityRef itsData;
+  bool itsShouldBeValid{true};
+};
 
 struct TestReport {
   bool hasError() const noexcept { return itsHasError; }
@@ -62,8 +92,11 @@ private:
   std::vector<TestReport> itsSingleTestReports;
 };
 
-static TestReport processTest(const cjson::DynamicDocument::EntityRef &theTest,
-                              const Schema &theSchema) {
+static TestReport
+processTest(const cjson::DynamicDocument::EntityRef &theTest,
+            const char *const theGroupName,
+            const std::shared_ptr<ReadResult> &theSchema,
+            const std::shared_ptr<cjson::DynamicDocument> &theJson) {
   TestReport aResult;
   if (theTest.getType() != cjson::Entity::OBJECT) {
     aResult.addError(ERROR_MALFORMED_TEST,
@@ -71,12 +104,11 @@ static TestReport processTest(const cjson::DynamicDocument::EntityRef &theTest,
     return aResult;
   }
   const auto &aTestObject = theTest.toObject();
-  std::cout << "  EXEC TEST:";
+  std::string aDesc = "<description missing>";
   if (auto aDescription = aTestObject["description"]) {
     if (aDescription->getType() == cjson::Entity::STRING)
-      std::cout << "     \"" << aDescription->toString() << "\"";
+      aDesc = aDescription->toString();
   }
-  std::cout << "\n";
   const auto &aValid = aTestObject["valid"];
   if (!aValid || aValid->getType() != cjson::Entity::BOOL) {
     aResult.addError(ERROR_MALFORMED_TEST,
@@ -90,32 +122,29 @@ static TestReport processTest(const cjson::DynamicDocument::EntityRef &theTest,
     return aResult;
   }
 
-  Validator aValidator(theSchema);
-  const auto aErrorMaybe = aValidator.validate(*aData);
-  if (aShouldBeValid && aErrorMaybe) {
-    aResult.addError(ERROR_TEST_FAILED, "Unexpected validation failure");
-    std::cerr << "  [FAIL] Unexpected validation failure\n";
-  } else if (!aShouldBeValid && !aErrorMaybe) {
-    aResult.addError(ERROR_TEST_FAILED, "Unexpected validation success");
-    std::cerr << "  [FAIL] Unexpected validation success\n";
-  } else {
-    std::cout << "  [SUCCESS]\n";
-  }
+  testing::RegisterTest(
+      theGroupName, aDesc.c_str(), nullptr, nullptr, __FILE__, __LINE__,
+      // Important to use the fixture type as the return type here.
+      [=]() -> TestsuiteFixture * {
+        return new TestsuiteTest(theJson, theSchema, *aData, aShouldBeValid);
+      });
 
   return aResult;
 }
 
 static TestGroupReport
-processTestGroup(const cjson::DynamicDocument::EntityRef &theGroup) {
+processTestGroup(const cjson::DynamicDocument::EntityRef &theGroup,
+                 const std::shared_ptr<cjson::DynamicDocument> &theJsonDoc) {
   TestGroupReport aResult;
   if (theGroup.getType() != cjson::Entity::OBJECT) {
     aResult.addError(ERROR_MALFORMED_TEST, "Expected test to be object\n");
     return aResult;
   }
   const auto &aGroupObject = theGroup.toObject();
+  std::string aGroupDesc = "<group description missing>";
   if (auto aDescription = aGroupObject["description"]) {
     if (aDescription->getType() == cjson::Entity::STRING) {
-      std::cout << "EXEC TEST GROUP: \"" << aDescription->toString() << "\"\n";
+      aGroupDesc = aDescription->toString();
     }
   }
   if (!aGroupObject["schema"]) {
@@ -128,12 +157,14 @@ processTestGroup(const cjson::DynamicDocument::EntityRef &theGroup) {
     aResult.addError(ERROR_MALFORMED_TEST, "Failed to build test schema\n");
     return aResult;
   }
-  const auto &aSchemaReadRes = ErrorHandling::unwrap(aSchemaOrError);
+  const auto aSchemaReadRes =
+      std::make_shared<ReadResult>(ErrorHandling::unwrap(aSchemaOrError));
   const auto &aTests = aGroupObject["tests"];
   if (aTests && aTests->getType() == cjson::Entity::ARRAY) {
     const auto &aTestsArray = aTests->toArray();
     for (const auto &aTestElm : aTestsArray)
-      aResult.addReport(processTest(aTestElm, aSchemaReadRes[0]));
+      aResult.addReport(processTest(aTestElm, aGroupDesc.c_str(),
+                                    aSchemaReadRes, theJsonDoc));
   }
   return aResult;
 }
@@ -159,7 +190,9 @@ ERROR processFilePath(const fs::path &thePath,
     std::cerr << "Failed to parse JSON " << thePath << "\n";
     return ERROR_INVALID_JSON;
   }
-  const auto aJsonDoc = std::move(ErrorHandling::unwrap(*aJsonInput));
+  // This converts from unique to shared_ptr to be shared between tests
+  std::shared_ptr<cjson::DynamicDocument> aJsonDoc =
+      std::move(ErrorHandling::unwrap(*aJsonInput));
   const auto aJsonRoot = aJsonDoc->getRoot();
   if (aJsonRoot.getType() != cjson::Entity::ARRAY) {
     std::cerr << "Expected root element of test json " << thePath
@@ -167,7 +200,7 @@ ERROR processFilePath(const fs::path &thePath,
     return ERROR_MALFORMED_TEST;
   }
   for (const auto &aGroup : aJsonRoot.toArray())
-    theReports.emplace_back(processTestGroup(aGroup));
+    theReports.emplace_back(processTestGroup(aGroup, aJsonDoc));
   return OK;
 }
 
@@ -176,13 +209,16 @@ int main(int argc, const char **argv) {
     cl::PrintHelp(TOOLNAME, TOOLDESC, std::cout);
     return 1;
   }
+  int aDummyArgc{1};
+  testing::InitGoogleTest(&aDummyArgc, const_cast<char **>(argv));
 
   std::error_code aEc;
   std::vector<TestGroupReport> aReports;
   for (const fs::path &aPath : gInputs) {
     if (fs::is_directory(aPath)) {
       for (const auto &aDirEntry : fs::directory_iterator(aPath)) {
-        if (!aDirEntry.is_directory() && aDirEntry.path().extension() == ".json") {
+        if (!aDirEntry.is_directory() &&
+            aDirEntry.path().extension() == ".json") {
           if (int aErrc = processFilePath(aDirEntry, aReports))
             return aErrc;
         }
@@ -194,7 +230,7 @@ int main(int argc, const char **argv) {
   }
   for (const auto &aReport : aReports) {
     if (aReport.hasError())
-      return ERROR_TEST_FAILED;
+      return ERROR_TEST_PARSING_FAILED;
   }
-  return OK;
+  return RUN_ALL_TESTS();
 }

@@ -25,13 +25,10 @@ static_assert(std::is_same_v<Bar, ShouldBeBar>);
 
 enum class Result { Ok, Err };
 
-template<typename V>
-Result checkGet(const V&, ...) {
-  return Result::Err;
-}
-template<typename V, typename T>
-Result checkGet(const V& theVariant, const type_tag<T>& theType) {
-  get<T>(theVariant);
+Result checkGet(...) { return Result::Err; }
+template <typename V, typename T>
+auto checkGet(const V *const theVariant, T theType)
+    -> decltype((void)(get<typename T::type>(*theVariant)), Result::Ok) {
   return Result::Ok;
 }
 
@@ -42,5 +39,6 @@ TEST(VariantTest, BasicAssertions) {
   aVariant = "This is a test";
   EXPECT_TRUE(holds_alternative<Bar>(aVariant));
   EXPECT_STREQ("This is a test", get<Bar>(aVariant).itsValue);
-  EXPECT_EQ(Result::Err, checkGet(type_tag<void>{}, aVariant));
+  EXPECT_EQ(Result::Ok, checkGet(&aVariant, impl::type_result<Baz>{}));
+  EXPECT_EQ(Result::Err, checkGet(&aVariant, impl::type_result<void>{}));
 }
