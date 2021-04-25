@@ -106,7 +106,7 @@ int main() {
     // static case needs pointerless SchemaRef
     constexpr SchemaValidator aSchemaValidator(aReadResult.itsSchemas[0],
                                                aReadResult.getContext());
-    constexpr auto aValidateRes = aSchemaValidator.validate(aValidationJson);
+    constexpr auto aValidateRes = aSchemaValidator.validate(aValidationDoc->getRoot());
     std::cout << SchemaPrinter(aReadResult[0]) << "("
               << (aValidateRes ? "invalid" : "valid") << ")"
               << "\n";
@@ -118,7 +118,7 @@ int main() {
         aValidationDoc->getRoot(), aMetadataDoc->getRoot(),
         aFormatDoc->getRoot(), aContentDoc->getRoot());
     const SchemaValidator aSchemaValidator(aReadResult[0]);
-    const auto aValidateRes = aSchemaValidator.validate(aValidationJson);
+    const auto aValidateRes = aSchemaValidator.validate(aValidationDoc->getRoot());
     std::cout << SchemaPrinter(aReadResult[0]) << "("
               << (aValidateRes ? "invalid" : "valid") << ")"
               << "\n";
