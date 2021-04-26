@@ -24,6 +24,7 @@ class SchemaValidator {
 public:
   using SchemaRef = typename ContextTy::SchemaRef;
   using ErrorDetail = typename ErrorHandling::ErrorDetail;
+  using ValidationResult = typename std::optional<ErrorDetail>;
 
   constexpr SchemaValidator(const SchemaRef &theSchema,
                             const ContextTy &theContext)
@@ -33,7 +34,7 @@ public:
                                                 theSchema.getRefInternal()} {}
 
   template <typename JSON>
-  constexpr typename std::optional<ErrorDetail>
+  constexpr ValidationResult
   validate(const JSON &theJson) const {
     using json_type = decltype(theJson.getType());
     SchemaObjectAccessor aSchema{itsContext, itsSchema};

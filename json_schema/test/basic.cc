@@ -42,42 +42,49 @@ int main() {
 // === Core ===
 #define NAME Core
 #define JSON_SCHEMA_STD Standard
+#define INFONAME(theName) a##theName##Info
 #define HEADER "meta/core.json.h"
 #include "schema_loading_helper.h"
 
 // === Applicator ===
 #define NAME Applicator
 #define JSON_SCHEMA_STD Standard
+#define INFONAME(theName) a##theName##Info
 #define HEADER "meta/applicator.json.h"
 #include "schema_loading_helper.h"
 
 // === Validation ===
 #define NAME Validation
 #define JSON_SCHEMA_STD Standard
+#define INFONAME(theName) a##theName##Info
 #define HEADER "meta/validation.json.h"
 #include "schema_loading_helper.h"
 
 // === Meta-Data ===
 #define NAME Metadata
 #define JSON_SCHEMA_STD Standard
+#define INFONAME(theName) a##theName##Info
 #define HEADER "meta/meta-data.json.h"
 #include "schema_loading_helper.h"
 
 // === Format ===
 #define NAME Format
 #define JSON_SCHEMA_STD Standard
+#define INFONAME(theName) a##theName##Info
 #define HEADER "meta/format.json.h"
 #include "schema_loading_helper.h"
 
 // === Content ===
 #define NAME Content
 #define JSON_SCHEMA_STD Standard
+#define INFONAME(theName) a##theName##Info
 #define HEADER "meta/content.json.h"
 #include "schema_loading_helper.h"
 
 // === Root ===
 #define NAME Root
 #define JSON_SCHEMA_STD Standard
+#define INFONAME(theName) a##theName##Info
 #define HEADER "schema.json.h"
 #include "schema_loading_helper.h"
 
