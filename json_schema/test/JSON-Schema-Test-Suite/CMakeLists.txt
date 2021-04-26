@@ -16,14 +16,15 @@ target_link_libraries(json_schema_testsuite_driver PRIVATE
   stdc++fs
 )
 
-add_test(
-  NAME json-schema-test-suite
-  COMMAND json_schema_testsuite_driver ${json_schema_testsuite_SOURCE_DIR}/tests/draft2019-09
-)
-set_tests_properties(json-schema-test-suite
-  PROPERTIES
-    WILL_FAIL ON
-)
+# FIXME either use this code if ctest becomes too slow or delete it if we decide to stick with ctest.
+# add_test(
+#   NAME json-schema-test-suite
+#   COMMAND json_schema_testsuite_driver ${json_schema_testsuite_SOURCE_DIR}/tests/draft2019-09
+# )
+# set_tests_properties(json-schema-test-suite
+#   PROPERTIES
+#     WILL_FAIL ON
+# )
 
 gtest_discover_tests(json_schema_testsuite_driver
   TEST_PREFIX "json_schema/"

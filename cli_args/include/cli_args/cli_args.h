@@ -58,6 +58,8 @@
 namespace cli_args {
 namespace detail {
 struct CliLibCfgStd {
+  using string_span = detail::CliOptConcept::string_span;
+
   static std::ostream &outs() { return std::cout; }
   static std::ostream &errs() { return std::cerr; }
 
@@ -78,6 +80,19 @@ struct CliLibCfgStd {
     errs() << "Missing required value for option \""
            << (names.empty() ? err.option.getMeta() : names.at(0)) << "\"\n";
   }
+  static int handleUnrecognized(const std::string_view &theOption,
+                                const string_span &theValues) {
+    return onunrecognized()(theOption, theValues);
+  }
+
+  using UnrecognizedCB =
+      std::function<int(const std::string_view &, const string_span &)>;
+
+  static UnrecognizedCB &onunrecognized() {
+    static UnrecognizedCB callback = [](const std::string_view &,
+                                        const string_span &) { return -1; };
+    return callback;
+  }
 };
 } // namespace detail
 } // namespace cli_args
@@ -87,11 +102,12 @@ struct CliLibCfgStd {
 #include "parsers/unsigned.h"
 
 namespace cli_args {
-template <typename T> using opt = api<detail::CliLibCfgStd>::opt<T>;
-template <typename T> using list = api<detail::CliLibCfgStd>::list<T>;
+using cfg = detail::CliLibCfgStd;
+template <typename T> using opt = api<cfg>::opt<T>;
+template <typename T> using list = api<cfg>::list<T>;
 template <typename AppTag = void>
-struct ParseArgs : public api<detail::CliLibCfgStd>::ParseArgs<AppTag> {
-  using base_t = api<detail::CliLibCfgStd>::ParseArgs<AppTag>;
+struct ParseArgs : public api<cfg>::ParseArgs<AppTag> {
+  using base_t = api<cfg>::ParseArgs<AppTag>;
   ParseArgs(int argc, const char **argv, int offset = 1)
       : base_t(argc, argv, offset) {}
 };

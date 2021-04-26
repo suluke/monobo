@@ -450,9 +450,11 @@ static std::pair<std::string_view, std::string_view> gDisabledList[] = {
      "aninvalidbase64string(%isnotavalidcharacter);validatestrue"},
     {"validationofstring-encodedcontentbasedonmediatype",
      "aninvalidJSONdocument;validatestrue"}};
-static bool isDisabled(const char* const theGroup, const char * const theTest) {
-  static std::set<std::pair<std::string_view, std::string_view>> aDisabledSet{std::begin(gDisabledList), std::end(gDisabledList)};
-  return aDisabledSet.count(std::make_pair<std::string_view, std::string_view>(theGroup, theTest));
+static bool isDisabled(const char *const theGroup, const char *const theTest) {
+  static std::set<std::pair<std::string_view, std::string_view>> aDisabledSet{
+      std::begin(gDisabledList), std::end(gDisabledList)};
+  return aDisabledSet.count(
+      std::make_pair<std::string_view, std::string_view>(theGroup, theTest));
 }
 
 class TestsuiteFixture : public testing::Test {};
@@ -629,6 +631,14 @@ ERROR processFilePath(const fs::path &thePath,
 }
 
 int main(int argc, const char **argv) {
+  cl::cfg::onunrecognized() =
+      [&](const std::string_view &theName,
+          const cl::cfg::string_span &theValues) -> int {
+    if (theName.substr(0, 6) == "gtest_") {
+      return static_cast<int>(theValues.size());
+    }
+    return -1;
+  };
   if (!cl::ParseArgs(argc, argv)) {
     cl::PrintHelp(TOOLNAME, TOOLDESC, std::cout);
     return 1;
@@ -654,27 +664,6 @@ int main(int argc, const char **argv) {
       return ERROR_TEST_PARSING_FAILED;
   }
 
-  {
-    std::string aArg0 = argv[0];
-    std::vector<char *> aGtestArgs;
-    aGtestArgs.emplace_back(aArg0.data());
-    char aListTestsOpt[] = "--gtest_list_tests";
-    if (gTestList) {
-      aGtestArgs.emplace_back(aListTestsOpt);
-    }
-    char aAlsoDisabledOpt[] = "--gtest_also_run_disabled_tests";
-    if (gTestAlsoDisabled) {
-      aGtestArgs.emplace_back(aAlsoDisabledOpt);
-    }
-    std::string aFilterOpt;
-    if (!gTestFilter->empty()) {
-      using namespace std::string_literals;
-      aFilterOpt = "--gtest_filter="s + *gTestFilter;
-      aGtestArgs.emplace_back(aFilterOpt.data());
-    }
-
-    int aGtestArgsSize = static_cast<int>(aGtestArgs.size());
-    testing::InitGoogleTest(&aGtestArgsSize, aGtestArgs.data());
-  }
+  testing::InitGoogleTest(&argc, const_cast<char**>(argv));
   return RUN_ALL_TESTS();
 }

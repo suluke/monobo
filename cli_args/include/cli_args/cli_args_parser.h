@@ -32,11 +32,15 @@ template <typename LibCfg> struct api {
         } else if (!verbatim && arg.front() == '-' && arg.size() > 1) {
           // We have an option. Do we know it?
           std::string_view name = parseOptName(arg);
+          CliOptConcept *optPtr{nullptr};
+          std::optional<unrecognized> unrecognizedOpt;
           if (!registry.hasOption(name)) {
-            report(UnknownOptionError{arg});
-            return;
+            unrecognizedOpt.emplace(name);
+            optPtr = &unrecognizedOpt.value();
+          } else {
+            optPtr = &registry.getOption(name);
           }
-          CliOptConcept &opt = registry.getOption(name);
+          CliOptConcept &opt = *optPtr;
           // Is the argument just the name or also an '=' assignment?
           if (auto prefixLen = &name.front() - &arg.front() + name.size();
               prefixLen < arg.size()) {
@@ -81,7 +85,8 @@ template <typename LibCfg> struct api {
           }
           auto res = opt.parse(values, false);
           if (!res) {
-            report(ParseError{name, values, opt});
+            if (!unrecognizedOpt)
+              report(ParseError{name, values, opt});
             return;
           }
           if (0 > *res || static_cast<size_t>(*res) > values.size())
@@ -168,6 +173,28 @@ template <typename LibCfg> struct api {
     template <typename ErrorTy> void report(const ErrorTy &err) {
       LibCfg::report(err);
     }
+
+    struct unrecognized : public detail::CliOptConcept {
+      unrecognized(std::string_view theName) : itsName{theName} {}
+      unrecognized(const unrecognized &) = default;
+      unrecognized &operator=(const unrecognized &) = default;
+
+      using string_span = CliOptConcept::string_span;
+      string_span getNames() const override { return {&itsName, 1u}; }
+
+      [[nodiscard]] std::optional<string_span::size_type>
+      parse(const string_span &values, bool isInline) override {
+        int handled = LibCfg::handleUnrecognized(itsName, values);
+        if (handled < 0) {
+          LibCfg::report(::cli_args::error::UnknownOptionError{itsName});
+          return std::nullopt;
+        }
+        return static_cast<size_t>(handled);
+      }
+
+    private:
+      std::string_view itsName;
+    };
   };
 };
 } // namespace cli_args
