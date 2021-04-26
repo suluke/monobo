@@ -16,7 +16,11 @@
 #include "constexpr_json/ext/stream_parser.h"
 
 #include "cli_args/cli_args.h"
+#include "cli_args/parsers/bool.h"
 #include "cli_args/parsers/path.h"
+#include "cli_args/parsers/string.h"
+
+#include "json_schema_testsuite_driver_defs.h"
 
 namespace cl = ::cli_args;
 namespace fs = ::std::filesystem;
@@ -33,9 +37,14 @@ enum ERROR {
   ERROR_READ_FAILED = 12,
 };
 
-static cl::list<fs::path> gInputs(cl::meta("files"),
-                                  cl::desc("File(s) to be validated"),
-                                  cl::init({"-"}));
+static cl::list<fs::path>
+    gInputs(cl::meta("files"), cl::desc("File(s) to be validated"),
+            cl::init({JSON_SCHEMA_TESTSUITE_BUILDIN_TESTDIR}));
+static cl::opt<bool> gTestList(cl::name("gtest_list_tests"), cl::init(false));
+static cl::opt<std::string> gTestFilter(cl::name("gtest_filter"), cl::init(""));
+static cl::opt<bool>
+    gTestAlsoDisabled(cl::name("gtest_also_run_disabled_tests"),
+                      cl::init(false));
 
 using Standard = json_schema::Standard_2019_09</*Lenient=*/false>;
 using Context = json_schema::DynamicSchemaContext<Standard>;
@@ -43,6 +52,408 @@ using Reader = Standard::template SchemaReader<Context, cjson::ErrorWillThrow>;
 using ReadResult = typename Reader::template ReadResult<1>;
 using Schema = ReadResult::SchemaObject;
 using Validator = json_schema::SchemaValidator<Context>;
+
+static std::pair<std::string_view, std::string_view> gDisabledList[] = {
+    {"$anchorinsideanenumisnotarealidentifier",
+     "inimplementationsthatstrip$anchor,thismaymatcheither$def"},
+    {"$anchorinsideanenumisnotarealidentifier", "nomatchonenumor$refto$anchor"},
+    {"$idinsideanenumisnotarealidentifier", "nomatchonenumor$refto$id"},
+    {"$recursiveRefwithno$recursiveAnchorintheinitialtargetschemaresource",
+     "leafnodedoesnotmatch;norecursion"},
+    {"$recursiveRefwithno$recursiveAnchorintheouterschemaresource",
+     "leafnodedoesnotmatch;norecursion"},
+    {"$recursiveRefwithno$recursiveAnchorworkslike$ref",
+     "integerdoesnotmatchasapropertyvalue"},
+    {"$recursiveRefwithno$recursiveAnchorworkslike$ref",
+     "twolevels,integerdoesnotmatchasapropertyvalue"},
+    {"$recursiveRefwithout$recursiveAnchorworkslike$ref", "mismatch"},
+    {"$recursiveRefwithout$recursiveAnchorworkslike$ref", "recursivemismatch"},
+    {"$recursiveRefwithoutusingnesting", "integerdoesnotmatchasapropertyvalue"},
+    {"$recursiveRefwithoutusingnesting", "twolevels,nomatch"},
+    {"$reftobooleanschemafalse", "anyvalueisinvalid"},
+    {"additionalItemsasschema", "additionalitemsdonotmatchschema"},
+    {"additionalItemsshouldnotlookinapplicators,invalidcase",
+     "itemsdefinedinallOfarenotexamined"},
+    {"additionalPropertiesallowsaschemawhichshouldvalidate",
+     "anadditionalinvalidpropertyisinvalid"},
+    {"additionalPropertiesbeingfalsedoesnotallowotherproperties",
+     "anadditionalpropertyisinvalid"},
+    {"additionalPropertiescanexistbyitself",
+     "anadditionalinvalidpropertyisinvalid"},
+    {"additionalPropertiesshouldnotlookinapplicators",
+     "propertiesdefinedinallOfarenotexamined"},
+    {"allOf", "mismatchfirst"},
+    {"allOf", "mismatchsecond"},
+    {"allOf", "wrongtype"},
+    {"allOfsimpletypes", "mismatchone"},
+    {"allOfwithbaseschema", "mismatchbaseschema"},
+    {"allOfwithbaseschema", "mismatchboth"},
+    {"allOfwithbaseschema", "mismatchfirstallOf"},
+    {"allOfwithbaseschema", "mismatchsecondallOf"},
+    {"allOfwithbooleanschemas,allfalse", "anyvalueisinvalid"},
+    {"allOfwithbooleanschemas,somefalse", "anyvalueisinvalid"},
+    {"allOfwiththefirstemptyschema", "stringisinvalid"},
+    {"allOfwiththelastemptyschema", "stringisinvalid"},
+    {"anarrayofschemasforitems", "wrongtypes"},
+    {"anyOf", "neitheranyOfvalid"},
+    {"anyOfcomplextypes", "neitheranyOfvalid(complex)"},
+    {"anyOfwithbaseschema", "bothanyOfinvalid"},
+    {"anyOfwithbaseschema", "mismatchbaseschema"},
+    {"anyOfwithbooleanschemas,allfalse", "anyvalueisinvalid"},
+    {"arrayofitemswithnoadditionalItemspermitted",
+     "additionalitemsarenotpermitted"},
+    {"arraytypematchesarrays", "abooleanisnotanarray"},
+    {"arraytypematchesarrays", "afloatisnotanarray"},
+    {"arraytypematchesarrays", "anintegerisnotanarray"},
+    {"arraytypematchesarrays", "anobjectisnotanarray"},
+    {"arraytypematchesarrays", "astringisnotanarray"},
+    {"arraytypematchesarrays", "nullisnotanarray"},
+    {"aschemagivenforitems", "wrongtypeofitems"},
+    {"baseURIchange", "baseURIchangerefinvalid"},
+    {"booleanschema'false'", "arrayisinvalid"},
+    {"booleanschema'false'", "booleanfalseisinvalid"},
+    {"booleanschema'false'", "booleantrueisinvalid"},
+    {"booleanschema'false'", "emptyarrayisinvalid"},
+    {"booleanschema'false'", "emptyobjectisinvalid"},
+    {"booleanschema'false'", "nullisinvalid"},
+    {"booleanschema'false'", "numberisinvalid"},
+    {"booleanschema'false'", "objectisinvalid"},
+    {"booleanschema'false'", "stringisinvalid"},
+    {"booleansubschemas", "objectwithbothpropertiesisinvalid"},
+    {"booleansubschemas", "objectwithpropertyhavingschemafalseisinvalid"},
+    {"booleantypematchesbooleans", "afloatisnotaboolean"},
+    {"booleantypematchesbooleans", "anarrayisnotaboolean"},
+    {"booleantypematchesbooleans", "anemptystringisnotaboolean"},
+    {"booleantypematchesbooleans", "anintegerisnotaboolean"},
+    {"booleantypematchesbooleans", "anobjectisnotaboolean"},
+    {"booleantypematchesbooleans", "astringisnotaboolean"},
+    {"booleantypematchesbooleans", "nullisnotaboolean"},
+    {"booleantypematchesbooleans", "zeroisnotaboolean"},
+    {"byint", "intbyintfail"},
+    {"bynumber", "35isnotmultipleof1.5"},
+    {"bysmallnumber", "0.00751isnotmultipleof0.0001"},
+    {"constvalidation", "anothertypeisinvalid"},
+    {"constvalidation", "anothervalueisinvalid"},
+    {"constwith[false]doesnotmatch[0]", "[0.0]isinvalid"},
+    {"constwith[false]doesnotmatch[0]", "[0]isinvalid"},
+    {"constwith[true]doesnotmatch[1]", "[1.0]isinvalid"},
+    {"constwith[true]doesnotmatch[1]", "[1]isinvalid"},
+    {"constwith1doesnotmatchtrue", "trueisinvalid"},
+    {"constwitharray", "anotherarrayitemisinvalid"},
+    {"constwitharray", "arraywithadditionalitemsisinvalid"},
+    {"constwithfalsedoesnotmatch0", "floatzeroisinvalid"},
+    {"constwithfalsedoesnotmatch0", "integerzeroisinvalid"},
+    {"constwithnull", "notnullisinvalid"},
+    {"constwithobject", "anotherobjectisinvalid"},
+    {"constwithobject", "anothertypeisinvalid"},
+    {"constwithtruedoesnotmatch1", "floatoneisinvalid"},
+    {"constwithtruedoesnotmatch1", "integeroneisinvalid"},
+    {"containskeywordvalidation", "arraywithoutitemsmatchingschemaisinvalid"},
+    {"containskeywordvalidation", "emptyarrayisinvalid"},
+    {"containskeywordwithbooleanschemafalse", "emptyarrayisinvalid"},
+    {"containskeywordwithbooleanschematrue", "emptyarrayisinvalid"},
+    {"containskeywordwithconstkeyword", "arraywithoutitem5isinvalid"},
+    {"cousinunevaluatedProperties,trueandfalse,falsewithproperties",
+     "withnestedunevaluatedproperties"},
+    {"cousinunevaluatedProperties,trueandfalse,truewithproperties",
+     "withnestedunevaluatedproperties"},
+    {"cousinunevaluatedProperties,trueandfalse,truewithproperties",
+     "withnonestedunevaluatedproperties"},
+    {"dependencieswithescapedcharacters", "CRLFmissingdependent"},
+    {"dependencieswithescapedcharacters", "quotedquote"},
+    {"dependencieswithescapedcharacters",
+     "quotedquoteinvalidunderdependentschema"},
+    {"dependencieswithescapedcharacters", "quotedquotesmissingdependent"},
+    {"dependencieswithescapedcharacters",
+     "quotedtabinvalidunderdependentschema"},
+    {"enumsinproperties", "missingallpropertiesisinvalid"},
+    {"enumsinproperties", "missingrequiredpropertyisinvalid"},
+    {"enumsinproperties", "wrongbarvalue"},
+    {"enumsinproperties", "wrongfoovalue"},
+    {"enumwith0doesnotmatchfalse", "falseisinvalid"},
+    {"enumwith1doesnotmatchtrue", "trueisinvalid"},
+    {"enumwithescapedcharacters", "anotherstringisinvalid"},
+    {"enumwithfalsedoesnotmatch0", "floatzeroisinvalid"},
+    {"enumwithfalsedoesnotmatch0", "integerzeroisinvalid"},
+    {"enumwithtruedoesnotmatch1", "floatoneisinvalid"},
+    {"enumwithtruedoesnotmatch1", "integeroneisinvalid"},
+    {"escapedpointerref", "percentinvalid"},
+    {"escapedpointerref", "slashinvalid"},
+    {"escapedpointerref", "tildeinvalid"},
+    {"evaluatingthesameschemalocationagainstthesamedatalocationtwiceisnotasigno"
+     "fa"
+     "ninfiniteloop",
+     "failingcase"},
+    {"exclusiveMaximumvalidation", "abovetheexclusiveMaximumisinvalid"},
+    {"exclusiveMaximumvalidation", "boundarypointisinvalid"},
+    {"exclusiveMinimumvalidation", "belowtheexclusiveMinimumisinvalid"},
+    {"exclusiveMinimumvalidation", "boundarypointisinvalid"},
+    {"forbiddenproperty", "propertypresent"},
+    {"fragmentwithinremoteref", "remotefragmentinvalid"},
+    {"heterogeneousenumvalidation", "extrapropertiesinobjectisinvalid"},
+    {"heterogeneousenumvalidation", "objectsaredeepcompared"},
+    {"heterogeneousenumvalidation", "somethingelseisinvalid"},
+    {"ifandelsewithoutthen", "invalidthroughelse"},
+    {"ifandthenwithoutelse", "invalidthroughthen"},
+    {"ifappearsattheendwhenserialized(keywordprocessingsequence)",
+     "invalidredirectstoelseandfails"},
+    {"ifappearsattheendwhenserialized(keywordprocessingsequence)",
+     "noredirectstothenandfails"},
+    {"ifwithbooleanschemafalse",
+     "booleanschemafalseinifalwayschoosestheelsepath(invalid)"},
+    {"ifwithbooleanschematrue",
+     "booleanschematrueinifalwayschoosesthethenpath(invalid)"},
+    {"integertypematchesintegers", "abooleanisnotaninteger"},
+    {"integertypematchesintegers", "afloatisnotaninteger"},
+    {"integertypematchesintegers", "anarrayisnotaninteger"},
+    {"integertypematchesintegers", "anobjectisnotaninteger"},
+    {"integertypematchesintegers", "astringisnotaninteger"},
+    {"integertypematchesintegers",
+     "astringisstillnotaninteger,evenifitlookslikeone"},
+    {"integertypematchesintegers", "nullisnotaninteger"},
+    {"invalidinstanceshouldnotraiseerrorwhenfloatdivision=inf",
+     "alwaysinvalid,butnaiveimplementationsmayraiseanoverflowerror"},
+    {"itemisevaluatedinanuncleschematounevaluatedItems",
+     "unclekeywordevaluationisnotsignificant"},
+    {"items+contains", "doesnotmatchitems,matchescontains"},
+    {"items+contains", "matchesitems,doesnotmatchcontains"},
+    {"items+contains", "matchesneitheritemsnorcontains"},
+    {"itemsandsubitems", "toomanyitems"},
+    {"itemsandsubitems", "wrongitem"},
+    {"itemsvalidationadjuststhestartingindexforadditionalItems",
+     "wrongtypeofseconditem"},
+    {"itemswithbooleanschemas", "arraywithtwoitemsisinvalid"},
+    {"maxContains<minContains", "emptydata"},
+    {"maxContains<minContains", "invalidmaxContains"},
+    {"maxContains<minContains", "invalidmaxContainsandminContains"},
+    {"maxContains<minContains", "invalidminContains"},
+    {"maxContains=minContains", "allelementsmatch,invalidmaxContains"},
+    {"maxContains=minContains", "allelementsmatch,invalidminContains"},
+    {"maxContains=minContains", "emptydata"},
+    {"maxContainswithcontains", "allelementsmatch,invalidmaxContains"},
+    {"maxContainswithcontains", "emptydata"},
+    {"maxContainswithcontains", "someelementsmatch,invalidmaxContains"},
+    {"maximumvalidation", "abovethemaximumisinvalid"},
+    {"maximumvalidationwithunsignedinteger", "abovethemaximumisinvalid"},
+    {"maxItemsvalidation", "toolongisinvalid"},
+    {"maxLengthvalidation", "toolongisinvalid"},
+    {"maxProperties=0meanstheobjectisempty", "onepropertyisinvalid"},
+    {"maxPropertiesvalidation", "toolongisinvalid"},
+    {"minContains<maxContains", "actual<minContains<maxContains"},
+    {"minContains<maxContains", "minContains<maxContains<actual"},
+    {"minContains=1withcontains", "emptydata"},
+    {"minContains=1withcontains", "noelementsmatch"},
+    {"minContains=2withcontains", "allelementsmatch,invalidminContains"},
+    {"minContains=2withcontains", "emptydata"},
+    {"minContains=2withcontains", "someelementsmatch,invalidminContains"},
+    {"minimumvalidation", "belowtheminimumisinvalid"},
+    {"minimumvalidationwithsignedinteger", "floatbelowtheminimumisinvalid"},
+    {"minimumvalidationwithsignedinteger", "intbelowtheminimumisinvalid"},
+    {"minItemsvalidation", "tooshortisinvalid"},
+    {"minLengthvalidation", "onesupplementaryUnicodecodepointisnotlongenough"},
+    {"minLengthvalidation", "tooshortisinvalid"},
+    {"multipledependentsrequired", "missingbothdependencies"},
+    {"multipledependentsrequired", "missingdependency"},
+    {"multipledependentsrequired", "missingotherdependency"},
+    {"multiplesimultaneouspatternPropertiesarevalidated",
+     "aninvalidduetobothisinvalid"},
+    {"multiplesimultaneouspatternPropertiesarevalidated",
+     "aninvalidduetooneisinvalid"},
+    {"multiplesimultaneouspatternPropertiesarevalidated",
+     "aninvalidduetotheotherisinvalid"},
+    {"multipletypescanbespecifiedinanarray", "abooleanisinvalid"},
+    {"multipletypescanbespecifiedinanarray", "afloatisinvalid"},
+    {"multipletypescanbespecifiedinanarray", "anarrayisinvalid"},
+    {"multipletypescanbespecifiedinanarray", "anobjectisinvalid"},
+    {"multipletypescanbespecifiedinanarray", "nullisinvalid"},
+    {"naivereplacementof$refwithitsdestinationisnotcorrect",
+     "donotevaluatethe$refinsidetheenum,definitionexactmatch"},
+    {"naivereplacementof$refwithitsdestinationisnotcorrect",
+     "donotevaluatethe$refinsidetheenum,matchinganystring"},
+    {"nesteditems", "nestedarraywithinvalidtype"},
+    {"nesteditems", "notdeepenough"},
+    {"nestedrefs", "nestedrefinvalid"},
+    {"nestedunevaluatedProperties,outertrue,innerfalse,propertiesinside",
+     "withnestedunevaluatedproperties"},
+    {"nestedunevaluatedProperties,outertrue,innerfalse,propertiesoutside",
+     "withnestedunevaluatedproperties"},
+    {"nestedunevaluatedProperties,outertrue,innerfalse,propertiesoutside",
+     "withnonestedunevaluatedproperties"},
+    {"not", "disallowed"},
+    {"notmorecomplexschema", "mismatch"},
+    {"notmultipletypes", "mismatch"},
+    {"notmultipletypes", "othermismatch"},
+    {"notwithbooleanschematrue", "anyvalueisinvalid"},
+    {"nulcharactersinstrings", "donotmatchstringlackingnul"},
+    {"nulcharactersinstrings", "donotmatchstringlackingnul"},
+    {"nulltypematchesonlythenullobject", "afloatisnotnull"},
+    {"nulltypematchesonlythenullobject", "anarrayisnotnull"},
+    {"nulltypematchesonlythenullobject", "anemptystringisnotnull"},
+    {"nulltypematchesonlythenullobject", "anintegerisnotnull"},
+    {"nulltypematchesonlythenullobject", "anobjectisnotnull"},
+    {"nulltypematchesonlythenullobject", "astringisnotnull"},
+    {"nulltypematchesonlythenullobject", "falseisnotnull"},
+    {"nulltypematchesonlythenullobject", "trueisnotnull"},
+    {"nulltypematchesonlythenullobject", "zeroisnotnull"},
+    {"numbertypematchesnumbers", "abooleanisnotanumber"},
+    {"numbertypematchesnumbers", "anarrayisnotanumber"},
+    {"numbertypematchesnumbers", "anobjectisnotanumber"},
+    {"numbertypematchesnumbers", "astringisnotanumber"},
+    {"numbertypematchesnumbers",
+     "astringisstillnotanumber,evenifitlookslikeone"},
+    {"numbertypematchesnumbers", "nullisnotanumber"},
+    {"objectpropertiesvalidation", "bothpropertiesinvalidisinvalid"},
+    {"objectpropertiesvalidation", "onepropertyinvalidisinvalid"},
+    {"objecttypematchesobjects", "abooleanisnotanobject"},
+    {"objecttypematchesobjects", "afloatisnotanobject"},
+    {"objecttypematchesobjects", "anarrayisnotanobject"},
+    {"objecttypematchesobjects", "anintegerisnotanobject"},
+    {"objecttypematchesobjects", "astringisnotanobject"},
+    {"objecttypematchesobjects", "nullisnotanobject"},
+    {"oneOf", "bothoneOfvalid"},
+    {"oneOf", "neitheroneOfvalid"},
+    {"oneOfcomplextypes", "bothoneOfvalid(complex)"},
+    {"oneOfcomplextypes", "neitheroneOfvalid(complex)"},
+    {"oneOfwithbaseschema", "bothoneOfvalid"},
+    {"oneOfwithbaseschema", "mismatchbaseschema"},
+    {"oneOfwithbooleanschemas,allfalse", "anyvalueisinvalid"},
+    {"oneOfwithbooleanschemas,alltrue", "anyvalueisinvalid"},
+    {"oneOfwithbooleanschemas,morethanonetrue", "anyvalueisinvalid"},
+    {"oneOfwithmissingoptionalproperty", "bothoneOfvalid"},
+    {"oneOfwithmissingoptionalproperty", "neitheroneOfvalid"},
+    {"patternPropertiesvalidatespropertiesmatchingaregex",
+     "asingleinvalidmatchisinvalid"},
+    {"patternPropertiesvalidatespropertiesmatchingaregex",
+     "multipleinvalidmatchesisinvalid"},
+    {"patternPropertieswithbooleanschemas",
+     "objectwithapropertymatchingbothtrueandfalseisinvalid"},
+    {"patternPropertieswithbooleanschemas",
+     "objectwithbothpropertiesisinvalid"},
+    {"patternPropertieswithbooleanschemas",
+     "objectwithpropertymatchingschemafalseisinvalid"},
+    {"properties,patternProperties,additionalPropertiesinteraction",
+     "additionalPropertyinvalidatesothers"},
+    {"properties,patternProperties,additionalPropertiesinteraction",
+     "patternPropertyinvalidatesnonproperty"},
+    {"properties,patternProperties,additionalPropertiesinteraction",
+     "patternPropertyinvalidatesproperty"},
+    {"properties,patternProperties,additionalPropertiesinteraction",
+     "propertyinvalidatesproperty"},
+    {"propertieswithbooleanschema", "bothpropertiespresentisinvalid"},
+    {"propertieswithbooleanschema", "only'false'propertypresentisinvalid"},
+    {"propertieswithescapedcharacters", "objectwithstringsisinvalid"},
+    {"propertyisevaluatedinanuncleschematounevaluatedProperties",
+     "unclekeywordevaluationisnotsignificant"},
+    {"propertynamed$ref,containinganactual$ref", "propertynamed$refinvalid"},
+    {"propertynamed$refthatisnotareference", "propertynamed$refinvalid"},
+    {"propertyNamesvalidation", "somepropertynamesinvalid"},
+    {"propertyNameswithbooleanschemafalse", "objectwithanypropertiesisinvalid"},
+    {"Recursivereferencesbetweenschemas", "invalidtree"},
+    {"refappliesalongsidesiblingkeywords", "refinvalid"},
+    {"refappliesalongsidesiblingkeywords", "refvalid,maxItemsinvalid"},
+    {"refcreatesnewscopewhenadjacenttokeywords",
+     "referencedsubschemadoesn'tseeannotationsfromproperties"},
+    {"refswithquote", "objectwithstringsisinvalid"},
+    {"refwithinremoteref", "refwithinrefinvalid"},
+    {"regexesarenotanchoredbydefaultandarecasesensitive",
+     "recognizedmembersareaccountedfor"},
+    {"regexesarenotanchoredbydefaultandarecasesensitive",
+     "regexesarecasesensitive,2"},
+    {"relativepointerreftoarray", "mismatcharray"},
+    {"relativepointerreftoobject", "mismatch"},
+    {"remoteref,containingrefsitself", "remoterefinvalid"},
+    {"remoteref", "remoterefinvalid"},
+    {"requiredwithescapedcharacters",
+     "objectwithsomepropertiesmissingisinvalid"},
+    {"rootpointerref", "mismatch"},
+    {"rootpointerref", "recursivemismatch"},
+    {"rootrefinremoteref", "objectisinvalid"},
+    {"simpleenumvalidation", "somethingelseisinvalid"},
+    {"singledependency", "missingdependency"},
+    {"singledependency", "wrongtype"},
+    {"singledependency", "wrongtypeboth"},
+    {"singledependency", "wrongtypeother"},
+    {"stringtypematchesstrings", "1isnotastring"},
+    {"stringtypematchesstrings", "abooleanisnotastring"},
+    {"stringtypematchesstrings", "afloatisnotastring"},
+    {"stringtypematchesstrings", "anarrayisnotastring"},
+    {"stringtypematchesstrings", "anobjectisnotastring"},
+    {"stringtypematchesstrings", "nullisnotastring"},
+    {"thedefaultkeyworddoesnotdoanythingifthepropertyismissing",
+     "anexplicitpropertyvalueischeckedagainstmaximum(failing)"},
+    {"typeasarraywithoneitem", "numberisinvalid"},
+    {"unevaluatedItemsasschema", "withinvalidunevaluateditems"},
+    {"unevaluatedItemscan'tseeinsidecousins", "alwaysfails"},
+    {"unevaluatedItemsfalse", "withunevaluateditems"},
+    {"unevaluatedItemswith$ref", "withunevaluateditems"},
+    {"unevaluatedItemswithanyOf", "whenoneschemamatchesandhasunevaluateditems"},
+    {"unevaluatedItemswithanyOf", "whentwoschemasmatchandhasunevaluateditems"},
+    {"unevaluatedItemswithbooleanschemas", "withunevaluateditems"},
+    {"unevaluatedItemswithif/then/else",
+     "whenifdoesn'tmatchandithasunevaluateditems"},
+    {"unevaluatedItemswithif/then/else",
+     "whenifmatchesandithasunevaluateditems"},
+    {"unevaluatedItemswithnestedtuple", "withunevaluateditems"},
+    {"unevaluatedItemswithnot", "withunevaluateditems"},
+    {"unevaluatedItemswithoneOf", "withunevaluateditems"},
+    {"unevaluatedItemswithtuple", "withunevaluateditems"},
+    {"unevaluatedPropertiescan'tseeinsidecousins", "alwaysfails"},
+    {"unevaluatedPropertiesfalse", "withunevaluatedproperties"},
+    {"unevaluatedPropertiesschema", "withinvalidunevaluatedproperties"},
+    {"unevaluatedPropertieswith$ref", "withunevaluatedproperties"},
+    {"unevaluatedPropertieswithadjacentpatternProperties",
+     "withunevaluatedproperties"},
+    {"unevaluatedPropertieswithadjacentproperties",
+     "withunevaluatedproperties"},
+    {"unevaluatedPropertieswithanyOf",
+     "whenonematchesandhasunevaluatedproperties"},
+    {"unevaluatedPropertieswithanyOf",
+     "whentwomatchandhasunevaluatedproperties"},
+    {"unevaluatedPropertieswithbooleanschemas", "withunevaluatedproperties"},
+    {"unevaluatedPropertieswithdependentSchemas", "withunevaluatedproperties"},
+    {"unevaluatedPropertieswithif/then/else",
+     "whenifisfalseandhasunevaluatedproperties"},
+    {"unevaluatedPropertieswithif/then/else",
+     "whenifistrueandhasunevaluatedproperties"},
+    {"unevaluatedPropertieswithnestedpatternProperties",
+     "withadditionalproperties"},
+    {"unevaluatedPropertieswithnestedproperties", "withadditionalproperties"},
+    {"unevaluatedPropertieswithnot", "withunevaluatedproperties"},
+    {"unevaluatedPropertieswithoneOf", "withunevaluatedproperties"},
+    {"uniqueItems=falsewithanarrayofitemsandadditionalItems=false",
+     "extraitemsareinvalidevenifunique"},
+    {"uniqueItemsvalidation", "numbersareuniqueifmathematicallyunequal"},
+    {"uniqueItemswithanarrayofitems", "[false,false]fromitemsarrayisnotvalid"},
+    {"uniqueItemswithanarrayofitems", "[true,true]fromitemsarrayisnotvalid"},
+    {"uniqueItemswithanarrayofitemsandadditionalItems=false",
+     "[false,false]fromitemsarrayisnotvalid"},
+    {"uniqueItemswithanarrayofitemsandadditionalItems=false",
+     "[true,true]fromitemsarrayisnotvalid"},
+    {"uniqueItemswithanarrayofitemsandadditionalItems=false",
+     "extraitemsareinvalidevenifunique"},
+    {"validateagainstcorrectbranch,thenvselse", "invalidthroughelse"},
+    {"validateagainstcorrectbranch,thenvselse", "invalidthroughthen"},
+    {"validatedefinitionagainstmetaschema", "invaliddefinitionschema"},
+    {"validationofbinary-encodedmediatypedocuments",
+     "aninvalidbase64stringthatisvalidJSON;validatestrue"},
+    {"validationofbinary-encodedmediatypedocuments",
+     "avalidly-encodedinvalidJSONdocument;validatestrue"},
+    {"validationofbinary-encodedmediatypedocumentswithschema",
+     "anemptyobjectasabase64-encodedJSONdocument;validatestrue"},
+    {"validationofbinary-encodedmediatypedocumentswithschema",
+     "aninvalidbase64-encodedJSONdocument;validatestrue"},
+    {"validationofbinary-encodedmediatypedocumentswithschema",
+     "aninvalidbase64stringthatisvalidJSON;validatestrue"},
+    {"validationofbinary-encodedmediatypedocumentswithschema",
+     "avalidly-encodedinvalidJSONdocument;validatestrue"},
+    {"validationofbinarystring-encoding",
+     "aninvalidbase64string(%isnotavalidcharacter);validatestrue"},
+    {"validationofstring-encodedcontentbasedonmediatype",
+     "aninvalidJSONdocument;validatestrue"}};
+static bool isDisabled(const char* const theGroup, const char * const theTest) {
+  static std::set<std::pair<std::string_view, std::string_view>> aDisabledSet{std::begin(gDisabledList), std::end(gDisabledList)};
+  return aDisabledSet.count(std::make_pair<std::string_view, std::string_view>(theGroup, theTest));
+}
 
 class TestsuiteFixture : public testing::Test {};
 class TestsuiteTest : public TestsuiteFixture {
@@ -92,6 +503,14 @@ private:
   std::vector<TestReport> itsSingleTestReports;
 };
 
+static void normalizeName4GTest(std::string &theName) {
+  for (auto aIt = std::find(theName.begin(), theName.end(), ' ');
+       aIt != theName.end();
+       aIt = std::find(theName.begin(), theName.end(), ' ')) {
+    theName.erase(aIt);
+  }
+}
+
 static TestReport
 processTest(const cjson::DynamicDocument::EntityRef &theTest,
             const char *const theGroupName,
@@ -108,6 +527,7 @@ processTest(const cjson::DynamicDocument::EntityRef &theTest,
   if (auto aDescription = aTestObject["description"]) {
     if (aDescription->getType() == cjson::Entity::STRING)
       aDesc = aDescription->toString();
+    normalizeName4GTest(aDesc);
   }
   const auto &aValid = aTestObject["valid"];
   if (!aValid || aValid->getType() != cjson::Entity::BOOL) {
@@ -121,6 +541,9 @@ processTest(const cjson::DynamicDocument::EntityRef &theTest,
     aResult.addError(ERROR_MALFORMED_TEST, "`data` not found in test");
     return aResult;
   }
+
+  if (isDisabled(theGroupName, aDesc.c_str()))
+    return aResult;
 
   testing::RegisterTest(
       theGroupName, aDesc.c_str(), nullptr, nullptr, __FILE__, __LINE__,
@@ -145,6 +568,7 @@ processTestGroup(const cjson::DynamicDocument::EntityRef &theGroup,
   if (auto aDescription = aGroupObject["description"]) {
     if (aDescription->getType() == cjson::Entity::STRING) {
       aGroupDesc = aDescription->toString();
+      normalizeName4GTest(aGroupDesc);
     }
   }
   if (!aGroupObject["schema"]) {
@@ -209,9 +633,6 @@ int main(int argc, const char **argv) {
     cl::PrintHelp(TOOLNAME, TOOLDESC, std::cout);
     return 1;
   }
-  int aDummyArgc{1};
-  testing::InitGoogleTest(&aDummyArgc, const_cast<char **>(argv));
-
   std::error_code aEc;
   std::vector<TestGroupReport> aReports;
   for (const fs::path &aPath : gInputs) {
@@ -231,6 +652,29 @@ int main(int argc, const char **argv) {
   for (const auto &aReport : aReports) {
     if (aReport.hasError())
       return ERROR_TEST_PARSING_FAILED;
+  }
+
+  {
+    std::string aArg0 = argv[0];
+    std::vector<char *> aGtestArgs;
+    aGtestArgs.emplace_back(aArg0.data());
+    char aListTestsOpt[] = "--gtest_list_tests";
+    if (gTestList) {
+      aGtestArgs.emplace_back(aListTestsOpt);
+    }
+    char aAlsoDisabledOpt[] = "--gtest_also_run_disabled_tests";
+    if (gTestAlsoDisabled) {
+      aGtestArgs.emplace_back(aAlsoDisabledOpt);
+    }
+    std::string aFilterOpt;
+    if (!gTestFilter->empty()) {
+      using namespace std::string_literals;
+      aFilterOpt = "--gtest_filter="s + *gTestFilter;
+      aGtestArgs.emplace_back(aFilterOpt.data());
+    }
+
+    int aGtestArgsSize = static_cast<int>(aGtestArgs.size());
+    testing::InitGoogleTest(&aGtestArgsSize, aGtestArgs.data());
   }
   return RUN_ALL_TESTS();
 }
