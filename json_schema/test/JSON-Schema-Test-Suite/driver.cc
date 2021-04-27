@@ -39,12 +39,7 @@ enum ERROR {
 
 static cl::list<fs::path>
     gInputs(cl::meta("files"), cl::desc("File(s) to be validated"),
-            cl::init({JSON_SCHEMA_TESTSUITE_BUILDIN_TESTDIR}));
-static cl::opt<bool> gTestList(cl::name("gtest_list_tests"), cl::init(false));
-static cl::opt<std::string> gTestFilter(cl::name("gtest_filter"), cl::init(""));
-static cl::opt<bool>
-    gTestAlsoDisabled(cl::name("gtest_also_run_disabled_tests"),
-                      cl::init(false));
+            cl::init({JSON_SCHEMA_TESTSUITE_BUILTIN_TESTDIRS}));
 
 using Standard = json_schema::Standard_2019_09</*Lenient=*/false>;
 using Context = json_schema::DynamicSchemaContext<Standard>;
@@ -634,9 +629,8 @@ int main(int argc, const char **argv) {
   cl::cfg::onunrecognized() =
       [&](const std::string_view &theName,
           const cl::cfg::string_span &theValues) -> int {
-    if (theName.substr(0, 6) == "gtest_") {
+    if (theName.substr(0, 6) == "gtest_")
       return static_cast<int>(theValues.size());
-    }
     return -1;
   };
   if (!cl::ParseArgs(argc, argv)) {
