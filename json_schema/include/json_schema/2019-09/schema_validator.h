@@ -1,6 +1,8 @@
 #ifndef JSON_SCHEMA_SCHEMA_VALIDATOR_H
 #define JSON_SCHEMA_SCHEMA_VALIDATOR_H
 
+#include <cmath>
+
 #include "constexpr_json/ext/error_is_nullopt.h"
 #include "json_schema/2019-09/model/applicator.h"
 #include "json_schema/2019-09/model/content.h"
@@ -34,13 +36,13 @@ public:
                                                 theSchema.getRefInternal()} {}
 
   template <typename JSON>
-  constexpr ValidationResult
-  validate(const JSON &theJson) const {
+  constexpr ValidationResult validate(const JSON &theJson) const {
     using json_type = decltype(theJson.getType());
     SchemaObjectAccessor aSchema{itsContext, itsSchema};
     if (aSchema.isTrueSchema())
       return std::nullopt;
     const auto &aValidation = aSchema.template getSection<SchemaValidation>();
+    // minProperties
     if (const auto &aMinProps = aValidation.getMinProperties();
         aMinProps.has_value()) {
       if (theJson.getType() == json_type::OBJECT) {
@@ -50,12 +52,38 @@ public:
         }
       }
     }
+    // maxProperties
+    if (const auto &aMaxProps = aValidation.getMaxProperties();
+        aMaxProps.has_value()) {
+      if (theJson.getType() == json_type::OBJECT) {
+        const auto &aObject = theJson.toObject();
+        if (aObject.size() > aMaxProps) {
+          return makeError("Object has too many properties (maxProperties)");
+        }
+      }
+    }
+    // type
+    if (const auto &aTypes = aValidation.getType()) {
+      const auto aElmType = theJson.getType();
+      const bool isNumber = Types::NUMBER == aElmType;
+      bool aIsAllowed = false;
+      for (const auto &aType : *aTypes) {
+        if (aType == aElmType ||
+            (aType == Types::INTEGER && isNumber &&
+             theJson.toNumber() == std::trunc(theJson.toNumber()))) {
+          aIsAllowed = true;
+          break;
+        }
+      }
+      if (!aIsAllowed)
+        return makeError("Type is not allowed");
+    }
     return std::nullopt;
   }
 
 private:
-  ErrorDetail makeError(const char *const theMsg) const {
-    return ErrorHandling::unwrap(
+  constexpr ErrorDetail makeError(const char *const theMsg) const {
+    return ErrorHandling::getError(
         ErrorHandling::template makeError<bool>(theMsg));
   }
 

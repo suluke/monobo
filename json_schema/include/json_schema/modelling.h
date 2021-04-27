@@ -12,6 +12,35 @@ enum class Types {
   STRING,
 };
 
+/// This "accidentally" implements for constexpr_json types. But be assured, you
+/// only need to provide it for your favorite json lib's type enum to make
+/// things work.
+template <class U>
+constexpr bool operator==(const json_schema::Types &theType1,
+                          const U &theType2) {
+  using T = json_schema::Types;
+  switch (theType2) {
+  case U::NUL:
+    return theType1 == T::NUL;
+  case U::ARRAY:
+    return theType1 == T::ARRAY;
+  case U::BOOL:
+    return theType1 == T::BOOLEAN;
+  case U::NUMBER:
+    return theType1 == T::NUMBER;
+  case U::OBJECT:
+    return theType1 == T::OBJECT;
+  case U::STRING:
+    return theType1 == T::STRING;
+  }
+  return false;
+}
+template <class U>
+constexpr bool operator==(const U &theType2,
+                          const json_schema::Types &theType1) {
+  return theType1 == theType2;
+}
+
 class tristate {
   enum value : char { Undefined = -1, False = 0, True = 1 };
   value itsValue{Undefined};
