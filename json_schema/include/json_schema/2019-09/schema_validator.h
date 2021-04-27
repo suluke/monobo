@@ -41,6 +41,8 @@ public:
     SchemaObjectAccessor aSchema{itsContext, itsSchema};
     if (aSchema.isTrueSchema())
       return std::nullopt;
+    if (aSchema.isFalseSchema())
+      return makeError("Schema to validate against is `false`");
     const auto &aValidation = aSchema.template getSection<SchemaValidation>();
     // minProperties
     if (const auto &aMinProps = aValidation.getMinProperties();

@@ -32,7 +32,7 @@ public:
     constexpr const SchemaObject operator[](const ptrdiff_t theIdx) const {
       return SchemaObject{itsContext, itsSchemas[theIdx]};
     }
-    constexpr const SchemaContext& getContext() const noexcept {
+    constexpr const SchemaContext &getContext() const noexcept {
       return itsContext;
     }
   };
@@ -157,11 +157,11 @@ public:
 
 private:
   constexpr SchemaReaderBase()
-      : itsContext{}, itsSchemaAlloc{},
-        itsTrueSchemaRef{itsSchemaAlloc.allocateSchema(
-            BoolGen{}.makeTrueSchema(), itsContext)},
-        itsFalseSchemaRef{itsSchemaAlloc.allocateSchema(
-            BoolGen{}.makeFalseSchema(itsTrueSchemaRef), itsContext)} {}
+      : itsContext{}, itsSchemaAlloc{}, itsBoolSchemaRefs{
+                                            BoolGen{}.makeBoolSchemas(
+                                                itsSchemaAlloc, itsContext)} {
+    itsContext.setBoolSchemas(getTrueSchemaRef(), getFalseSchemaRef());
+  }
 
   template <typename... JSONs>
   using ErrorOrMany = typename ErrorHandling::template ErrorOr<
@@ -207,13 +207,16 @@ private:
     return Section::readSchema(*this, theSchema, theKey, theValue);
   }
 
-  constexpr SchemaRef getTrueSchemaRef() const { return itsTrueSchemaRef; }
-  constexpr SchemaRef getFalseSchemaRef() const { return itsFalseSchemaRef; }
+  constexpr SchemaRef getTrueSchemaRef() const {
+    return itsBoolSchemaRefs.first;
+  }
+  constexpr SchemaRef getFalseSchemaRef() const {
+    return itsBoolSchemaRefs.second;
+  }
 
   SchemaContext itsContext;
   SchemaAllocator itsSchemaAlloc;
-  SchemaRef itsTrueSchemaRef;
-  SchemaRef itsFalseSchemaRef;
+  std::pair<SchemaRef, SchemaRef> itsBoolSchemaRefs;
 };
 } // namespace json_schema
 #endif // JSON_SCHEMA_SCHEMA_READER_H

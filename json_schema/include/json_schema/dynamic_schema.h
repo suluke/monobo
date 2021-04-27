@@ -80,6 +80,7 @@ template <typename Standard_> struct DynamicSchemaContext {
   using JsonStorage = cjson::DynamicDocument;
 
   using SchemaRef = typename Storage::SchemaRef;
+  using SchemaPtr = typename Storage::SchemaPtr;
   using SchemaObject = typename Standard::template SchemaObject<Storage>;
   using JsonRef = typename Storage::JsonRef;
   using JsonAccessor = typename JsonStorage::EntityRef;
@@ -271,11 +272,16 @@ template <typename Standard_> struct DynamicSchemaContext {
     return *static_cast<SchemaObject *>(theRef.itsSchema);
   }
 
+  constexpr void setBoolSchemas(const SchemaRef &theTrue,
+                                const SchemaRef &theFalse) {
+    itsTrueSchema = SchemaPtr::pointer_to(theTrue);
+    itsFalseSchema = SchemaPtr::pointer_to(theFalse);
+  }
   constexpr bool isTrueSchema(const SchemaRef &theRef) const noexcept {
-    return false; // TODO
+    return SchemaPtr::pointer_to(theRef) == itsTrueSchema;
   }
   constexpr bool isFalseSchema(const SchemaRef &theRef) const noexcept {
-    return false; // TODO
+    return SchemaPtr::pointer_to(theRef) == itsFalseSchema;
   }
 
   std::string_view getString(StringRef theStr) const { return theStr.get(); }
@@ -286,6 +292,8 @@ template <typename Standard_> struct DynamicSchemaContext {
 private:
   template <typename ErrorHandling> friend struct Allocator;
   std::vector<std::any> itsAllocations;
+  SchemaPtr itsTrueSchema;
+  SchemaPtr itsFalseSchema;
 };
 } // namespace json_schema
 #endif // JSON_SCHEMA_DYNAMIC_SCHEMA_H

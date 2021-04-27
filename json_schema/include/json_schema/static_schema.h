@@ -102,6 +102,7 @@ public:
 
   using Storage = StaticStorage;
   using SchemaRef = typename Storage::SchemaRef;
+  using SchemaPtr = typename Storage::SchemaPtr;
   using SchemaObject = typename Standard::template SchemaObject<Storage>;
   using JsonRef = typename Storage::JsonRef;
   using JsonAccessor = typename JsonStorage::EntityRef;
@@ -215,11 +216,16 @@ public:
   constexpr const SchemaObject &getSchemaObject(const SchemaRef &theRef) const {
     return itsSchemaObjects[theRef.itsPos];
   }
+  constexpr void setBoolSchemas(const SchemaRef &theTrue,
+                                const SchemaRef &theFalse) {
+    itsTrueSchema = SchemaPtr::pointer_to(theTrue);
+    itsFalseSchema = SchemaPtr::pointer_to(theFalse);
+  }
   constexpr bool isTrueSchema(const SchemaRef &theRef) const noexcept {
-    return theRef.itsPos == 0;
+    return SchemaPtr::pointer_to(theRef) == itsTrueSchema;
   }
   constexpr bool isFalseSchema(const SchemaRef &theRef) const noexcept {
-    return theRef.itsPos == 1;
+    return SchemaPtr::pointer_to(theRef) == itsFalseSchema;
   }
 
   /// Map in-the-wild Storage::Buffer objects to accesses on this context's
@@ -386,6 +392,9 @@ private:
       0 /*=numNulls*/, 0 /*=numBools*/, MAX_JSON_NUMEBRS, MAX_JSON_CHARS,
       MAX_JSON_STRINGS, MAX_JSON_ARRAYS, MAX_JSON_ARRAY_ENTRIES,
       MAX_JSON_OBJECTS, MAX_JSON_OBJECT_PROPS}};
+
+  SchemaPtr itsTrueSchema;
+  SchemaPtr itsFalseSchema;
 };
 
 #define JSON_SCHEMA_STATIC_CONTEXT_TYPE(theStandard, theInfo)                  \

@@ -38,21 +38,26 @@ template <bool LENIENT = true> struct Standard_2019_09 {
     using SchemaRef = typename SchemaContext::SchemaRef;
     using SchemaObj = SchemaObject<typename SchemaContext::Storage>;
 
-    constexpr SchemaObj makeTrueSchema() {
-      return SchemaObj{};
-    }
-    constexpr SchemaObj makeFalseSchema(SchemaRef theTrue) {
-      SchemaObj aSchema{};
-      aSchema.template getSection<SchemaApplicator>().itsNot =
-          SchemaContext::Storage::pointer_to(theTrue);
-      return aSchema;
+    template <typename SchemaAllocator>
+    constexpr std::pair<SchemaRef, SchemaRef>
+    makeBoolSchemas(SchemaAllocator &theSchemaAlloc,
+                    SchemaContext &theContext) {
+      SchemaRef aTrueRef =
+          theSchemaAlloc.allocateSchema(SchemaObj{}, theContext);
+      SchemaObj aFalseSchema{};
+      aFalseSchema.template getSection<SchemaApplicator>().itsNot =
+          SchemaContext::Storage::pointer_to(aTrueRef);
+      SchemaRef aFalseRef =
+          theSchemaAlloc.allocateSchema(aFalseSchema, theContext);
+      return std::make_pair(aTrueRef, aFalseRef);
     }
   };
 
   template <typename SchemaContext, typename ErrorHandling>
   using SchemaReader =
-      SchemaReaderBase<LENIENT, SchemaContext, ErrorHandling, BoolGen<SchemaContext>,
-                       ReaderCore::SchemaReader, ReaderApplicator::SchemaReader,
+      SchemaReaderBase<LENIENT, SchemaContext, ErrorHandling,
+                       BoolGen<SchemaContext>, ReaderCore::SchemaReader,
+                       ReaderApplicator::SchemaReader,
                        ReaderFormat::SchemaReader, ReaderMetadata::SchemaReader,
                        ReaderValidation::SchemaReader,
                        ReaderContent::SchemaReader, ReaderCompat::SchemaReader>;
