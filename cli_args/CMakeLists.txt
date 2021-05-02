@@ -11,3 +11,4 @@ add_library(cli_args INTERFACE)
 target_include_directories(cli_args INTERFACE include "${GSL_INCLUDE_DIR}")
 
 add_subdirectory(samples)
+add_subdirectory(test)

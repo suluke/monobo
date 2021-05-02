@@ -46,6 +46,8 @@
 ///   has been parsed.
 /// * cl::app to specify the application the option is intended for
 
+#include "cli_args_config.h"
+#include "cli_args_help.h"
 #include "cli_args_parser.h"
 
 #include <algorithm>
@@ -55,50 +57,10 @@
 #include <set>
 #include <vector>
 
-namespace cli_args {
-namespace detail {
-struct CliLibCfgStd {
-  using string_span = detail::CliOptConcept::string_span;
-
-  static std::ostream &outs() { return std::cout; }
-  static std::ostream &errs() { return std::cerr; }
-
-  template <typename T>
-  static std::optional<T> parse(const std::string_view &value);
-
-  static void report(const cli_args::error::MaxPositionalExceededError &err) {
-    errs() << "Too many positional arguments given:\n";
-    for (const std::string_view &arg : err.exceeding)
-      errs() << arg << '\n';
-  }
-  static void report(const cli_args::error::UnknownOptionError &err) {
-    errs() << "Encountered unknown option " << err.option << '\n';
-  }
-  static void report(const cli_args::error::ParseError &err) {}
-  static void report(const cli_args::error::ValidationError &err) {
-    const auto &names = err.option.getNames();
-    errs() << "Missing required value for option \""
-           << (names.empty() ? err.option.getMeta() : names.at(0)) << "\"\n";
-  }
-  static int handleUnrecognized(const std::string_view &theOption,
-                                const string_span &theValues) {
-    return onunrecognized()(theOption, theValues);
-  }
-
-  using UnrecognizedCB =
-      std::function<int(const std::string_view &, const string_span &)>;
-
-  static UnrecognizedCB &onunrecognized() {
-    static UnrecognizedCB callback = [](const std::string_view &,
-                                        const string_span &) { return -1; };
-    return callback;
-  }
-};
-} // namespace detail
-} // namespace cli_args
-
+#include "parsers/bool.h"
 #include "parsers/path.h"
 #include "parsers/string.h"
+#include "parsers/string_view.h"
 #include "parsers/unsigned.h"
 
 namespace cli_args {
@@ -108,68 +70,9 @@ template <typename T> using list = api<cfg>::list<T>;
 template <typename AppTag = void>
 struct ParseArgs : public api<cfg>::ParseArgs<AppTag> {
   using base_t = api<cfg>::ParseArgs<AppTag>;
-  ParseArgs(int argc, const char **argv, int offset = 1)
-      : base_t(argc, argv, offset) {}
+  ParseArgs(int argc, const char **argv, const cfg &config = {})
+      : base_t(argc, argv, config) {}
 };
-
-/// TODO Allow influencing display order
-template <typename AppTag = void>
-inline void PrintHelp(const char *tool, const char *desc, std::ostream &os) {
-  using namespace ::cli_args::detail;
-  const CliOptRegistry<AppTag> &registry = CliOptRegistry<AppTag>::get();
-  const auto display = [](const detail::CliOptConcept &opt, std::ostream &os) {
-    if (!opt.getNames().empty() && opt.getNames().at(0) != "") {
-      const detail::CliOptConcept::string_span names = opt.getNames();
-      const auto nameBegin = names.begin(), nameEnd = names.end();
-      unsigned firstColWidth = 0,
-               maxFirstColWidth = 18; // FIXME this is a pretty arbitrary value
-      for (auto nameIt = nameBegin; nameIt != nameEnd; ++nameIt) {
-        if (nameIt != nameBegin) {
-          os << ", ";
-          firstColWidth += 2;
-        }
-        if (nameIt->size() == 1)
-          os << "-";
-        else
-          os << "--";
-        os << *nameIt;
-        firstColWidth += 1 + nameIt->size() + (nameIt->size() > 1);
-      }
-      std::ios_base::fmtflags defaultFmtFlags(os.flags());
-      os << std::setw(maxFirstColWidth - firstColWidth) << "" << std::setw(0)
-         << opt.getDescription();
-      os.flags(defaultFmtFlags);
-    } else
-      os << opt.getMeta();
-  };
-  // FIXME this is still in MVP state
-  os << "Usage: " << tool << " [OPTION]...";
-  const CliOptConcept *eatAll = nullptr;
-  if (registry.hasUnnamed()) {
-    eatAll = &registry.getUnnamed();
-    os << " ";
-    if (!eatAll->isRequired())
-      os << "[";
-    display(*eatAll, os);
-    if (!eatAll->isRequired())
-      os << "]";
-    os << "...";
-  }
-  os << "\n"
-     << "Options:\n";
-  std::vector<CliOptConcept *> optsSorted(registry.begin(), registry.end());
-  std::sort(optsSorted.begin(), optsSorted.end(),
-            [](CliOptConcept *A, CliOptConcept *B) {
-              return A->getShortestName().compare(B->getShortestName()) < 0;
-            });
-  for (const CliOptConcept *opt : optsSorted) {
-    if (opt == eatAll)
-      continue;
-    os << "  ";
-    display(*opt, os);
-    os << '\n';
-  }
-}
 } // namespace cli_args
 
 #endif // CLI_ARGS_CLI_ARGS_H

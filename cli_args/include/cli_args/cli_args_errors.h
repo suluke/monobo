@@ -7,18 +7,18 @@
 namespace cli_args {
 namespace error {
 struct MaxPositionalExceededError {
-  const gsl::span<std::string_view> exceeding;
+  gsl::span<std::string_view> exceeding;
 };
 struct UnknownOptionError {
-  const std::string_view option;
+  std::string_view option;
 };
 struct ParseError {
-  const std::string_view name;
-  const gsl::span<std::string_view> values;
-  const cli_args::detail::CliOptConcept &option;
+  std::string_view name;
+  gsl::span<std::string_view> values;
+  const cli_args::detail::CliOptConcept *option;
 };
 struct ValidationError {
-  const cli_args::detail::CliOptConcept &option;
+  const cli_args::detail::CliOptConcept *option;
 };
 } // namespace error
 } // namespace cli_args

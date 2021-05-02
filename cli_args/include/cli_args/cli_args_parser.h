@@ -16,14 +16,15 @@ template <typename LibCfg> struct api {
     /// The parameter @p tool is the application's name and @p desc should
     /// contain a brief description of what the application does. Both
     /// these values are used by the help message.
-    ParseArgs(int argc, const char **argv, int offset = 1) {
+    ParseArgs(int argc, const char **argv, const LibCfg &config)
+        : itsConfig(config) {
       using namespace ::cli_args::detail;
       using namespace ::cli_args::error;
       bool verbatim = false;
       std::vector<std::string_view> values;
       std::vector<std::string_view> positional;
       auto &registry = options();
-      for (int argNum = offset; argNum < argc; ++argNum) {
+      for (int argNum = config.offset; argNum < argc; ++argNum) {
         ++numArgsRead;
         std::string_view arg = argv[argNum];
         if (!verbatim && arg == "--") {
@@ -35,7 +36,7 @@ template <typename LibCfg> struct api {
           CliOptConcept *optPtr{nullptr};
           std::optional<unrecognized> unrecognizedOpt;
           if (!registry.hasOption(name)) {
-            unrecognizedOpt.emplace(name);
+            unrecognizedOpt.emplace(name, config);
             optPtr = &unrecognizedOpt.value();
           } else {
             optPtr = &registry.getOption(name);
@@ -49,7 +50,7 @@ template <typename LibCfg> struct api {
             values.push_back(inlineVal);
             auto res = opt.parse(values, true);
             if (!res) {
-              report(ParseError{name, values, opt});
+              report(ParseError{name, values, &opt});
               return;
             }
             if (0 > *res || static_cast<size_t>(*res) > values.size())
@@ -85,8 +86,10 @@ template <typename LibCfg> struct api {
           }
           auto res = opt.parse(values, false);
           if (!res) {
+            // failing handling of unrecognized options are already reported as
+            // UnknownOptionError
             if (!unrecognizedOpt)
-              report(ParseError{name, values, opt});
+              report(ParseError{name, values, &opt});
             return;
           }
           if (0 > *res || static_cast<size_t>(*res) > values.size())
@@ -109,7 +112,7 @@ template <typename LibCfg> struct api {
         CliOptConcept &eatAll = registry.getUnnamed();
         auto res = eatAll.parse(positional, false);
         if (!res) {
-          report(ParseError{"", positional, eatAll});
+          report(ParseError{"", positional, &eatAll});
           return;
         }
         if (0 > *res || static_cast<size_t>(*res) > positional.size())
@@ -128,7 +131,7 @@ template <typename LibCfg> struct api {
       bool allValid = true;
       for (const CliOptConcept *opt : registry)
         if (!validate(*opt)) {
-          report(ValidationError{*opt});
+          report(ValidationError{opt});
           allValid = false;
         }
       if (!allValid) {
@@ -171,11 +174,15 @@ template <typename LibCfg> struct api {
       return detail::CliOptRegistry<AppTag>::get();
     }
     template <typename ErrorTy> void report(const ErrorTy &err) {
-      LibCfg::report(err);
+      itsConfig.report(err);
     }
 
+  private:
+    const LibCfg &itsConfig;
+
     struct unrecognized : public detail::CliOptConcept {
-      unrecognized(std::string_view theName) : itsName{theName} {}
+      unrecognized(std::string_view theName, const LibCfg &config)
+          : itsConfig(config), itsName{theName} {}
       unrecognized(const unrecognized &) = default;
       unrecognized &operator=(const unrecognized &) = default;
 
@@ -184,15 +191,16 @@ template <typename LibCfg> struct api {
 
       [[nodiscard]] std::optional<string_span::size_type>
       parse(const string_span &values, bool isInline) override {
-        int handled = LibCfg::handleUnrecognized(itsName, values);
+        int handled = itsConfig.handle_unrecognized(itsName, values);
         if (handled < 0) {
-          LibCfg::report(::cli_args::error::UnknownOptionError{itsName});
+          itsConfig.report(::cli_args::error::UnknownOptionError{itsName});
           return std::nullopt;
         }
         return static_cast<size_t>(handled);
       }
 
     private:
+      const LibCfg &itsConfig;
       std::string_view itsName;
     };
   };

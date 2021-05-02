@@ -97,13 +97,7 @@ static ERROR processFilePath(const fs::path &thePath) {
 }
 
 int main(int argc, const char **argv) {
-  cl::cfg::onunrecognized() =
-      [&](const std::string_view &theName,
-          const cl::cfg::string_span &theValues) -> int {
-    if (theName.substr(0, 6) == "gtest_")
-      return static_cast<int>(theValues.size());
-    return -1;
-  };
+  testing::InitGoogleTest(&argc, const_cast<char **>(argv));
   if (!cl::ParseArgs(argc, argv)) {
     cl::PrintHelp(TOOLNAME, TOOLDESC, std::cout);
     return 1;
@@ -124,6 +118,5 @@ int main(int argc, const char **argv) {
     }
   }
 
-  testing::InitGoogleTest(&argc, const_cast<char **>(argv));
   return RUN_ALL_TESTS();
 }
