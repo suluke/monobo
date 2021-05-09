@@ -37,12 +37,19 @@ public:
 
   template <typename JSON>
   constexpr ValidationResult validate(const JSON &theJson) const {
+    return validate(theJson, itsSchema);
+  }
+
+  template <typename JSON>
+  constexpr ValidationResult validate(const JSON &theJson,
+                                      const SchemaRef theSchema) const {
     using json_type = decltype(theJson.getType());
-    SchemaObjectAccessor aSchema{itsContext, itsSchema};
+    SchemaObjectAccessor aSchema{itsContext, theSchema};
     if (aSchema.isTrueSchema())
       return std::nullopt;
     if (aSchema.isFalseSchema())
       return makeError("Schema to validate against is `false`");
+    const auto &aApplicator = aSchema.template getSection<SchemaApplicator>();
     const auto &aValidation = aSchema.template getSection<SchemaValidation>();
     // minProperties
     if (const auto &aMinProps = aValidation.getMinProperties();
@@ -79,6 +86,55 @@ public:
       }
       if (!aIsAllowed)
         return makeError("Type is not allowed");
+    }
+    if (theJson.getType() == json_type::NUMBER) {
+      // maximum
+      if (const auto &aMaximum = aValidation.getMaximum()) {
+        if (aMaximum < theJson.toNumber()) {
+          return makeError("Value above maximum");
+        }
+      }
+
+      // minimum
+      if (const auto &aMinimum = aValidation.getMinimum()) {
+        if (aMinimum > theJson.toNumber()) {
+          return makeError("Value below minimum exceeded");
+        }
+      }
+    }
+    // const
+    if (const auto &aConst = aValidation.getConst()) {
+      if (*aConst != theJson) {
+        return makeError(
+            "Element does not match the expected constant (const)");
+      }
+    }
+
+    if (theJson.getType() == json_type::ARRAY) {
+      if (aValidation.getMaxContains() < aValidation.getMinContains()) {
+        return makeError(
+            "Impossible for array to satisfy maxContains<minContains "
+            "expectation (probably schema error)");
+      }
+      // contains
+      if (const auto &aContains = aApplicator.getContains()) {
+        size_t aNumMatching{0};
+        for (const auto &aElm : theJson.toArray()) {
+          ValidationResult aSubVal =
+              validate(aElm, aContains->getRefInternal());
+          if (!aSubVal)
+            ++aNumMatching;
+        }
+        if (aNumMatching == 0u && aValidation.getMinContains() > 0) {
+          return makeError("Expected element not found in array (contains)");
+        }
+        if (aNumMatching < aValidation.getMinContains()) {
+          return makeError("Fewer array elements than expected match");
+        }
+        if (aNumMatching > aValidation.getMaxContains()) {
+          return makeError("More array elements than expected match");
+        }
+      }
     }
     return std::nullopt;
   }
