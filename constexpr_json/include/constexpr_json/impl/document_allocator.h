@@ -105,7 +105,7 @@ struct DocumentAllocator : private DocumentInfo {
     case Entity::NUL:
       return Entity{Entity::NUL, 0};
     case Entity::BOOL:
-      return Entity{Entity::NUL, theJson.toBool()};
+      return Entity{Entity::BOOL, theJson.toBool()};
     case Entity::NUMBER:
       return allocateNumber(theDoc, theJson.toNumber());
     case Entity::STRING:

@@ -1,6 +1,6 @@
 add_executable(cjson_basic basic.cc)
-target_link_libraries(cjson_basic PRIVATE constexpr_json)
-add_test(NAME cjson_basic COMMAND cjson_basic)
+target_link_libraries(cjson_basic PRIVATE constexpr_json gtest_main)
+gtest_discover_tests(cjson_basic)
 
 add_executable(cjson_static_unittests static_unittests.cc)
 target_link_libraries(cjson_static_unittests PRIVATE constexpr_json)

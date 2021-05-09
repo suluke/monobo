@@ -155,6 +155,10 @@ public:
     }
     return false;
   }
+  template <typename OtherRefTy>
+  constexpr bool operator!=(const OtherRefTy &theOther) const noexcept {
+    return !(*this == theOther);
+  }
 
   constexpr Entity::KIND getType() const { return itsEntity->itsKind; }
   constexpr bool toBool() const { return itsEntity->itsPayload; }

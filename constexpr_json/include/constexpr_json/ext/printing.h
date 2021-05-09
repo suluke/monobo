@@ -193,6 +193,11 @@ protected:
     constexpr char aDecSep = '.';
     using IntMantissaTy = size_t;
 
+    if (theNumber < 0) {
+      aStream = (aStream << '-');
+      theNumber *= -1.;
+    }
+
     // determine highest power of 10 fitting into theNumber
     IntMantissaTy aPowRadix = 1;
     while (theNumber >= aPowRadix)
