@@ -137,6 +137,12 @@ public:
       if (!validate(theJson, *aNot))
         return makeError("Expected schema not to match (not)");
     }
+    // allOf
+    if (const auto& aAllOf = aApplicator.getAllOf()) {
+      for (const auto& aSchema : *aAllOf)
+        if (const auto aRes = validate(theJson, aSchema))
+          return makeError("Element does not match (at least) one of the given schemas (allOf)", *aRes);
+    }
 
     if (theJson.getType() == json_type::OBJECT) {
       const auto &aJsonObject = theJson.toObject();
@@ -235,6 +241,9 @@ private:
   constexpr ErrorDetail makeError(const char *const theMsg) const {
     return ErrorHandling::getError(
         ErrorHandling::template makeError<bool>(theMsg));
+  }
+  constexpr ErrorDetail makeError(const char* const theMsg, const ErrorDetail& theSubError) const {
+    return theSubError;
   }
 
   ContextTy itsContext;
