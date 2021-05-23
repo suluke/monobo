@@ -1,11 +1,11 @@
 #ifndef JSON_SCHEMA_UTIL_VARIANT_H
 #define JSON_SCHEMA_UTIL_VARIANT_H
 
+#include "json_schema/util/warning.h"
 #include <cstddef>
 #include <limits>
 #include <type_traits>
 #include <utility>
-#include "json_schema/util/warning.h"
 
 namespace json_schema {
 namespace impl {
@@ -46,7 +46,7 @@ template <typename I1, typename I2> struct InitSelect {
   constexpr type_result<I1> operator()(I1) { return {}; }
   constexpr type_result<I2> operator()(I2) { return {}; }
 };
-template < typename I1> struct InitSelect<I1, void> {
+template <typename I1> struct InitSelect<I1, void> {
   constexpr type_result<void> operator()(...) { return {}; }
   constexpr type_result<I1> operator()(I1) { return {}; }
 };
@@ -123,7 +123,10 @@ template <typename T, typename... Ts> struct variant_storage<T, Ts...> {
       assign<IsActive>(theData.itsData.itsHead, type_result<T>{});
     } else {
       // FIXME
-      MONOBO_PUSH_WARNING_MUTE_GCC("-Wmaybe-uninitialized", "Bug fixed in gcc11 https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80635")
+      MONOBO_PUSH_WARNING_MUTE_GCC(
+          "-Wmaybe-uninitialized",
+          "Bug fixed in gcc11 "
+          "https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80635")
       if constexpr (!IsActive) {
         itsData = Data{variant_storage<>{}, type_result<variant_storage<>>{}};
       }
@@ -232,9 +235,11 @@ public:
   template <typename T> constexpr Variant &operator=(T &&theInit) {
     auto aTag = impl::select_initialized_type<T, Ts...>();
     using NewTy = typename decltype(aTag)::type;
-    static_assert(!std::is_same_v<NewTy, void>, "Failed to determine type to be activated/assigned to");
+    static_assert(!std::is_same_v<NewTy, void>,
+                  "Failed to determine type to be activated/assigned to");
     constexpr size_t aNewIdx = impl::position_of<NewTy, Ts...>;
-    static_assert(aNewIdx != variant_npos, "Failed to determine type to be activated/assigned to");
+    static_assert(aNewIdx != variant_npos,
+                  "Failed to determine type to be activated/assigned to");
     if (aNewIdx == index()) {
       itsStorage.template assign<true>(std::forward<T>(theInit), aTag);
     } else {
@@ -261,8 +266,26 @@ constexpr bool holds_alternative(const Variant<Ts...> &theVariant) {
   return theVariant.index() == impl::position_of<T, Ts...>;
 }
 template <typename T, typename... Ts>
-inline const T &get(const Variant<Ts...> &theVariant) {
+inline const std::enable_if_t<!std::is_same_v<size_t, T>, T> &
+get(const Variant<Ts...> &theVariant) {
   return theVariant.template get<T>();
+}
+
+template <std::size_t I, class T> struct variant_alternative;
+template <typename T, typename... Types>
+struct variant_alternative<size_t{0}, Variant<T, Types...>> {
+  using type = T;
+};
+template <std::size_t I, typename T, typename... Types>
+struct variant_alternative<I, Variant<T, Types...>> {
+  using type = typename variant_alternative<I-1, Variant<Types...>>::type;
+};
+template <size_t I, typename T>
+using variant_alternative_t = typename variant_alternative<I, T>::type;
+
+template <size_t I, typename... Ts>
+inline const auto &get(const Variant<Ts...> &theVariant) {
+  return get<variant_alternative_t<I, Variant<Ts...>>>(theVariant);
 }
 
 static_assert(Variant<char, const char *>{'a'}.index() == 0u);
