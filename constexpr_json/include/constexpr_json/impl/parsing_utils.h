@@ -262,6 +262,47 @@ public:
   }
 
   /**
+   *
+   */
+  constexpr std::pair<CharT, intptr_t>
+  parseHexQuintuplet(std::string_view theQuintuplet) const {
+    constexpr const std::pair<bool, intptr_t> aErrorResult =
+        std::make_pair(false, -1);
+    const auto hexToNibble = [](CharT aHexChar) {
+      if ('0' <= aHexChar && aHexChar <= '9')
+        return aHexChar - '0';
+      if ('A' <= aHexChar && aHexChar <= 'F')
+        return aHexChar - 'A' + 10;
+      if ('a' <= aHexChar && aHexChar <= 'f')
+        return aHexChar - 'a' + 10;
+      return CharT{}; // FIXME throw or terminate
+    };
+    CharT aValue{0};
+    intptr_t aLen{0};
+    for (int i = 0; i < 4; ++i) {
+      const auto [aChar, aCharWidth] = decodeFirst(theQuintuplet);
+      if (aCharWidth <= 0)
+        // Failed to decode char
+        return aErrorResult;
+      if (!isxdigit(aChar))
+        // Not a valid hex char
+        return aErrorResult;
+      aLen += aCharWidth;
+      theQuintuplet.remove_prefix(aCharWidth);
+      aValue <<= 4;
+      aValue |= hexToNibble(aChar);
+    }
+    return std::make_pair(aValue, aLen);
+  };
+
+  constexpr static bool isHighSurrogate(const CharT theCP) {
+    return theCP >= 0xd800 && theCP <= 0xdbff;
+  }
+  constexpr static bool isLowSurrogate(const CharT theCP) {
+    return theCP >= 0xdc00 && theCP <= 0xdfff;
+  }
+
+  /**
    * @return .first is the escaped code point, .second is the length of the
    * escape sequence starting from the initial '\' or -1 if parsing failed.
    */
@@ -281,15 +322,6 @@ public:
     if (aSecondCharWidth <= 0)
       // Failed to decode second char
       return aErrorResult;
-    const auto hexToNibble = [](CharT aHexChar) {
-      if ('0' <= aHexChar && aHexChar <= '9')
-        return aHexChar - '0';
-      if ('A' <= aHexChar && aHexChar <= 'F')
-        return aHexChar - 'A' + 10;
-      if ('a' <= aHexChar && aHexChar <= 'f')
-        return aHexChar - 'a' + 10;
-      return CharT{}; // FIXME throw or terminate
-    };
     aRemaining.remove_prefix(aSecondCharWidth);
     CharT aDecoded = 0;
     switch (aSecondChar) {
@@ -318,17 +350,17 @@ public:
       aDecoded = '\t';
       break;
     case 'u': {
-      for (int i = 0; i < 4; ++i) {
-        const auto [aChar, aCharWidth] = decodeFirst(aRemaining);
-        if (aCharWidth <= 0)
-          // Failed to decode char
+      const auto aRes = parseHexQuintuplet(aRemaining);
+      if (aRes.second < 0)
+        return aErrorResult;
+      aDecoded = aRes.first;
+      aRemaining.remove_prefix(aRes.second);
+      if (isHighSurrogate(aDecoded)) {
+        const auto aLow = parseEscape(aRemaining);
+        if (aLow.second < 0 || !isLowSurrogate(aLow.first))
           return aErrorResult;
-        if (!isxdigit(aChar))
-          // Not a valid hex char
-          return aErrorResult;
-        aRemaining.remove_prefix(aCharWidth);
-        aDecoded <<= 4;
-        aDecoded |= hexToNibble(aChar);
+        aDecoded = (aDecoded - 0xd800) * 0x400 + (aLow.first - 0xdc00) + 0x10000;
+        aRemaining.remove_prefix(aLow.second);
       }
       break;
     }

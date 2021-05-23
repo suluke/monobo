@@ -153,6 +153,7 @@ static void test_parseutils() {
   CHECK_PARSE(parseEscape, "\\u0100", 6, 256);
   CHECK_PARSE(parseEscape, "\\u0fff", 6, 4095);
   CHECK_PARSE(parseEscape, "\\u1000", 6, 4096);
+  CHECK_PARSE(parseEscape, "\\uD83D\\uDCA9", 12, 0x1f4a9);
 
   //   readNull
   CHECK_READ(readNull, "abcdee", "");
@@ -165,6 +166,10 @@ static void test_parseutils() {
   CHECK_PARSE(parseBool, "false", 5, false);
   CHECK_PARSE(parseBool, "trueabc", 4, true);
   CHECK_PARSE(parseBool, "falseabc", 5, false);
+
+  //   computeEncodedSize
+  const auto aSize = parsing<Utf8>{}.computeEncodedSize("\\uD83D\\uDCA9\\uD83D\\uDCA9", Utf8{});
+  static_assert(aSize == 8);
 }
 
 template <typename ErrorHandling> static void test_docinfo() {
@@ -176,12 +181,17 @@ template <typename ErrorHandling> static void test_docinfo() {
     static_assert(!ErrorHandling::isError(aResultOrError));                    \
     constexpr auto aResult = ErrorHandling::unwrap(aResultOrError);            \
     constexpr const DocumentInfo aDI = aResult.first;                          \
-    constexpr const DocumentInfo aExpected = {                                 \
-        NULLS, BOOLS, DOUBLES, CHARS, STRS, ARRAYS, ENTRIES, OBJECTS, PROPS};  \
-    static_assert(aResult.second == LENGTH);                                   \
     static_assert(aDI);                                                        \
-    static_assert(aDI == aExpected);                                           \
-    static_assert(aDI == aExpected);                                           \
+    static_assert(NULLS == aDI.itsNumNulls);                                   \
+    static_assert(BOOLS == aDI.itsNumBools);                                   \
+    static_assert(DOUBLES == aDI.itsNumNumbers);                               \
+    static_assert(CHARS == aDI.itsNumChars);                                   \
+    static_assert(STRS == aDI.itsNumStrings);                                  \
+    static_assert(ARRAYS == aDI.itsNumArrays);                                 \
+    static_assert(ENTRIES == aDI.itsNumArrayEntries);                          \
+    static_assert(OBJECTS == aDI.itsNumObjects);                               \
+    static_assert(PROPS == aDI.itsNumObjectProperties);                        \
+    static_assert(aResult.second == LENGTH);                                   \
   } while (false)
 
   // DocInfo computation
@@ -191,6 +201,8 @@ template <typename ErrorHandling> static void test_docinfo() {
   CHECK_COUNTS(0, 1, 0, 0, 0, 0, 0, 0, 0, 5, "false");
   CHECK_COUNTS(0, 0, 1, 0, 0, 0, 0, 0, 0, 6, "1.2e-3");
   CHECK_COUNTS(0, 0, 0, 3, 1, 0, 0, 0, 0, 5, "\"abc\"");
+  CHECK_COUNTS(0, 0, 0, 8, 1, 0, 0, 0, 0, 26,
+               "\"\\uD83D\\uDCA9\\uD83D\\uDCA9\"");
   CHECK_COUNTS(0, 0, 0, 2, 1, 0, 0, 0, 0, 4, "\"¢\"");
   CHECK_COUNTS(0, 0, 0, 1, 1, 0, 0, 0, 0, 4, "\"\\n\"");
   CHECK_COUNTS(0, 0, 0, 1, 1, 0, 0, 0, 0, 8, "\"\\u002a\"");
@@ -207,7 +219,7 @@ template <typename ErrorHandling> static void test_docinfo() {
 #undef CHECK_COUNTS
 }
 
-template<size_t SIZE, typename STR>
+template <size_t SIZE, typename STR>
 constexpr std::array<char, SIZE> extractString(const STR &theStr) {
   std::array<char, SIZE> aResult{};
   for (size_t i = 0; i < SIZE; ++i)
@@ -261,8 +273,10 @@ static void test_parsing() {
     // gcc-7 does not consider optional::operator-> to be constexpr...
     static_assert((*aDoc.getRoot().toArray()[4].toObject()["def"]).toString() ==
                   "ghi");
-    constexpr size_t aDefSize = (*aDoc.getRoot().toArray()[4].toObject()["def"]).toString().size();
-    constexpr auto aDefBuf = extractString<aDefSize>((*aDoc.getRoot().toArray()[4].toObject()["def"]).toString());
+    constexpr size_t aDefSize =
+        (*aDoc.getRoot().toArray()[4].toObject()["def"]).toString().size();
+    constexpr auto aDefBuf = extractString<aDefSize>(
+        (*aDoc.getRoot().toArray()[4].toObject()["def"]).toString());
     constexpr bool aIsDef = std::string_view{aDefBuf.data(), aDefSize} == "ghi";
     static_assert(aIsDef);
   }
