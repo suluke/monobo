@@ -8,6 +8,7 @@
 
 #include "json_schema/2019-09/schema_standard.h"
 #include "json_schema/2019-09/schema_validator.h"
+#include "json_schema/2019-09/validate/error_detail.h"
 #include "json_schema/dynamic_schema.h"
 
 #include "constexpr_json/ext/error_is_detail.h"
@@ -43,10 +44,12 @@ static cl::list<fs::path>
 
 using Standard = json_schema::Standard_2019_09</*Lenient=*/true>;
 using Context = json_schema::DynamicSchemaContext<Standard>;
-using Reader = Standard::template SchemaReader<Context, cjson::ErrorWillThrow<>>;
+using Reader =
+    Standard::template SchemaReader<Context, cjson::ErrorWillThrow<>>;
 using ReadResult = typename Reader::template ReadResult<1>;
 using Schema = ReadResult::SchemaObject;
-using Validator = json_schema::SchemaValidator<Context>;
+using Validator = json_schema::SchemaValidator<
+    Context, cjson::ErrorWillReturnDetail<json_schema::ValidationErrorDetail>>;
 
 static std::pair<std::string_view, std::string_view> gDisabledList[] = {
     {"additionalItems/additionalItemsasschema",
@@ -71,10 +74,6 @@ static std::pair<std::string_view, std::string_view> gDisabledList[] = {
      "inimplementationsthatstrip$anchor,thismaymatcheither$def"},
     {"anchor/$anchorinsideanenumisnotarealidentifier",
      "nomatchonenumor$refto$anchor"},
-    {"anyOf/anyOf", "secondanyOfvalid"},
-    {"anyOf/anyOfcomplextypes", "neitheranyOfvalid(complex)"},
-    {"anyOf/anyOfwithbaseschema", "bothanyOfinvalid"},
-    {"anyOf/anyOfwithbooleanschemas,allfalse", "anyvalueisinvalid"},
     {"content/validationofbinary-encodedmediatypedocuments",
      "aninvalidbase64stringthatisvalidJSON;validatestrue"},
     {"content/validationofbinary-encodedmediatypedocuments",
@@ -111,52 +110,12 @@ static std::pair<std::string_view, std::string_view> gDisabledList[] = {
     {"dependentSchemas/singledependency", "wrongtype"},
     {"dependentSchemas/singledependency", "wrongtypeboth"},
     {"dependentSchemas/singledependency", "wrongtypeother"},
-    {"exclusiveMaximum/exclusiveMaximumvalidation",
-     "belowtheexclusiveMaximumisvalid"},
-    {"exclusiveMaximum/exclusiveMaximumvalidation", "boundarypointisinvalid"},
-    {"exclusiveMinimum/exclusiveMinimumvalidation",
-     "abovetheexclusiveMinimumisvalid"},
-    {"format/validationofdatestrings", "ignoresfloats"},
-    {"format/validationofdurations", "ignoresfloats"},
-    {"format/validationofhostnames", "ignoresfloats"},
-    {"format/validationofIDNhostnames", "ignoresfloats"},
-    {"format/validationofIPaddresses", "ignoresfloats"},
-    {"format/validationofIPv6addresses", "ignoresfloats"},
-    {"format/validationofIRIreferences", "ignoresfloats"},
-    {"format/validationofIRIs", "ignoresfloats"},
-    {"format/validationofJSONpointers", "ignoresfloats"},
-    {"format/validationofregexes", "ignoresfloats"},
-    {"format/validationofrelativeJSONpointers", "ignoresfloats"},
-    {"format/validationoftimestrings", "ignoresfloats"},
-    {"format/validationofURIreferences", "ignoresfloats"},
-    {"format/validationofURIs", "ignoresfloats"},
-    {"format/validationofURItemplates", "ignoresfloats"},
-    {"format/validationofUUIDs", "ignoresfloats"},
     {"id/$idinsideanenumisnotarealidentifier", "nomatchonenumor$refto$id"},
     {"items/itemsandsubitems", "toomanyitems"},
     {"items/itemsandsubitems", "wrongitem"},
-    {"maximum/maximumvalidation", "belowthemaximumisvalid"},
-    {"maximum/maximumvalidationwithunsignedinteger",
-     "belowthemaximumisinvalid"},
-    {"maxLength/maxLengthvalidation", "toolongisinvalid"},
-    {"minimum/minimumvalidation", "abovetheminimumisvalid"},
-    {"minimum/minimumvalidation", "boundarypointisvalid"},
     {"minItems/minItemsvalidation", "tooshortisinvalid"},
-    {"minLength/minLengthvalidation",
-     "onesupplementaryUnicodecodepointisnotlongenough"},
-    {"minLength/minLengthvalidation", "tooshortisinvalid"},
     {"multipleOf/invalidinstanceshouldnotraiseerrorwhenfloatdivision=inf",
      "alwaysinvalid,butnaiveimplementationsmayraiseanoverflowerror"},
-    {"oneOf/oneOf", "bothoneOfvalid"},
-    {"oneOf/oneOf", "secondoneOfvalid"},
-    {"oneOf/oneOfcomplextypes", "bothoneOfvalid(complex)"},
-    {"oneOf/oneOfcomplextypes", "neitheroneOfvalid(complex)"},
-    {"oneOf/oneOfwithbaseschema", "bothoneOfvalid"},
-    {"oneOf/oneOfwithbooleanschemas,allfalse", "anyvalueisinvalid"},
-    {"oneOf/oneOfwithbooleanschemas,alltrue", "anyvalueisinvalid"},
-    {"oneOf/oneOfwithbooleanschemas,morethanonetrue", "anyvalueisinvalid"},
-    {"oneOf/oneOfwithmissingoptionalproperty", "bothoneOfvalid"},
-    {"oneOf/oneOfwithmissingoptionalproperty", "neitheroneOfvalid"},
     {"patternProperties/multiplesimultaneouspatternPropertiesarevalidated",
      "aninvalidduetobothisinvalid"},
     {"patternProperties/multiplesimultaneouspatternPropertiesarevalidated",
@@ -206,10 +165,6 @@ static std::pair<std::string_view, std::string_view> gDisabledList[] = {
     {"ref/escapedpointerref", "percentinvalid"},
     {"ref/escapedpointerref", "slashinvalid"},
     {"ref/escapedpointerref", "tildeinvalid"},
-    {"ref/naivereplacementof$refwithitsdestinationisnotcorrect",
-     "donotevaluatethe$refinsidetheenum,definitionexactmatch"},
-    {"ref/naivereplacementof$refwithitsdestinationisnotcorrect",
-     "donotevaluatethe$refinsidetheenum,matchinganystring"},
     {"ref/nestedrefs", "nestedrefinvalid"},
     {"ref/propertynamed$ref,containinganactual$ref",
      "propertynamed$refinvalid"},
@@ -228,7 +183,6 @@ static std::pair<std::string_view, std::string_view> gDisabledList[] = {
     {"refRemote/refwithinremoteref", "refwithinrefinvalid"},
     {"refRemote/remoteref", "remoterefinvalid"},
     {"refRemote/rootrefinremoteref", "objectisinvalid"},
-    {"type/numbertypematchesnumbers", "afloatisanumber"},
     {"unevaluatedItems/itemisevaluatedinanuncleschematounevaluatedItems",
      "unclekeywordevaluationisnotsignificant"},
     {"unevaluatedItems/unevaluatedItemsasschema",
@@ -317,7 +271,8 @@ static std::pair<std::string_view, std::string_view> gDisabledList[] = {
     {"uniqueItems/uniqueItemswithanarrayofitemsandadditionalItems=false",
      "[true,true]fromitemsarrayisnotvalid"},
     {"uniqueItems/uniqueItemswithanarrayofitemsandadditionalItems=false",
-     "extraitemsareinvalidevenifunique"}};
+     "extraitemsareinvalidevenifunique"},
+};
 static bool isDisabled(const std::string &theGroup, const char *const theTest) {
   static std::set<std::pair<std::string_view, std::string_view>> aDisabledSet{
       std::begin(gDisabledList), std::end(gDisabledList)};
@@ -340,7 +295,8 @@ public:
     const auto aErrorMaybe = aValidator.validate(itsData);
     if (itsShouldBeValid) {
       EXPECT_FALSE(aErrorMaybe) << "Schema verification finished with errors "
-                                   "but no error was expected";
+                                   "but no error was expected: "
+                                << aErrorMaybe->what();
     } else {
       EXPECT_TRUE(aErrorMaybe) << "Schema verification finished successfully "
                                   "but was expected to fail";

@@ -162,7 +162,7 @@ public:
       } else if (theKey == "maximum") {
         aValidation.itsMaximum = theValue.toNumber();
       } else if (theKey == "exclusiveMaximum") {
-        aValidation.itsExclusiveMinimum = theValue.toNumber();
+        aValidation.itsExclusiveMaximum = theValue.toNumber();
       } else if (theKey == "minimum") {
         aValidation.itsMinimum = theValue.toNumber();
       } else if (theKey == "exclusiveMinimum") {

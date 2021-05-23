@@ -114,9 +114,6 @@ public:
   };
 
 private:
-  struct One {
-    constexpr double operator()() const noexcept { return 1.; }
-  };
   template <typename T> struct negative {
     constexpr double operator()() const noexcept(noexcept(-T{}())) {
       return -T{}();
@@ -124,6 +121,8 @@ private:
   };
 
 public:
+  using with_default_nan = with_default<
+      nullary_function<double, std::numeric_limits<double>::quiet_NaN>>;
   using with_default_inf = with_default<
       nullary_function<double, std::numeric_limits<double>::infinity>>;
   using with_default_negative_inf = with_default<negative<
@@ -132,7 +131,7 @@ public:
       with_default<nullary_function<size_t, std::numeric_limits<size_t>::max>>;
   using with_default_zero = with_default<std::integral_constant<size_t, 0>>;
 
-  with_default<One> itsMultipleOf{};
+  with_default_nan itsMultipleOf{};
 
   with_default_inf itsMaximum{};
   with_default_inf itsExclusiveMaximum{};

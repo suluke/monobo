@@ -4,24 +4,20 @@
 #include <cmath>
 
 #include "constexpr_json/ext/error_is_nullopt.h"
+#include "constexpr_json/ext/utf-8.h"
 #include "json_schema/2019-09/model/applicator.h"
 #include "json_schema/2019-09/model/content.h"
 #include "json_schema/2019-09/model/core.h"
 #include "json_schema/2019-09/model/format.h"
 #include "json_schema/2019-09/model/metadata.h"
 #include "json_schema/2019-09/model/validation.h"
+#include "json_schema/2019-09/validate/error_codes.h"
 
 namespace json_schema {
-namespace v8n {
-template <typename ErrorHandling> class Items {
-  template <typename JSON>
-  static constexpr std::optional<typename ErrorHandling::ErrorDetail>
-  validate() {}
-};
-} // namespace v8n
 
 template <typename ContextTy,
-          typename ErrorHandling = cjson::ErrorWillReturnNone>
+          typename ErrorHandling = cjson::ErrorWillReturnNone,
+          typename Encoding = cjson::Utf8>
 class SchemaValidator {
 public:
   using SchemaRef = typename ContextTy::SchemaRef;
@@ -54,29 +50,10 @@ public:
     if (aSchema.isTrueSchema())
       return std::nullopt;
     if (aSchema.isFalseSchema())
-      return makeError("Schema to validate against is `false`");
+      return makeError(ErrorCode::UNKNOWN,
+                       "Schema to validate against is `false`");
     const auto &aApplicator = aSchema.template getSection<SchemaApplicator>();
     const auto &aValidation = aSchema.template getSection<SchemaValidation>();
-    // minProperties
-    if (const auto &aMinProps = aValidation.getMinProperties();
-        aMinProps.has_value()) {
-      if (theJson.getType() == json_type::OBJECT) {
-        const auto &aObject = theJson.toObject();
-        if (aObject.size() < aMinProps) {
-          return makeError("Object has not enough properties (minProperties)");
-        }
-      }
-    }
-    // maxProperties
-    if (const auto &aMaxProps = aValidation.getMaxProperties();
-        aMaxProps.has_value()) {
-      if (theJson.getType() == json_type::OBJECT) {
-        const auto &aObject = theJson.toObject();
-        if (aObject.size() > aMaxProps) {
-          return makeError("Object has too many properties (maxProperties)");
-        }
-      }
-    }
     // type
     if (const auto &aTypes = aValidation.getType()) {
       const auto aElmType = theJson.getType();
@@ -91,65 +68,155 @@ public:
         }
       }
       if (!aIsAllowed)
-        return makeError("Type is not allowed");
+        return makeError(ErrorCode::UNKNOWN, "Type is not allowed");
     }
+    // number
     if (theJson.getType() == json_type::NUMBER) {
-      // maximum
-      if (const auto &aMaximum = aValidation.getMaximum()) {
-        if (aMaximum < theJson.toNumber())
-          return makeError("Value above maximum");
+      // minimum
+      if (const auto &aMinimum = aValidation.getMinimum();
+          aMinimum.has_value()) {
+        if (aMinimum > theJson.toNumber())
+          return makeError(ErrorCode::UNKNOWN, "Value below minimum");
       }
 
-      // minimum
-      if (const auto &aMinimum = aValidation.getMinimum()) {
-        if (aMinimum > theJson.toNumber())
-          return makeError("Value below minimum exceeded");
+      // maximum
+      if (const auto &aMaximum = aValidation.getMaximum();
+          aMaximum.has_value()) {
+        if (aMaximum < theJson.toNumber())
+          return makeError(ErrorCode::UNKNOWN, "Value above maximum");
+      }
+
+      // exclusiveMinimum
+      if (const auto &aExcMinimum = aValidation.getExclusiveMinimum();
+          aExcMinimum.has_value()) {
+        if (aExcMinimum >= theJson.toNumber())
+          return makeError(ErrorCode::UNKNOWN, "Value below exclusive minimum");
+      }
+
+      // exclusiveMaximum
+      if (const auto &aExcMaximum = aValidation.getExclusiveMaximum();
+          aExcMaximum.has_value()) {
+        if (aExcMaximum <= theJson.toNumber()) {
+          return makeError(ErrorCode::UNKNOWN, "Value above exclusive maximum");
+        }
       }
 
       // multipleOf
-      if (const auto &aMulOf = aValidation.getMultipleOf()) {
+      if (const auto &aMulOf = aValidation.getMultipleOf();
+          aMulOf.has_value()) {
         const double aQuot = theJson.toNumber() / aMulOf;
         if (aQuot != std::trunc(aQuot))
-          return makeError("Value is not a multiple of expected (multipleOf)");
+          return makeError(ErrorCode::UNKNOWN,
+                           "Value is not a multiple of expected (multipleOf)");
+      }
+    }
+    // string
+    if (theJson.getType() == json_type::STRING) {
+      const auto &aStr = theJson.toString();
+      if (const auto aMinLen = aValidation.getMinLength();
+          aMinLen.has_value()) {
+        const auto aDecodedLength = decodeLength(aStr);
+        if (ErrorHandling::isError(aDecodedLength))
+          return ErrorHandling::getError(aDecodedLength);
+        if (aMinLen > ErrorHandling::unwrap(aDecodedLength)) {
+          return makeError(
+              ErrorCode::UNKNOWN,
+              "String has fewer characters than required (minLength)");
+        }
+      }
+      if (const auto aMaxLen = aValidation.getMaxLength();
+          aMaxLen.has_value()) {
+        if (aMaxLen < aStr.size()) {
+          const auto aDecodedLength = decodeLength(aStr);
+          if (ErrorHandling::isError(aDecodedLength))
+            return ErrorHandling::getError(aDecodedLength);
+          if (aMaxLen < ErrorHandling::unwrap(aDecodedLength))
+            return makeError(
+                ErrorCode::UNKNOWN,
+                "String has more characters than allowed (maxLength)");
+        }
       }
     }
     // const
     if (const auto &aConst = aValidation.getConst()) {
       if (*aConst != theJson)
         return makeError(
+            ErrorCode::UNKNOWN,
             "Element does not match the expected constant (const)");
     }
     // enum
-    if (const auto&aEnum = aValidation.getEnum()) {
+    if (const auto &aEnum = aValidation.getEnum()) {
       bool aFoundMatching = false;
-      for (const auto& aElm : *aEnum)
+      for (const auto &aElm : *aEnum)
         if (aElm == theJson) {
           aFoundMatching = true;
           break;
         }
       if (!aFoundMatching)
         return makeError(
+            ErrorCode::UNKNOWN,
             "Element does not match any of the expected constants (enum)");
     }
 
-    // not
-    if (const auto &aNot = aApplicator.getNot()) {
-      if (!validate(theJson, *aNot))
-        return makeError("Expected schema not to match (not)");
-    }
-    // allOf
-    if (const auto& aAllOf = aApplicator.getAllOf()) {
-      for (const auto& aSchema : *aAllOf)
-        if (const auto aRes = validate(theJson, aSchema))
-          return makeError("Element does not match (at least) one of the given schemas (allOf)", *aRes);
+    // applicator
+    {
+      // not
+      if (const auto &aNot = aApplicator.getNot()) {
+        if (!validate(theJson, *aNot))
+          return makeError(ErrorCode::UNKNOWN,
+                           "Expected schema not to match (not)");
+      }
+      // allOf
+      if (const auto &aAllOf = aApplicator.getAllOf()) {
+        for (const auto &aSchema : *aAllOf)
+          if (const auto aRes = validate(theJson, aSchema))
+            return makeError(
+                ErrorCode::UNKNOWN,
+                "Element does not match (at least) one of the given "
+                "schemas (allOf)",
+                *aRes);
+      }
+      // anyOf
+      if (const auto &aAnyOf = aApplicator.getAnyOf()) {
+        bool aHasMatching = false;
+        for (const auto &aSchema : *aAnyOf) {
+          if (!validate(theJson, aSchema)) {
+            aHasMatching = true;
+            break;
+          }
+        }
+        if (!aHasMatching)
+          return makeError(
+              ErrorCode::UNKNOWN,
+              "Element does not match any of the given schemas (anyOf)");
+      }
+      // oneOf
+      if (const auto &aOneOf = aApplicator.getOneOf()) {
+        int aNumMatching{0};
+        for (const auto &aSchema : *aOneOf)
+          if (!validate(theJson, aSchema))
+            ++aNumMatching;
+        if (aNumMatching == 0)
+          return makeError(
+              ErrorCode::UNKNOWN,
+              "Expected one of the given schemas to match, but none "
+              "matched (oneOf)");
+        if (aNumMatching != 1)
+          return makeError(
+              ErrorCode::UNKNOWN,
+              "Expected exactly one of the given schemas to match, "
+              "but more than one matched (oneOf)");
+      }
     }
 
+    // object
     if (theJson.getType() == json_type::OBJECT) {
       const auto &aJsonObject = theJson.toObject();
       // maxItems (1. object)
       if (const auto aMaxItems = aValidation.getMaxItems()) {
         if (aMaxItems < aJsonObject.size()) {
           return makeError(
+              ErrorCode::UNKNOWN,
               "Object has more items than expected (maxProperties)");
         }
       }
@@ -161,8 +228,25 @@ public:
             ValidationResult aSubVal = validate(*aProp, aNameSchemaPair.second);
             if (aSubVal)
               return makeError(
+                  ErrorCode::UNKNOWN,
                   "Schema verification of property failed (properties)");
           }
+        }
+      }
+      // minProperties
+      if (const auto &aMinProps = aValidation.getMinProperties();
+          aMinProps.has_value()) {
+        if (aJsonObject.size() < aMinProps) {
+          return makeError(ErrorCode::UNKNOWN,
+                           "Object has not enough properties (minProperties)");
+        }
+      }
+      // maxProperties
+      if (const auto &aMaxProps = aValidation.getMaxProperties();
+          aMaxProps.has_value()) {
+        if (aJsonObject.size() > aMaxProps) {
+          return makeError(ErrorCode::UNKNOWN,
+                           "Object has too many properties (maxProperties)");
         }
       }
 
@@ -170,17 +254,20 @@ public:
       if (const auto &aRequired = aValidation.getRequired()) {
         for (const auto &aKey : *aRequired) {
           if (!aJsonObject[aKey])
-            return makeError("Required property not found (required)");
+            return makeError(ErrorCode::UNKNOWN,
+                             "Required property not found (required)");
         }
       }
     }
 
+    // array
     if (theJson.getType() == json_type::ARRAY) {
       const auto &aJsonArray = theJson.toArray();
       // maxItems (2. array)
       if (const auto aMaxItems = aValidation.getMaxItems()) {
         if (aMaxItems < aJsonArray.size()) {
           return makeError(
+              ErrorCode::UNKNOWN,
               "Array has more items than expected (maxProperties)");
         }
       }
@@ -194,13 +281,15 @@ public:
                ++aIdx) {
             if (validate(aJsonArray[aIdx], aItemSchemaList[aIdx]))
               return makeError(
+                  ErrorCode::UNKNOWN,
                   "Item does not match expected schema at position (items)");
           }
         } else if (aItems->index() == 1) {
           const auto &aItemSchema = json_schema::get<size_t{1}>(*aItems);
           for (const auto &aItem : aJsonArray) {
             if (validate(aItem, aItemSchema))
-              return makeError("Item does not match expected schema (items)");
+              return makeError(ErrorCode::UNKNOWN,
+                               "Item does not match expected schema (items)");
           }
         } else {
           throw "Implementation error";
@@ -209,6 +298,7 @@ public:
 
       if (aValidation.getMaxContains() < aValidation.getMinContains()) {
         return makeError(
+            ErrorCode::UNKNOWN,
             "Impossible for array to satisfy maxContains<minContains "
             "expectation (probably schema error)");
       }
@@ -223,14 +313,17 @@ public:
         }
         // minContains
         if (aNumMatching == 0u && aValidation.getMinContains() > 0) {
-          return makeError("Expected element not found in array (contains)");
+          return makeError(ErrorCode::UNKNOWN,
+                           "Expected element not found in array (contains)");
         }
         if (aNumMatching < aValidation.getMinContains()) {
-          return makeError("Fewer array elements than expected match");
+          return makeError(ErrorCode::UNKNOWN,
+                           "Fewer array elements than expected match");
         }
         // maxContains
         if (aNumMatching > aValidation.getMaxContains()) {
-          return makeError("More array elements than expected match");
+          return makeError(ErrorCode::UNKNOWN,
+                           "More array elements than expected match");
         }
       }
     }
@@ -238,16 +331,35 @@ public:
   }
 
 private:
-  constexpr ErrorDetail makeError(const char *const theMsg) const {
+  constexpr ErrorDetail makeError(const ErrorCode theEC,
+                                  const char *const theMsg) const {
     return ErrorHandling::getError(
-        ErrorHandling::template makeError<bool>(theMsg));
+        ErrorHandling::template makeError<bool>(theEC, theMsg));
   }
-  constexpr ErrorDetail makeError(const char* const theMsg, const ErrorDetail& theSubError) const {
+  constexpr ErrorDetail makeError(const ErrorCode theEC,
+                                  const char *const theMsg,
+                                  const ErrorDetail &theSubError) const {
     return theSubError;
+  }
+  using DecodeLengthResult = typename ErrorHandling::template ErrorOr<size_t>;
+  constexpr DecodeLengthResult
+  decodeLength(const std::string_view theStr) const {
+    size_t aResult{0};
+    std::string_view aRem = theStr;
+    while (!aRem.empty()) {
+      const size_t aDecodeLen = itsEncoding.decodeFirst(aRem).second;
+      if (aDecodeLen == 0)
+        return ErrorHandling::template makeError<size_t>(
+            ErrorCode::ENCODING_ERROR, "Failed to decode string");
+      aRem.remove_prefix(aDecodeLen);
+      ++aResult;
+    }
+    return aResult;
   }
 
   ContextTy itsContext;
   SchemaRef itsSchema;
+  Encoding itsEncoding;
 };
 } // namespace json_schema
 #endif // JSON_SCHEMA_SCHEMA_VALIDATOR_H

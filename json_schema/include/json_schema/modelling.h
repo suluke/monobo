@@ -105,9 +105,11 @@ public:
   }
   constexpr const value_type &value() const noexcept { return itsValue; }
   constexpr operator const value_type &() const noexcept { return itsValue; }
-  constexpr bool has_value() const
-      noexcept(noexcept(itsValue != DefaultGen{}())) {
-    return itsValue != DefaultGen{}();
+  constexpr bool has_value() const {
+    const auto aDefault = DefaultGen{}();
+    return (aDefault == aDefault && itsValue != aDefault) ||
+           // for NaN case:
+           (aDefault != aDefault && itsValue == itsValue);
   }
 };
 
