@@ -27,7 +27,7 @@ std::ostream &operator<<(std::ostream &theOS, const SchemaInfo &aSchemaInfo) {
 template <typename ContextTy, typename... JSONs>
 constexpr auto readSchemaIgnoreError(JSONs &&...theJsons) {
   return ContextTy::Standard::template SchemaReader<
-      ContextTy, cjson::ErrorWillThrow>::read(std::forward<JSONs>(theJsons)...);
+      ContextTy, cjson::ErrorWillThrow<>>::read(std::forward<JSONs>(theJsons)...);
 }
 
 int main() {

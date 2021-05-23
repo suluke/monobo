@@ -43,6 +43,8 @@ template <typename DocumentTy> struct ArrayRefImpl {
   constexpr EntityRefImpl<DocumentTy> operator[](size_t theIdx) const;
   template <typename OtherRefTy>
   constexpr bool operator==(const OtherRefTy &theOther) const noexcept {
+    if (size() != theOther.size())
+      return false;
     auto aOtherIter = theOther.begin();
     for (const EntityRefImpl aEntry : *this) {
       if (!(aEntry == *aOtherIter))
@@ -102,6 +104,8 @@ template <typename DocumentTy> struct ObjectRefImpl {
   constexpr std::optional<EntityRef> operator[](std::string_view theKey) const;
   template<typename OtherRefTy>
   constexpr bool operator==(const OtherRefTy &theOther) const noexcept {
+    if (size() != theOther.size())
+      return false;
     for (const auto aKVPair : *this) {
       const auto aOtherVal = theOther[aKVPair.first];
       if (!aOtherVal || !(aKVPair.second == *aOtherVal))

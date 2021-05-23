@@ -20,5 +20,8 @@ add_executable(cjson_printer_test printer_test.cc "${CMAKE_CURRENT_BINARY_DIR}/j
 target_include_directories(cjson_printer_test PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(cjson_printer_test PRIVATE constexpr_json)
 add_test(NAME cjson_printer_test COMMAND cjson_printer_test)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  target_compile_options(cjson_printer_test PRIVATE "-fconstexpr-steps=5000000")
+endif()
 
 add_subdirectory(JSONTestSuite)

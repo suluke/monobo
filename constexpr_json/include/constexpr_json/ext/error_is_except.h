@@ -4,6 +4,19 @@
 #include "constexpr_json/ext/json_error_detail.h"
 
 namespace cjson {
+namespace detail {
+struct LogicErrorBuilder {
+  static std::logic_error create() { return std::logic_error{"An error occurred"}; }
+  template <typename T, typename... Args>
+  static std::logic_error create(T &&theDesc, Args &&...) {
+    if constexpr (std::is_constructible_v<std::string, T>)
+      return std::logic_error{std::string(std::forward<T>(theDesc))};
+    else
+      return std::logic_error{std::to_string(std::forward<T>(theDesc))};
+  }
+};
+} // namespace detail
+template <typename ExceptionBuilder = detail::LogicErrorBuilder>
 struct ErrorWillThrow {
   using ErrorDetail = void;
   template <typename T> using ErrorOr = T;
@@ -24,7 +37,7 @@ struct ErrorWillThrow {
 
   template <typename T, typename... Args>
   [[noreturn]] static constexpr ErrorOr<T> makeError(Args &&...theArgs) {
-    throw std::logic_error(std::forward<Args>(theArgs)...);
+    throw ExceptionBuilder::create(std::forward<Args>(theArgs)...);
   }
 
   template <typename T, typename U, typename... Args>

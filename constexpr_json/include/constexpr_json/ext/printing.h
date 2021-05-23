@@ -3,6 +3,7 @@
 #include "constexpr_json/ext/utf-8.h"
 #include "constexpr_json/impl/document_entities.h"
 
+#include <limits>
 #include <iostream>
 
 namespace cjson {

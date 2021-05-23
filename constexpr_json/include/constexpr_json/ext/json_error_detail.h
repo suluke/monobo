@@ -22,7 +22,8 @@ struct JsonErrorDetail {
 
   template <typename EncodingTy>
   constexpr std::pair<intptr_t, intptr_t>
-  computeLocation(const std::string_view theJson, const EncodingTy &theEncoding = {}) const noexcept {
+  computeLocation(const std::string_view theJson,
+                  const EncodingTy &theEncoding = {}) const noexcept {
     if (itsPosition < 0)
       return {-1, -1};
     intptr_t aLine = 0, aCol = 0;
@@ -44,7 +45,8 @@ struct JsonErrorDetail {
     return getErrorCodeDesc(itsCode);
   }
 
-  constexpr JsonErrorDetail convert(intptr_t theOffsetPosition = 0) const noexcept {
+  constexpr JsonErrorDetail
+  convert(intptr_t theOffsetPosition = 0) const noexcept {
     JsonErrorDetail aDetail{*this};
     aDetail.itsPosition += theOffsetPosition;
     return aDetail;
@@ -88,4 +90,9 @@ struct JsonErrorDetail {
   }
 };
 } // namespace cjson
+namespace std {
+std::string to_string(const cjson::ErrorCode theEC) {
+  return cjson::JsonErrorDetail::getErrorCodeDesc(theEC);
+}
+} // namespace std
 #endif // CONSTEXPR_JSON_ERROR_DETAIL_H

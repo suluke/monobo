@@ -1,8 +1,6 @@
 #ifndef CONSTEXPR_JSON_ERROR_IS_NULLOPT_H
 #define CONSTEXPR_JSON_ERROR_IS_NULLOPT_H
 
-#include "constexpr_json/error_codes.h"
-
 #include <optional>
 
 namespace cjson {

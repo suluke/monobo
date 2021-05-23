@@ -43,7 +43,7 @@ static cl::list<fs::path>
 
 using Standard = json_schema::Standard_2019_09</*Lenient=*/true>;
 using Context = json_schema::DynamicSchemaContext<Standard>;
-using Reader = Standard::template SchemaReader<Context, cjson::ErrorWillThrow>;
+using Reader = Standard::template SchemaReader<Context, cjson::ErrorWillThrow<>>;
 using ReadResult = typename Reader::template ReadResult<1>;
 using Schema = ReadResult::SchemaObject;
 using Validator = json_schema::SchemaValidator<Context>;

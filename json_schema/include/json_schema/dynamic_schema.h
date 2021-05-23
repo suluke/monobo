@@ -135,7 +135,7 @@ template <typename Standard_> struct DynamicSchemaContext {
                          const JSON &theJson) {
       cjson::DocumentInfo aDocInfo = cjson::DocumentInfo::read(theJson);
       auto aJson = std::make_shared<JsonStorage>(aDocInfo);
-      cjson::DocumentAllocator<JsonStorage, cjson::ErrorWillThrow> aAlloc;
+      cjson::DocumentAllocator<JsonStorage, ErrorHandling> aAlloc;
       aJson->itsEntities[0] = aAlloc.allocateJson(*aJson, theJson);
       JsonRef aJsonRef = *aJson;
       theContext.itsAllocations.emplace_back(std::move(aJson));
