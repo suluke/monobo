@@ -105,6 +105,9 @@ public:
   }
   constexpr const value_type &value() const noexcept { return itsValue; }
   constexpr operator const value_type &() const noexcept { return itsValue; }
+  constexpr explicit operator bool() const {
+    return has_value();
+  }
   constexpr bool has_value() const {
     const auto aDefault = DefaultGen{}();
     return (aDefault == aDefault && itsValue != aDefault) ||
@@ -112,9 +115,6 @@ public:
            (aDefault != aDefault && itsValue == itsValue);
   }
 };
-
-using with_default_false = with_default<std::integral_constant<bool, false>>;
-
 } // namespace json_schema
 
 #endif // JSON_SCHEMA_MODELLING_H

@@ -137,9 +137,9 @@ private:
         theOS << indent(theDepth) << std::setw(W_COL1)
               << "$recursiveRef:" << *aRecRef << "\n";
       }
-      if (aCore.getRecursiveAnchor().has_value()) {
+      if (aCore.getRecursiveAnchor()) {
         theOS << indent(theDepth) << std::setw(W_COL1) << "$recursiveAnchor:"
-              << (aCore.getRecursiveAnchor().value() ? "true" : "false")
+              << (aCore.getRecursiveAnchor() ? "true" : "false")
               << "\n";
       }
       if (const auto aVocabDict = aCore.getVocabulary().toDict()) {
@@ -351,10 +351,9 @@ private:
         theOS << indent(theDepth) << std::setw(W_COL1)
               << "minItems:" << aMinItems << "\n";
       }
-      if (const auto aUniqueItems = aValidation.getUniqueItems();
-          aUniqueItems.has_value()) {
+      if (const auto aUniqueItems = aValidation.getUniqueItems()) {
         theOS << indent(theDepth) << std::setw(W_COL1)
-              << "uniqueItems:" << (aUniqueItems.value() ? "true" : "false")
+              << "uniqueItems:" << (aUniqueItems ? "true" : "false")
               << "\n";
       }
       if (const auto aMaxContains = aValidation.getMaxContains();
@@ -450,18 +449,16 @@ private:
         JsonPrinter<OS> aJsonPrinter;
         aJsonPrinter.print(theOS, *aDefault) << "\n";
       }
-      if (const auto aDeprecated = aMetadata.getDeprecated();
-          aDeprecated.has_value())
+      if (const auto aDeprecated = aMetadata.getDeprecated())
         theOS << indent(theDepth) << std::setw(W_COL1)
-              << "deprecated: " << (aDeprecated.value() ? "true" : "false")
+              << "deprecated: " << (aDeprecated ? "true" : "false")
               << "\n";
-      if (const auto aReadOnly = aMetadata.getReadOnly(); aReadOnly.has_value())
+      if (const auto aReadOnly = aMetadata.getReadOnly())
         theOS << indent(theDepth) << std::setw(W_COL1)
-              << "readOnly: " << (aReadOnly.value() ? "true" : "false") << "\n";
-      if (const auto aWriteOnly = aMetadata.getWriteOnly();
-          aWriteOnly.has_value())
+              << "readOnly: " << (aReadOnly ? "true" : "false") << "\n";
+      if (const auto aWriteOnly = aMetadata.getWriteOnly())
         theOS << indent(theDepth) << std::setw(W_COL1)
-              << "writeOnly: " << (aWriteOnly.value() ? "true" : "false")
+              << "writeOnly: " << (aWriteOnly ? "true" : "false")
               << "\n";
       if (const auto aExamples = aMetadata.getExamples()) {
         theOS << indent(theDepth) << "examples:\n";

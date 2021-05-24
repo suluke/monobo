@@ -296,6 +296,16 @@ public:
         }
       }
 
+      // uniqueItems
+      if (aValidation.getUniqueItems()) {
+        size_t aPos = 0;
+        for (const auto &aElm1 : aJsonArray) {
+          for (size_t aIdx = ++aPos; aIdx < aJsonArray.size(); ++aIdx)
+            if (aElm1 == aJsonArray[aIdx])
+              return makeError(ErrorCode::UNKNOWN, "Found duplicate item (uniqueItems)");
+        }
+      }
+
       if (aValidation.getMaxContains() < aValidation.getMinContains()) {
         return makeError(
             ErrorCode::UNKNOWN,

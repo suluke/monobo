@@ -146,7 +146,7 @@ public:
   with_default<std::integral_constant<size_t, 1>> itsMinContains{};
   with_default_max itsMaxProperties{};
   with_default_zero itsMinProperties{};
-  with_default_false itsUniqueItems{};
+  bool itsUniqueItems{false};
   typename Storage::StringPtr itsPattern{};
   StringListPtr itsRequired{};
   StringListDict itsDependentRequired{};

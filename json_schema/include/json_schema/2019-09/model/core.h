@@ -75,7 +75,7 @@ public:
   UriReference itsRef{};
   // std::optional<typename Storage::Schema> itsRefResolved{};
   UriReference itsRecursiveRef{};
-  with_default_false itsRecursiveAnchor{};
+  bool itsRecursiveAnchor{false};
   Vocabulary<Storage> itsVocabulary{};
   typename Storage::StringPtr itsComment{};
   Defs<Storage> itsDefs{};

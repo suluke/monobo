@@ -63,9 +63,9 @@ public:
   StringPtr itsTitle{};
   StringPtr itsDescription{};
   JsonPtr itsDefault{};
-  with_default_false itsDeprecated{};
-  with_default_false itsReadOnly{};
-  with_default_false itsWriteOnly{};
+  bool itsDeprecated{false};
+  bool itsReadOnly{false};
+  bool itsWriteOnly{false};
   JsonListPtr itsExamples{};
 };
 } // namespace json_schema
