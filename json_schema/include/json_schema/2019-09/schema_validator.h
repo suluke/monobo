@@ -283,12 +283,28 @@ public:
                   ErrorCode::UNKNOWN,
                   "Item does not match expected schema at position (items)");
           }
+          // additionalItems
+          if (aJsonArray.size() > aItemSchemaList.size()) {
+            if (const auto &aAdditionalItems =
+                    aApplicator.getAdditionalItems()) {
+              for (size_t aIdx = aItemSchemaList.size();
+                   aIdx < aJsonArray.size(); ++aIdx) {
+                if (auto aErrMaybe =
+                        validate(aJsonArray[aIdx], *aAdditionalItems))
+                  return makeError(ErrorCode::UNKNOWN,
+                                   "Item does not match additional items "
+                                   "schema (additionalItems)",
+                                   *aErrMaybe);
+              }
+            }
+          }
         } else if (aItems->index() == 1) {
           const auto &aItemSchema = json_schema::get<size_t{1}>(*aItems);
           for (const auto &aItem : aJsonArray) {
-            if (validate(aItem, aItemSchema))
+            if (auto aErrMaybe = validate(aItem, aItemSchema))
               return makeError(ErrorCode::UNKNOWN,
-                               "Item does not match expected schema (items)");
+                               "Item does not match expected schema (items)",
+                               *aErrMaybe);
           }
         } else {
           throw "Implementation error";
@@ -301,7 +317,8 @@ public:
         for (const auto &aElm1 : aJsonArray) {
           for (size_t aIdx = ++aPos; aIdx < aJsonArray.size(); ++aIdx)
             if (aElm1 == aJsonArray[aIdx])
-              return makeError(ErrorCode::UNKNOWN, "Found duplicate item (uniqueItems)");
+              return makeError(ErrorCode::UNKNOWN,
+                               "Found duplicate item (uniqueItems)");
         }
       }
 

@@ -52,14 +52,6 @@ using Validator = json_schema::SchemaValidator<
     Context, cjson::ErrorWillReturnDetail<json_schema::ValidationErrorDetail>>;
 
 static std::pair<std::string_view, std::string_view> gDisabledList[] = {
-    {"additionalItems/additionalItemsasschema",
-     "additionalitemsdonotmatchschema"},
-    {"additionalItems/additionalItemsshouldnotlookinapplicators,invalidcase",
-     "itemsdefinedinallOfarenotexamined"},
-    {"additionalItems/arrayofitemswithnoadditionalItemspermitted",
-     "additionalitemsarenotpermitted"},
-    {"additionalItems/itemsvalidationadjuststhestartingindexforadditionalItems",
-     "wrongtypeofseconditem"},
     {"additionalProperties/"
      "additionalPropertiesallowsaschemawhichshouldvalidate",
      "anadditionalinvalidpropertyisinvalid"},
@@ -111,7 +103,6 @@ static std::pair<std::string_view, std::string_view> gDisabledList[] = {
     {"dependentSchemas/singledependency", "wrongtypeboth"},
     {"dependentSchemas/singledependency", "wrongtypeother"},
     {"id/$idinsideanenumisnotarealidentifier", "nomatchonenumor$refto$id"},
-    {"items/itemsandsubitems", "toomanyitems"},
     {"items/itemsandsubitems", "wrongitem"},
     {"multipleOf/invalidinstanceshouldnotraiseerrorwhenfloatdivision=inf",
      "alwaysinvalid,butnaiveimplementationsmayraiseanoverflowerror"},
@@ -257,10 +248,6 @@ static std::pair<std::string_view, std::string_view> gDisabledList[] = {
      "withunevaluatedproperties"},
     {"unevaluatedProperties/unevaluatedPropertieswithoneOf",
      "withunevaluatedproperties"},
-    {"uniqueItems/uniqueItems=falsewithanarrayofitemsandadditionalItems=false",
-     "extraitemsareinvalidevenifunique"},
-    {"uniqueItems/uniqueItemswithanarrayofitemsandadditionalItems=false",
-     "extraitemsareinvalidevenifunique"},
 };
 static bool isDisabled(const std::string &theGroup, const char *const theTest) {
   static std::set<std::pair<std::string_view, std::string_view>> aDisabledSet{
