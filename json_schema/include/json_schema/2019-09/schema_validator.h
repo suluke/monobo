@@ -2,6 +2,7 @@
 #define JSON_SCHEMA_SCHEMA_VALIDATOR_H
 
 #include <cmath>
+#include <regex>
 
 #include "constexpr_json/ext/error_is_nullopt.h"
 #include "constexpr_json/ext/utf-8.h"
@@ -212,6 +213,8 @@ public:
     // object
     if (theJson.getType() == json_type::OBJECT) {
       const auto &aJsonObject = theJson.toObject();
+      const auto &aPatternProps = aApplicator.getPatternProperties();
+
       // properties
       if (const auto &aProps = aApplicator.getProperties()) {
         for (const auto &aNameSchemaPair : *aProps) {
@@ -221,6 +224,31 @@ public:
               return makeError(
                   ErrorCode::UNKNOWN,
                   "Schema verification of property failed (properties)");
+          }
+        }
+        if (const auto &aAdditionalProps =
+                aApplicator.getAdditionalProperties()) {
+          // checks if a property is matched by patternProperties
+          const auto isMatched =
+              [&aPatternProps](const std::string_view &aKey) -> bool {
+            const auto matchesKey = [&aKey](const auto &aKVPair) -> bool {
+              std::regex aRegex{aKVPair.first.begin(), aKVPair.first.end()};
+              return std::regex_search(aKey.begin(), aKey.end(), aRegex);
+            };
+            return aPatternProps &&
+                   std::any_of(aPatternProps->begin(), aPatternProps->end(),
+                               matchesKey);
+          };
+          for (const auto &aKVPair : aJsonObject) {
+            if (aProps->contains(aKVPair.first))
+              continue;
+            if (isMatched(aKVPair.first))
+              continue;
+            if (auto aErrorMaybe = validate(aKVPair.second, *aAdditionalProps)) {
+              return makeError(
+                  ErrorCode::UNKNOWN,
+                  "Additional property does not match (additionalProperties)");
+            }
           }
         }
       }

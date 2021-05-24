@@ -52,12 +52,6 @@ using Validator = json_schema::SchemaValidator<
     Context, cjson::ErrorWillReturnDetail<json_schema::ValidationErrorDetail>>;
 
 static std::pair<std::string_view, std::string_view> gDisabledList[] = {
-    {"additionalProperties/"
-     "additionalPropertiesallowsaschemawhichshouldvalidate",
-     "anadditionalinvalidpropertyisinvalid"},
-    {"additionalProperties/"
-     "additionalPropertiesbeingfalsedoesnotallowotherproperties",
-     "anadditionalpropertyisinvalid"},
     {"additionalProperties/additionalPropertiescanexistbyitself",
      "anadditionalinvalidpropertyisinvalid"},
     {"additionalProperties/additionalPropertiesshouldnotlookinapplicators",
@@ -127,8 +121,6 @@ static std::pair<std::string_view, std::string_view> gDisabledList[] = {
     {"patternProperties/regexesarenotanchoredbydefaultandarecasesensitive",
      "regexesarecasesensitive,2"},
     {"properties/properties,patternProperties,additionalPropertiesinteraction",
-     "additionalPropertyinvalidatesothers"},
-    {"properties/properties,patternProperties,additionalPropertiesinteraction",
      "patternPropertyinvalidatesnonproperty"},
     {"properties/properties,patternProperties,additionalPropertiesinteraction",
      "patternPropertyinvalidatesproperty"},
@@ -144,8 +136,6 @@ static std::pair<std::string_view, std::string_view> gDisabledList[] = {
      "integerdoesnotmatchasapropertyvalue"},
     {"recursiveRef/$recursiveRefwithno$recursiveAnchorworkslike$ref",
      "twolevels,integerdoesnotmatchasapropertyvalue"},
-    {"recursiveRef/$recursiveRefwithout$recursiveAnchorworkslike$ref",
-     "mismatch"},
     {"recursiveRef/$recursiveRefwithout$recursiveAnchorworkslike$ref",
      "recursivemismatch"},
     {"recursiveRef/$recursiveRefwithoutusingnesting",
@@ -166,7 +156,6 @@ static std::pair<std::string_view, std::string_view> gDisabledList[] = {
     {"ref/relativepointerreftoarray", "mismatcharray"},
     {"ref/relativepointerreftoobject", "mismatch"},
     {"ref/remoteref,containingrefsitself", "remoterefinvalid"},
-    {"ref/rootpointerref", "mismatch"},
     {"ref/rootpointerref", "recursivemismatch"},
     {"refRemote/baseURIchange", "baseURIchangerefinvalid"},
     {"refRemote/fragmentwithinremoteref", "remotefragmentinvalid"},

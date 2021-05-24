@@ -34,6 +34,13 @@ public:
     return !(*this == theOther);
   }
 
+  using difference_type = ptrdiff_t;
+  using value_type =
+      decltype(std::declval<Container>()[std::declval<ptrdiff_t>()]);
+  using pointer = void;
+  using reference = value_type;
+  using iterator_category = std::input_iterator_tag;
+
 private:
   ptrdiff_t itsPos;
   Container itsContainer;
@@ -64,6 +71,12 @@ public:
   constexpr bool operator!=(const DecoratingIterator &theOther) const {
     return !(*this == theOther);
   }
+
+  using difference_type = ptrdiff_t;
+  using value_type = decltype(std::declval<Decorator>()(*std::declval<Iter>()));
+  using pointer = void;
+  using reference = value_type;
+  using iterator_category = std::input_iterator_tag;
 
 private:
   Iter itsIter;
