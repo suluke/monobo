@@ -23,20 +23,23 @@ struct DynamicStorage {
       return *this;
     }
 
-    bool operator<(const Ref &theOther) const {
+    template<typename U>
+    bool operator<(const Ref<U> &theOther) const {
       return this->get() < theOther.get();
     }
-    bool operator==(const Ref &theOther) const {
+    template<typename U>
+    bool operator==(const Ref<U> &theOther) const {
       return this->get() == theOther.get();
     }
-    bool operator!=(const Ref &theOther) const {
+    template<typename U>
+    bool operator!=(const Ref<U> &theOther) const {
       return this->get() != theOther.get();
     }
   };
   template <typename T> using Ptr = T *;
   template <typename T> using BufferRef = Ref<std::vector<T>>;
   template <typename T> using BufferPtr = std::vector<T> *;
-  template <typename Key, typename Value> using Map = std::map<Key, Value>;
+  template <typename Key, typename Value> using Map = std::map<Key, Value, std::less<>>;
   template <typename Key, typename Value> using MapRef = Ref<Map<Key, Value>>;
   template <typename Key, typename Value> using MapPtr = Ptr<Map<Key, Value>>;
   template <typename Key, typename Value>
@@ -243,14 +246,17 @@ template <typename Standard_> struct DynamicSchemaContext {
         : itsContext(&theContext), itsMap(theMap) {}
 
     constexpr auto operator[](const std::string_view &theKey) const {
-      AccessDecorator<IsConst> aDecorator;
+      AccessDecorator<IsConst> aDecorator{*itsContext};
       using LookupResult =
           std::optional<decltype(aDecorator(std::declval<const ValT &>()))>;
-      auto aIter = itsMap.get().find(theKey);
+      auto aIter = itsMap.get().find(Storage::Ref(theKey));
       if (aIter != itsMap.get().end()) {
-        return LookupResult{aDecorator(*aIter)};
+        return LookupResult(std::in_place, aDecorator(aIter->second));
       }
       return LookupResult{std::nullopt};
+    }
+    constexpr bool contains(const std::string_view &theKey) const {
+      return (*this)[theKey].has_value();
     }
 
   private:

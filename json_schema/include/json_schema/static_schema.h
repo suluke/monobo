@@ -341,9 +341,12 @@ public:
 
       for (const auto [aKey, aVal] : *this) {
         if (aKey == theKey)
-          return LookupResult{Base::prettify(aVal)};
+          return LookupResult{aVal};
       }
       return LookupResult{std::nullopt};
+    }
+    constexpr bool contains(const std::string_view &theKey) const {
+      return (*this)[theKey].has_value();
     }
   };
 
