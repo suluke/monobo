@@ -212,15 +212,6 @@ public:
     // object
     if (theJson.getType() == json_type::OBJECT) {
       const auto &aJsonObject = theJson.toObject();
-      // maxItems (1. object)
-      if (const auto aMaxItems = aValidation.getMaxItems()) {
-        if (aMaxItems < aJsonObject.size()) {
-          return makeError(
-              ErrorCode::UNKNOWN,
-              "Object has more items than expected (maxProperties)");
-        }
-      }
-
       // properties
       if (const auto &aProps = aApplicator.getProperties()) {
         for (const auto &aNameSchemaPair : *aProps) {
@@ -263,12 +254,20 @@ public:
     // array
     if (theJson.getType() == json_type::ARRAY) {
       const auto &aJsonArray = theJson.toArray();
-      // maxItems (2. array)
+      // maxItems
       if (const auto aMaxItems = aValidation.getMaxItems()) {
         if (aMaxItems < aJsonArray.size()) {
           return makeError(
               ErrorCode::UNKNOWN,
               "Array has more items than expected (maxProperties)");
+        }
+      }
+      // minItems
+      if (const auto aMinItems = aValidation.getMinItems()) {
+        if (aMinItems > aJsonArray.size()) {
+          return makeError(
+              ErrorCode::UNKNOWN,
+              "Array has fewer items than required (minProperties)");
         }
       }
 

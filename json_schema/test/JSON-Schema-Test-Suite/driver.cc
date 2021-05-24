@@ -113,7 +113,6 @@ static std::pair<std::string_view, std::string_view> gDisabledList[] = {
     {"id/$idinsideanenumisnotarealidentifier", "nomatchonenumor$refto$id"},
     {"items/itemsandsubitems", "toomanyitems"},
     {"items/itemsandsubitems", "wrongitem"},
-    {"minItems/minItemsvalidation", "tooshortisinvalid"},
     {"multipleOf/invalidinstanceshouldnotraiseerrorwhenfloatdivision=inf",
      "alwaysinvalid,butnaiveimplementationsmayraiseanoverflowerror"},
     {"patternProperties/multiplesimultaneouspatternPropertiesarevalidated",
