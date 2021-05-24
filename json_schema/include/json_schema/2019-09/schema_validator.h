@@ -214,6 +214,22 @@ public:
     if (theJson.getType() == json_type::OBJECT) {
       const auto &aJsonObject = theJson.toObject();
       const auto &aPatternProps = aApplicator.getPatternProperties();
+      // patternProperties
+      if (aPatternProps) {
+        for (const auto &aPatternProp : *aPatternProps) {
+          auto aPattern = itsContext.makeRegex(aPatternProp.first);
+          for (const auto &aKVPair : aJsonObject) {
+            if (!aPattern.isMatching(aKVPair.first))
+              continue;
+            if (auto aErrorMaybe =
+                    validate(aKVPair.second, aPatternProp.second))
+              return makeError(ErrorCode::UNKNOWN,
+                               "Property matched by pattern does not conform "
+                               "to schema (patternProperties)",
+                               *aErrorMaybe);
+          }
+        }
+      }
 
       // properties
       if (const auto &aProps = aApplicator.getProperties()) {
@@ -230,10 +246,9 @@ public:
                 aApplicator.getAdditionalProperties()) {
           // checks if a property is matched by patternProperties
           const auto isMatched =
-              [&aPatternProps](const std::string_view &aKey) -> bool {
-            const auto matchesKey = [&aKey](const auto &aKVPair) -> bool {
-              std::regex aRegex{aKVPair.first.begin(), aKVPair.first.end()};
-              return std::regex_search(aKey.begin(), aKey.end(), aRegex);
+              [&aPatternProps, this](const std::string_view &aKey) -> bool {
+            const auto matchesKey = [&aKey, this](const auto &aKVPair) -> bool {
+              return itsContext.makeRegex(aKVPair.first).isMatching(aKey);
             };
             return aPatternProps &&
                    std::any_of(aPatternProps->begin(), aPatternProps->end(),
@@ -244,7 +259,8 @@ public:
               continue;
             if (isMatched(aKVPair.first))
               continue;
-            if (auto aErrorMaybe = validate(aKVPair.second, *aAdditionalProps)) {
+            if (auto aErrorMaybe =
+                    validate(aKVPair.second, *aAdditionalProps)) {
               return makeError(
                   ErrorCode::UNKNOWN,
                   "Additional property does not match (additionalProperties)");

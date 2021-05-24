@@ -9,6 +9,7 @@
 #include <any>
 #include <map>
 #include <memory>
+#include <regex>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -23,23 +24,21 @@ struct DynamicStorage {
       return *this;
     }
 
-    template<typename U>
-    bool operator<(const Ref<U> &theOther) const {
+    template <typename U> bool operator<(const Ref<U> &theOther) const {
       return this->get() < theOther.get();
     }
-    template<typename U>
-    bool operator==(const Ref<U> &theOther) const {
+    template <typename U> bool operator==(const Ref<U> &theOther) const {
       return this->get() == theOther.get();
     }
-    template<typename U>
-    bool operator!=(const Ref<U> &theOther) const {
+    template <typename U> bool operator!=(const Ref<U> &theOther) const {
       return this->get() != theOther.get();
     }
   };
   template <typename T> using Ptr = T *;
   template <typename T> using BufferRef = Ref<std::vector<T>>;
   template <typename T> using BufferPtr = std::vector<T> *;
-  template <typename Key, typename Value> using Map = std::map<Key, Value, std::less<>>;
+  template <typename Key, typename Value>
+  using Map = std::map<Key, Value, std::less<>>;
   template <typename Key, typename Value> using MapRef = Ref<Map<Key, Value>>;
   template <typename Key, typename Value> using MapPtr = Ptr<Map<Key, Value>>;
   template <typename Key, typename Value>
@@ -72,6 +71,17 @@ struct DynamicStorage {
   static constexpr auto pointer_to(const SchemaRef &theRef) {
     return SchemaPtr{theRef};
   }
+
+  struct Regex {
+    Regex(const std::string_view &thePattern)
+        : itsRegex(thePattern.begin(), thePattern.end()) {}
+    bool isMatching(const std::string_view &theStr) const {
+      return std::regex_search(theStr.begin(), theStr.end(), itsRegex);
+    }
+
+  private:
+    std::regex itsRegex;
+  };
 };
 
 template <typename Standard_> struct DynamicSchemaContext {
@@ -293,6 +303,9 @@ template <typename Standard_> struct DynamicSchemaContext {
   std::string_view getString(StringRef theStr) const { return theStr.get(); }
   JsonAccessor getJson(JsonRef theJson) const {
     return theJson.get().getRoot();
+  }
+  Storage::Regex makeRegex(const std::string_view &thePattern) const {
+    return Storage::Regex{thePattern};
   }
 
 private:

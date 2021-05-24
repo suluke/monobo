@@ -72,6 +72,15 @@ struct StaticStorage {
     ptrdiff_t itsPos{0};
   };
   using JsonPtr = Ptr<JsonRef>;
+
+  struct Regex {
+    constexpr Regex(const std::string_view& thePattern) :itsPattern(thePattern) {}
+    constexpr bool isMatching(const std::string_view& theStr) {
+      return itsPattern == theStr;
+    }
+  private:
+    std::string_view itsPattern;
+  };
 };
 
 template <typename Standard_, size_t MAX_SCHEMAS, size_t MAX_VOCAB_ENTRIES,
@@ -374,6 +383,10 @@ public:
   }
   constexpr JsonAccessor getJson(const JsonRef &theJson) const {
     return JsonAccessor{itsJsonStorage, itsJsons[theJson.itsPos]};
+  }
+
+  constexpr Storage::Regex makeRegex(const std::string_view &thePattern) const {
+    return Storage::Regex{thePattern};
   }
 
 private:
