@@ -1,63 +1,61 @@
 #include "constexpr_json/document_parser.h"
+#include "constexpr_json/ext/base64.h"
 #include "constexpr_json/ext/error_is_detail.h"
 #include "constexpr_json/impl/document_parser1.h"
 #include "constexpr_json/static_document.h"
 
 #include <cmath>
+#include <iostream>
 
 using namespace cjson;
 
-#define CHECK_UTF8_DECODE(STR, EXPECTED)                                       \
+#define CHECK_BASE64(TEXT, BASE64)                                             \
   do {                                                                         \
-    static_assert(Utf8{}.decodeFirst(STR).first == EXPECTED,                   \
-                  "UTF8: Failed to decode '" STR "'");                         \
+    /* Decode */                                                               \
+    using sv = std::string_view;                                               \
+    using namespace std::literals::string_view_literals;                       \
+    constexpr auto aDecodeRes = Base64{}.decodeFirst(BASE64);                  \
+    static_assert(aDecodeRes.first.size == TEXT##sv.size());                   \
+    static_assert(sv(aDecodeRes.first.data(), aDecodeRes.first.size) == TEXT); \
+    /* Encode */                                                               \
+    constexpr sv aTxt{TEXT};                                                   \
+    constexpr auto aEncSz = std::min(aTxt.size(), size_t{3});                  \
+    constexpr auto aEncoded = Base64{}.encode(                                 \
+        {{aTxt.size() > 0 ? aTxt[0] : '\0', aTxt.size() > 1 ? aTxt[1] : '\0',  \
+          aTxt.size() > 2 ? aTxt[2] : '\0'},                                   \
+         aEncSz});                                                             \
+    static_assert(aEncoded.second == aEncSz);                                  \
+    static_assert(sv{aEncoded.first.data(), 4} == BASE64);                     \
   } while (false)
 
-template <intptr_t L> struct CompareCharSeqs {
-  bool value = true;
-  template <typename T1, typename T2>
-  constexpr CompareCharSeqs(T1 theFirst, T2 theSecond) {
-    if constexpr (L <= 0) {
-      std::ignore = theFirst;
-      std::ignore = theSecond;
-      return;
-    } else {
-      constexpr intptr_t aIdx = L - 1;
-      if (theFirst[aIdx] != theSecond[aIdx]) {
-        value = false;
-        return;
-      }
-      CompareCharSeqs<aIdx> aRemCmp(theFirst, theSecond);
-      value = aRemCmp.value;
-    }
-  }
-};
+static void test_base64() {
+  CHECK_BASE64("Man", "TWFu");
+  CHECK_BASE64("Ma", "TWE=");
+  CHECK_BASE64("M", "TQ==");
+}
 
-#define CHECK_UTF8_ENCODE(CODEPOINT, EXPECTED)                                 \
+#undef CHECK_BASE64
+
+#define CHECK_UTF8(DATA, CODEPOINT)                                            \
   do {                                                                         \
-    constexpr std::string_view aExpStr{EXPECTED};                              \
+    /* Decoding */                                                             \
+    static_assert(Utf8{}.decodeFirst(DATA).first == CODEPOINT,                 \
+                  "UTF8: Failed to decode '" DATA "'");                        \
+    /* Encoding */                                                             \
+    constexpr std::string_view aExpStr{DATA};                                  \
     constexpr auto aResult = Utf8{}.encode(CODEPOINT);                         \
     constexpr intptr_t aExpLen = static_cast<intptr_t>(aExpStr.size());        \
     static_assert(aResult.second == aExpLen);                                  \
-    constexpr intptr_t aMinLen =                                               \
-        aResult.second < aExpLen ? aResult.second : aExpLen;                   \
-    constexpr CompareCharSeqs<aMinLen> aCmp(aResult.first, aExpStr);           \
-    static_assert(aCmp.value);                                                 \
+    static_assert(std::string_view(aResult.first.data(), aResult.second) ==    \
+                  aExpStr);                                                    \
   } while (false)
 
 static void test_utf8() {
-  // Test utf8 decoder
-  CHECK_UTF8_DECODE("$", 0x24);
-  CHECK_UTF8_DECODE("¢", 0xa2);
-  CHECK_UTF8_DECODE("ह", 0x939);
-  CHECK_UTF8_DECODE("€", 0x20ac);
-  CHECK_UTF8_DECODE("𐍈", 0x10348);
-
-  // Test utf8 encoder
-  CHECK_UTF8_ENCODE(0x24, "$");
-  CHECK_UTF8_ENCODE(0xa2, "¢");
-  CHECK_UTF8_ENCODE(0x939, "ह");
-  CHECK_UTF8_ENCODE(0x20ac, "€");
+  CHECK_UTF8("$", 0x24);
+  CHECK_UTF8("¢", 0xa2);
+  CHECK_UTF8("ह", 0x939);
+  CHECK_UTF8("€", 0x20ac);
+  CHECK_UTF8("𐍈", 0x10348);
 }
 
 #undef CHECK_UTF8_DECODE
@@ -168,7 +166,8 @@ static void test_parseutils() {
   CHECK_PARSE(parseBool, "falseabc", 5, false);
 
   //   computeEncodedSize
-  const auto aSize = parsing<Utf8>{}.computeEncodedSize("\\uD83D\\uDCA9\\uD83D\\uDCA9", Utf8{});
+  const auto aSize = parsing<Utf8>{}.computeEncodedSize(
+      "\\uD83D\\uDCA9\\uD83D\\uDCA9", Utf8{});
   static_assert(aSize == 8);
 }
 
@@ -284,6 +283,7 @@ static void test_parsing() {
 }
 
 int main() {
+  test_base64();
   test_utf8();
   test_parseutils();
   test_docinfo<ErrorWillReturnNone>();
