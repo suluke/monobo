@@ -7,7 +7,7 @@ fn line_to_int(line: String) -> usize {
     line.parse::<usize>().unwrap()
 }
 
-pub fn part1() -> std::io::Result<()> {
+fn part1() -> std::io::Result<()> {
     let mut input_path = PathBuf::new();
     input_path.push(env!("CARGO_MANIFEST_DIR"));
     input_path.push("input");
@@ -28,7 +28,7 @@ pub fn part1() -> std::io::Result<()> {
     Ok(())
 }
 
-pub fn part2() -> std::io::Result<()> {
+fn part2() -> std::io::Result<()> {
     let mut input_path = PathBuf::new();
     input_path.push(env!("CARGO_MANIFEST_DIR"));
     input_path.push("input");
