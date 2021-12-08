@@ -14,6 +14,8 @@ mod day_06;
 use day_06::solve as day_06;
 mod day_07;
 use day_07::solve as day_07;
+mod day_08;
+use day_08::solve as day_08;
 
 fn main() -> std::io::Result<()> {
     day_01()?;
@@ -22,5 +24,6 @@ fn main() -> std::io::Result<()> {
     day_04()?;
     day_05()?;
     day_06()?;
-    day_07()
+    day_07()?;
+    day_08()
 }
