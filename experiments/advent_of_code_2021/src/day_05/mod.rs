@@ -115,8 +115,8 @@ fn part1() -> std::io::Result<()> {
     input_path.push("05.txt");
     let input = std::fs::read_to_string(input_path).unwrap();
     let mut lines = parse_lines(&input);
-    let aaLines: Vec<Line> = lines.drain(0..).filter(Line::is_axis_aligned).collect();
-    let (xmin, xmax, ymin, ymax) = aaLines.iter().fold(
+    let aa_lines: Vec<Line> = lines.drain(0..).filter(Line::is_axis_aligned).collect();
+    let (xmin, xmax, ymin, ymax) = aa_lines.iter().fold(
         (isize::MAX, isize::MIN, isize::MAX, isize::MIN),
         |acc, line| {
             (
@@ -128,7 +128,7 @@ fn part1() -> std::io::Result<()> {
         },
     );
     let mut field = Field::new(xmin, xmax, ymin, ymax);
-    for line in &aaLines {
+    for line in &aa_lines {
         field.plot(line);
     }
     println!("day5/pt1: {}", field.count_multi_covered());
@@ -143,8 +143,8 @@ fn part2() -> std::io::Result<()> {
     let input = std::fs::read_to_string(input_path).unwrap();
     let mut lines = parse_lines(&input);
     // is_aa_or_diag is the ONLY difference to part1
-    let aaLines: Vec<Line> = lines.drain(0..).filter(Line::is_aa_or_diag).collect();
-    let (xmin, xmax, ymin, ymax) = aaLines.iter().fold(
+    let aa_lines: Vec<Line> = lines.drain(0..).filter(Line::is_aa_or_diag).collect();
+    let (xmin, xmax, ymin, ymax) = aa_lines.iter().fold(
         (isize::MAX, isize::MIN, isize::MAX, isize::MIN),
         |acc, line| {
             (
@@ -156,10 +156,10 @@ fn part2() -> std::io::Result<()> {
         },
     );
     let mut field = Field::new(xmin, xmax, ymin, ymax);
-    for line in &aaLines {
+    for line in &aa_lines {
         field.plot(line);
     }
-    println!("day5/pt1: {}", field.count_multi_covered());
+    println!("day5/pt2: {}", field.count_multi_covered());
     Ok(())
 }
 

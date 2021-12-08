@@ -44,7 +44,7 @@ fn part2() -> std::io::Result<()> {
     for _ in 0..256 {
         swarm.step();
     }
-    println!("day6/pt1: {}", swarm.size());
+    println!("day6/pt2: {}", swarm.size());
     Ok(())
 }
 
