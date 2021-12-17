@@ -180,6 +180,7 @@ fn part2() -> std::io::Result<()> {
     println!("day{}/pt2: {}", day(), res);
     Ok(())
 }
+#[allow(unused)]
 pub fn solve() -> std::io::Result<()> {
     part1()?;
     part2()
