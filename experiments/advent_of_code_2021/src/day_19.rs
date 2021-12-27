@@ -480,7 +480,7 @@ mod tests {
         let ex2 = ex2.match_all();
         assert_eq!(
             ex2.iter()
-                .map(|s| &s.points)
+                .map(|m| &m.matched.points)
                 .flatten()
                 .collect::<std::collections::BTreeSet<_>>()
                 .len(),
